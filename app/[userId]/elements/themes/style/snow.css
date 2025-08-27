@@ -1,0 +1,63 @@
+/* app/[userId]/elements/themes/style/snow.css */
+.snow-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.snowflake {
+    position: absolute;
+    top: -10px;
+    color: white;
+    font-size: 1em;
+    animation: snowfall linear infinite;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+.snowflake:nth-child(odd) {
+    animation-duration: 4s;
+    font-size: 0.8em;
+}
+
+.snowflake:nth-child(even) {
+    animation-duration: 6s;
+    font-size: 1.2em;
+}
+
+.snowflake:nth-child(3n) {
+    animation-duration: 3s;
+    font-size: 0.6em;
+}
+
+@keyframes snowfall {
+    0% {
+        transform: translateY(-100vh) translateX(0px);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(100vh) translateX(100px);
+        opacity: 0;
+    }
+}
+
+/* Add some swaying motion */
+.snowflake:nth-child(2n) {
+    animation-name: snowfall-sway;
+}
+
+@keyframes snowfall-sway {
+    0%, 100% {
+        transform: translateY(-100vh) translateX(0px);
+    }
+    50% {
+        transform: translateY(50vh) translateX(50px);
+    }
+    100% {
+        transform: translateY(100vh) translateX(0px);
+    }
+}

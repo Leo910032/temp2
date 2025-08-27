@@ -1,0 +1,368 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@font-face {
+  font-family: 'MariaFont';
+  src: url('https://linktree.sirv.com/Images/Scene/Mario/SuperMario256.woff2') format('woff2'),
+       url('https://linktree.sirv.com/Images/Scene/Mario/SuperMario256.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+
+* {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  /* REMOVED: transition: .25s ease-in-out; - This was causing choppy map movement */
+}
+
+/* Add transitions only to specific elements that need them, excluding map containers */
+button, 
+input, 
+textarea, 
+select, 
+a, 
+.transition,
+.contact-marker,
+.marker-avatar,
+.marker-label,
+.marker-info {
+  transition: .25s ease-in-out;
+}
+
+/* Explicitly disable transitions for map-related elements */
+[class*="gm-"], 
+.gm-style div, 
+.gm-style img, 
+.gm-style span,
+.gmnoprint,
+.gmnoscreen {
+  transition: none !important;
+}
+
+/* Ensure no transitions apply to any Google Maps elements */
+div[style*="transform"],
+div[style*="position: absolute"][style*="left"][style*="top"] {
+  transition: none !important;
+}
+
+*::selection {
+  background-color: rgb(58, 224, 154);
+  color: #fff;
+}
+
+.dashboard *::selection {
+  background-color: #3AE09A;
+  color: #fff;
+}
+
+.bg-dark {
+  background-color: #3b3b3b;
+}
+
+.try {
+  filter: saturate(50%) invert(1) blur(2px);
+}
+
+.flicker {
+  animation: rgba 1s linear infinite, flick 4s cubic-bezier(0.175, 0.885, 0.32, 1.275) infinite;
+}
+
+.flicker:nth-child(1) {
+  animation-delay: 1s;
+}
+
+.flicker:nth-child(2) {
+  animation-delay: 2s;
+}
+
+.flicker:nth-child(3) {
+  animation-delay: 3s;
+}
+
+.flicker:nth-child(4) {
+  animation-delay: 4s;
+}
+
+@layer utilities {
+  .glow-white:hover {
+    box-shadow: 0 0 15px 4px rgba(255, 255, 255, 0.15);
+  }
+}
+
+.flicker:nth-child(5) {
+  animation-delay: 5s;
+}
+
+.flicker:nth-child(6) {
+  animation-delay: 6s;
+}
+
+.flicker:nth-child(7) {
+  animation-delay: 7s;
+}
+
+@keyframes flick {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes rgba {
+  50% {
+    filter: hue-rotate(90deg) blur(50px);
+  }
+}
+
+.dropshadow {
+  filter: drop-shadow(0 10px 25px rgba(255, 255, 255, 0.25));
+  transition: filter .25s ease-in-out;
+}
+
+.dropshadow:has(input:focus) {
+  filter: drop-shadow(0 10px 25px rgba(255, 255, 255, 0.5));
+}
+
+.dropshadow-good {
+  filter: drop-shadow(0 10px 25px rgba(58, 224, 154, 0.25));
+  transition: filter .25s ease-in-out;
+}
+
+.dropshadow-good:has(input:focus) {
+  filter: drop-shadow(0 10px 25px rgba(58, 224, 154, 0.5));
+}
+
+.dropshadow-bad {
+  filter: drop-shadow(0 10px 25px rgba(255, 44, 79, 0.25));
+  transition: filter .25s ease-in-out;
+}
+
+.dropshadow-bad:has(input:focus) {
+  filter: drop-shadow(0 10px 25px rgba(255, 44, 79, 0.5));
+}
+
+.nopointer {
+  pointer-events: none;
+}
+
+.myInput {
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  transition: border .25s ease-in-out;
+}
+
+.myInput:hover {
+  border: 1px solid rgba(0, 0, 0, 0.75);
+}
+
+.myInput.hasError {
+  border: 1px solid rgba(255, 44, 79, 1);
+  animation: shake 0.4s ease-in-out forwards;
+}
+
+.myInput.good {
+  border: 1px solid rgb(58, 224, 154);
+}
+
+@keyframes shake {
+  0% {
+    transform: translateX(-3px);
+  }
+
+  20% {
+    transform: translateX(3px);
+  }
+
+  40% {
+    transform: translateX(-2px);
+  }
+
+  60% {
+    transform: translateX(2px);
+  }
+
+  80% {
+    transform: translateX(-1px);
+  }
+
+  100% {
+    transform: translateX(0);
+  }
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
+.enter {
+  animation: enter ease-in-out .5s forwards;
+  animation-delay: .15s;
+  opacity: 0;
+}
+
+.enterCard {
+  animation: enterCard ease-in-out .25s forwards;
+  opacity: 0;
+}
+
+.leaveCard {
+  animation: leaveCard ease-in-out .25s forwards;
+  pointer-events: none;
+}
+
+@keyframes enter {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes enterCard {
+  from {
+    transform: translateY(-10%) scale(0.95);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    z-index: 50;
+  }
+}
+
+@keyframes leaveCard {
+  from {
+    transform: translateY(0) scale(1);
+  }
+  
+  to {
+    transform: translateY(-10%) scale(0.95);
+    opacity: 0;
+    z-index: 1;
+  }
+}
+
+.banner {
+  transition: max-height 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.openBanner {
+  max-height: 20rem;
+}
+
+.closeBanner {
+  max-height: 0;
+}
+
+.navCard:has(.leaveCard) {
+  display: none;
+}
+
+.userBtn:has(a:active) {
+  transform: scale(.95);
+  transition: transform .15s ease-in-out;
+}
+
+.MariaFont {
+  font-family: "MariaFont", sans-serif;
+}
+
+/* STYLES FOR CONTACTS MAP MARKERS */
+.contact-marker {
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+  transition: transform 0.2s ease, z-index 0.2s ease;
+}
+
+.contact-marker .marker-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+}
+
+.contact-marker .marker-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+  border: 3px solid white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  transition: all 0.2s ease;
+}
+
+.contact-marker .marker-label {
+  background: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #374151; /* text-gray-700 */
+  border: 1px solid #e5e7eb; /* border-gray-200 */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.contact-marker .marker-info {
+  background: rgba(59, 130, 246, 0.9); /* bg-blue-600 with opacity */
+  color: white;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 500;
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+/* HOVER AND SELECTED STATES */
+.contact-marker:hover {
+  transform: scale(1.1);
+  z-index: 1000;
+}
+
+.contact-marker.selected {
+  transform: scale(1.2);
+  z-index: 1000;
+}
+
+.contact-marker:hover .marker-info,
+.contact-marker.selected .marker-info {
+  opacity: 1;
+}
+
+.contact-marker.selected .marker-avatar {
+  border-color: #f59e0b; /* amber-500 */
+  box-shadow: 0 0 0 2px #fbbf24, 0 4px 12px rgba(0,0,0,0.2); /* ring-amber-400 */
+}
+
+.contact-marker.selected .marker-label {
+  background: #fbbf24; /* bg-amber-400 */
+  color: #92400e; /* text-amber-800 */
+  border-color: #f59e0b; /* border-amber-500 */
+}
+
+/* Additional safeguard to ensure Google Maps elements are not affected by transitions */
+.gm-style,
+.gm-style * {
+  transition: none !important;
+  animation: none !important;
+}

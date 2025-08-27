@@ -1,0 +1,334 @@
+{
+  "landing": {
+    "hero": {
+      "main_title": "The Only Link You'll Ever Need",
+      "subtitle": "connect your audience to all of your content with one link"
+    },
+    "form": {
+      "placeholder": "tapit",
+      "errors": {
+        "username_taken": "This username is already taken.",
+        "username_too_short": "Username is too short.",
+        "invalid_format": "Invalid username format"
+      }
+    }
+  },
+  "common": {
+    "loading": "Loading...",
+    "link": "Link"
+  },
+  "login": {
+    "title": "Log in to your Linktree",
+    "username_placeholder": "fabiconcept",
+    "password_placeholder": "Password",
+    "forgot_password": "Forgot your password?",
+    "sign_in": "Sign In",
+    "sign_up": "Sign up",
+    "no_account": "Don't have an account?",
+    "continue_with": "Or continue with",
+    "google": "Google",
+    "microsoft": "Microsoft",
+    "apple": "Apple",
+    "login_successful": "Login Successful",
+    "google_signin_successful": "Google Sign-in Successful",
+    "microsoft_signin_successful": "Microsoft Sign-in Successful", 
+    "apple_signin_successful": "Apple Sign-in Successful",
+    "invalid_credentials": "Invalid Login credentials!",
+    "google_signin_failed": "Google sign-in failed!",
+    "microsoft_signin_failed": "Microsoft sign-in failed!",
+    "apple_signin_failed": "Apple sign-in failed!",
+    "username_not_registered": "This username is not registered to any user."
+  },
+  "signup": {
+    "title": "Create your account",
+    "username_placeholder": "fabiconcept", 
+    "email_placeholder": "Email",
+    "password_placeholder": "Password",
+    "create_account": "Create Account",
+    "or_continue_with": "Or continue with",
+    "google": "Google",
+    "microsoft": "Microsoft", 
+    "apple": "Apple",
+    "already_have_account": "Already have an account?",
+    "login": "Log in",
+    "redirect_message": "You'll be redirected back to complete your purchase",
+    "errors": {
+      "username_too_short": "Username is too short.",
+      "invalid_username_format": "Invalid username format",
+      "username_taken": "This username is already taken.",
+      "invalid_email_format": "Invalid Email format!",
+      "email_already_in_use": "You already have an account with us!",
+      "weak_password": "Password is too weak",
+      "something_went_wrong": "Something went wrong",
+      "error_checking_username": "Error checking username availability"
+    },
+    "success": {
+      "account_created": "Account created successfully!",
+      "signed_in_with_google": "Signed in with Google!",
+      "signed_in_with_microsoft": "Signed in with Microsoft!",
+      "signed_in_with_apple": "Signed in with Apple!"
+    }
+  },
+  "navigation": {
+    "login": "Login"
+  },
+  "dashboard": {
+    "navigation": {
+      "links": "Links",
+      "appearance": "Appearance", 
+      "analytics": "Analytics",
+      "contacts": "Contacts",
+      "settings": "Settings"
+    },
+    "settings": {
+      "controls": {
+        "jump_to": "Jump to:"
+      },
+      "social_icons": {
+        "title": "Social Icons",
+        "card_title": "Be iconic",
+        "card_subtitle": "Add icons linking to your social profiles, email and more.",
+        "add_icon_button": "Add Icon",
+        "drag_and_drop_helper": "Drag and drop the icons above to reorder them.",
+        "position_title": "Position",
+        "position_subtitle": "Display icons at the:",
+        "alt_icon": "Socials icon"
+      },
+      "support_banner": {
+        "title": "Support banner",
+        "alt_icon": "Support icon",
+        "switch_title": "Show your support",
+        "switch_description": "Show your support for important causes with a profile banner. Only one banner can be active at a time.",
+        "choose_cause_label": "Choose a cause",
+        "link_info": "Your banner will link to this",
+        "link_text": "Linktree",
+        "alt_logo": "Cause Logo",
+        "causes": {
+          "0": {
+            "caption": "Support Creator",
+            "card_title": "Explore more of my Projects.",
+            "card_message": "Take a look at my projects and the things I've added to GitHub. You'll find a mix of different stuff I've worked on, and I'm excited to share them with you!",
+            "banner_title": "Discover My GitHub Projects",
+            "banner_message": "I invite you to explore my GitHub profile, where you can find an array of exciting projects and contributions. Feel free to take a look, and if you find something you like, don't hesitate to show your support by leaving a star ⭐"
+          },
+          "1": {
+            "caption": "#FreePalestine",
+            "card_title": "War is never the answer.",
+            "card_message": "Display a support banner to encourage your visitors to #FreePalestine, donate and discover resources, and support the right for people everywhere to live in peace.",
+            "banner_title": "War is not the answer.",
+            "banner_message": "I'm driving awareness, donations, and support to #FreePalestine, and the right for people everywhere to live in peace. Will you join me?"
+          },
+          "2": {
+            "caption": "#StandWithUkraine",
+            "card_title": "War is never the answer.",
+            "card_message": "Display a support banner to encourage your visitors to #StandWithUkraine, donate and discover resources, and support the right for people everywhere to live in peace.",
+            "banner_title": "War is not the answer.",
+            "banner_message": "I'm driving awareness, donations and support to #StandWithUkraine, and the right for people everywhere to live in peace. Will you join me?"
+          },
+          "3": {
+            "caption": "Anti-Racism",
+            "card_title": "Racism is an international emergency.",
+            "card_message": "Display a support banner on your Linktree allowing your visitors to donate and discover resources in support of anti-racism, justice and equality.",
+            "banner_title": "Support Anti-Racism",
+            "banner_message": "I'm raising awareness, driving donations and sharing information in support of racial justice and equality. Will you join me?"
+          },
+          "4": {
+            "caption": "Pride",
+            "card_title": "Support the LGBTQIA+ community",
+            "card_message": "Display a support banner to raise awareness and funds for the LGBTQIA+ community during Pride month.",
+            "banner_title": "Protect LGBTQIA+ rights",
+            "banner_message": "In celebration of Pride, I'm raising awareness and funds to support the LGBTQIA+ community. Join me."
+          }
+        }
+      },
+      "sensitive_material": {
+        "title": "Sensitive material",
+        "alt_icon": "Sensitive content icon",
+        "description": "Display a sensitive content warning before visitors can view your profile.",
+        "select_one": "Please select one:",
+        "age_18_plus": "18+",
+        "age_21_plus": "21+",
+        "age_25_plus": "25+",
+        "sensitive_content": "Sensitive Content"
+      },
+      "seo": {
+        "title": "SEO",
+        "alt_icon": "SEO icon",
+        "card_title": "Custom metadata",
+        "card_description": "Changes to metadata may take some time to appear on other platforms.",
+        "meta_title_label": "Meta title",
+        "meta_description_label": "Meta description"
+      }
+    },
+    "appearance": {
+      "headings": {
+        "profile": "Profile",
+        "themes": "Themes",
+        "custom_appearance": "Custom appearance",
+        "backgrounds": "Backgrounds",
+        "christmas": "Christmas Accessories",
+        "buttons": "Buttons",
+        "fonts": "Fonts"
+      },
+      "custom_appearance_description": "Completely customize your Linktree profile. Change your background with colors, gradients and images. Choose a button style, change the typeface and more.",
+      "new_badge": "New",
+      "themes": {
+        "create_your_own": "Create Your Own",
+        "custom": "Custom",
+        "alt_bg_image": "Theme background",
+        "lake_black": "Lake Black",
+        "starry_night": "Starry Night",
+        "blocks_3d": "3D Blocks",
+        "matrix": "Matrix",
+        "new_mario": "New Mario",
+        "pebble_blue": "Pebble Blue",
+        "pebble_yellow": "Pebble Yellow",
+        "pebble_pink": "Pebble Pink",
+        "cloud_red": "Cloud Red",
+        "cloud_green": "Cloud Green",
+        "cloud_blue": "Cloud Blue",
+        "breeze_pink": "Breeze Pink",
+        "breeze_orange": "Breeze Orange",
+        "breeze_green": "Breeze Green",
+        "rainbow": "Rainbow",
+        "confetti": "Confetti",
+        "lake_white": "Lake White"
+      },
+      "backgrounds": {
+        "flat_colour": "Flat Colour",
+        "gradient": "Gradient",
+        "image": "Image",
+        "video": "Video",
+        "polka": "Polka",
+        "stripe": "Stripe",
+        "waves": "Waves",
+        "zig_zag": "Zig Zag"
+      },
+      "background_card": {
+        "error_image_too_large": "Please select an image smaller than 2MB.",
+        "error_video_too_large": "Please select a video smaller than 20MB.",
+        "error_not_authenticated": "User not authenticated.",
+        "error_login_required": "Please log in to continue.",
+        "toast_loading": "Uploading file...",
+        "toast_success": "File uploaded!",
+        "toast_error": "An error occurred!",
+        "alt_upload_icon": "Upload icon",
+        "alt_preview": "Upload preview",
+        "video_fallback": "Your browser does not support the video tag."
+      },
+      "buttons": {
+        "fill": "Fill",
+        "outline": "Outline",
+        "hard_shadow": "Hard Shadow",
+        "soft_shadow": "Soft Shadow",
+        "special": "Special",
+        "theme_text_colour": "Theme text colour",
+        "button_colour": "Button colour",
+        "button_font_colour": "Button font colour",
+        "shadow_colour": "Shadow colour",
+        "alt_decorative_element": "Decorative element"
+      },
+      "fonts": {
+        "font_label": "Font"
+      },
+      "fonts_gallery": {
+        "title": "Select a font",
+        "search_placeholder": "Search by font name",
+        "classic_section": "Classic",
+        "selected_status": "Selected",
+        "no_fonts_found": "No fonts found.",
+        "save_button": "Save"
+      },
+      "christmas": {
+        "snow_fall": "Snow Fall",
+        "toast_success": "{{accessory}} applied!",
+        "toast_error": "Failed to apply accessory"
+      },
+      "profile": {
+        "pick_image": "Pick an image",
+        "remove_image": "Remove",
+        "alt_profile": "Profile picture",
+        "alt_loading": "Loading...",
+        "error_select_image": "Please select an image file.",
+        "error_image_too_large": "Image must be less than 5MB.",
+        "error_upload_failed": "Failed to upload image",
+        "error_remove_failed": "Failed to remove profile picture.",
+        "error_generic": "An error occurred!",
+        "toast_loading": "Setting new profile picture...",
+        "toast_success": "Profile picture set successfully!"
+      },
+      "text_details": {
+        "profile_title": "Profile title",
+        "bio": "Bio"
+      },
+      "profile_card": {
+        "add_social_icons": "Add social icons"
+      }
+    },
+    "modals": {
+      "add_to_linktree": "Add to Linktree",
+      "share_your_content": "Share your content",
+      "share_content_directly": "Share content directly on your Linktree"
+    },
+    "links": {
+      "add_header": "Add Header",
+      "add_link": "Add Link",
+      "enter_url": "Enter Url",
+      "url_placeholder": "URL",
+      "add": "Add",
+      "inspired_by_interest": "Inspired by your interest",
+      "view_all": "View all",
+      "brands": {
+        "twitter_handle": "Twitter Handle",
+        "tiktok_profile": "Tiktok Profile", 
+        "instagram_handle": "Instagram Handle",
+        "video_link": "Video Link",
+        "music_link": "Music Link"
+      },
+      "item": {
+        "enter_text_placeholder": "Enter text",
+        "headline_title_default": "Headline title",
+        "delete_tooltip": "Delete",
+        "delete_header": "Delete",
+        "delete_confirmation_question": "Delete this forever?",
+        "cancel_button": "Cancel",
+        "delete_button": "Delete",
+        "url_placeholder": "URL",
+        "invalid_url_message": "Please enter a valid URL",
+        "setup_link_prompt": "Enter your {{kind}} URL, then set up your link",
+        "custom_kind": "Custom"
+      }
+    },
+    "empty_state": {
+        "title": "Show the world who you are.",
+        "subtitle": "Add a link to get started."
+    }
+  },
+  "public": {
+    "sensitive_warning": {
+      "title": "Sensitive Content",
+      "description": "This profile may contain content that is not appropriate for all audiences",
+      "continue_button": "Continue",
+      "go_back_button": "Go Back",
+      "age_buttons": {
+        "over_18": "I'm over 18",
+        "over_21": "I'm over 21", 
+        "over_25": "I'm over 25",
+        "under_18": "I'm under 18",
+        "under_21": "I'm under 21",
+        "under_25": "I'm under 25"
+      }
+    },
+    "profile": {
+      "loading": "Loading profile...",
+      "not_found": "Profile not found"
+    },
+    "links": {
+      "copy_success": "Link copied!",
+      "copy_error": "Failed to copy link"
+    },
+    "support_banner": {
+      "act_now": "Act now"
+    }
+  }
+}

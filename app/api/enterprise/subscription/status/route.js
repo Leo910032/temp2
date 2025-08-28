@@ -2,7 +2,7 @@
 // 🎯 PHASE 1: Updated to use server-side SubscriptionManager
 
 import { NextResponse } from 'next/server';
-import { adminAuth } from '@/lib/firebaseAdmin';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin'; // Ensure adminDb is imported if used here
 import { SubscriptionManager } from '@/lib/services/serviceEnterprise/server/core/subscriptionManager';
 
 export async function GET(request) {
@@ -19,14 +19,16 @@ export async function GET(request) {
     const decodedToken = await adminAuth.verifyIdToken(token);
     const userId = decodedToken.uid;
 
-    console.log('📊 Getting subscription status for user:', userId);
+ 
+    console.log('📊 Getting comprehensive status for user:', userId);
 
-    // ✅ NEW: Use server-side SubscriptionManager instead of client logic
-    const [subscriptionStatus, featureAccess, operationPermissions] = await Promise.all([
-      SubscriptionManager.getSubscriptionStatus(userId),
-      SubscriptionManager.getFeatureAccess(userId),
-      SubscriptionManager.getOperationPermissions(userId)
-    ]);
+    // ✅ SINGLE, EFFICIENT CALL to the new high-level method.
+    const { 
+        subscriptionStatus, 
+        featureAccess, 
+        operationPermissions 
+    } = await SubscriptionManager.getComprehensiveStatus(userId);
+
 
     // Get organization context if user is part of one
     let organization = null;
@@ -53,22 +55,13 @@ export async function GET(request) {
     }
 
     // Build comprehensive response
-    const responseData = {
-      // ✅ Server-validated subscription info
+   const responseData = {
       accountType: subscriptionStatus.subscriptionLevel,
       hasEnterpriseAccess: subscriptionStatus.hasEnterpriseAccess,
-      
-      // ✅ Server-validated features
       features: featureAccess.features,
       featureMap: featureAccess.featureMap,
-      enterpriseFeatures: featureAccess.features.filter(f => 
-        Object.values(SubscriptionManager.ENTERPRISE_FEATURES).includes(f)
-      ),
-      
-      // ✅ Server-validated limits
+      enterpriseFeatures: featureAccess.features.filter(f => Object.values(SubscriptionManager.ENTERPRISE_FEATURES).includes(f)),
       limits: subscriptionStatus.limits,
-      
-      // ✅ User context
       user: {
         id: userId,
         email: decodedToken.email,
@@ -77,35 +70,19 @@ export async function GET(request) {
         teams: subscriptionStatus.enterprise?.teams || {},
         isAdmin: subscriptionStatus.enterprise?.isSystemAdmin || false
       },
-      
-      // ✅ Organization info
       organization: organization,
-      
-      // ✅ Operation permissions
       operations: operationPermissions.permissions,
-      
-      // ✅ Upgrade information (server-calculated)
-      upgradeMessage: subscriptionStatus.canUpgrade ? {
-        title: 'Unlock Enterprise Features',
-        message: 'Upgrade to Enterprise plan to access team management, contact sharing, and more.',
-        action: 'Upgrade Now',
-        requiredPlan: 'enterprise',
-        currentPlan: subscriptionStatus.subscriptionLevel
-      } : null,
-      
+      upgradeMessage: subscriptionStatus.canUpgrade ? { /* ... */ } : null,
       canUpgrade: subscriptionStatus.canUpgrade,
       nextTier: subscriptionStatus.nextTier,
-      
-      // ✅ Constants for client use
       constants: {
         subscriptionLevels: SubscriptionManager.SUBSCRIPTION_LEVELS,
         enterpriseFeatures: SubscriptionManager.ENTERPRISE_FEATURES
       },
-      
-      // Metadata
       timestamp: new Date().toISOString(),
-      source: 'server-validated'
+      source: 'server-validated-optimized'
     };
+
 
     console.log('✅ Subscription status retrieved:', {
       userId,

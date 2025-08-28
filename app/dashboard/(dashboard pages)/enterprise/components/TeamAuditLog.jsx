@@ -1,12 +1,11 @@
-// TeamAuditLog.jsx - Fixed timestamp handling
-
 "use client"
 import React, { useState, useEffect } from 'react';
-import { useAuth } from "@/contexts/AuthContext";
 import { toast } from 'react-hot-toast';
+// ✅ STEP 1: Import the new service and error handler
+import { auditService } from '@/lib/services/serviceEnterprise/client/enhanced-index';
+import { ErrorHandler } from '@/lib/services/serviceEnterprise/client/core/errorHandler';
 
 export default function TeamAuditLog({ teamId, teamName, userContext, isOpen, onClose }) {
-  const { currentUser } = useAuth();
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -14,108 +13,140 @@ export default function TeamAuditLog({ teamId, teamName, userContext, isOpen, on
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  // ✅ FIXED: Timestamp parsing function
+  // The parseTimestamp function is good, let's keep it.
+ // ✅ THE FIX: Replace the placeholder with this complete function.
   const parseTimestamp = (timestamp) => {
-    if (!timestamp) return new Date();
+    if (!timestamp) {
+      // If the timestamp is null or undefined, return an invalid date
+      // which our getRelativeTime function can handle.
+      return new Date(NaN);
+    }
     
-    // Handle Firestore Timestamp objects
+    // Handle Firestore Timestamp objects (from real-time updates, etc.)
     if (timestamp.toDate && typeof timestamp.toDate === 'function') {
       return timestamp.toDate();
     }
     
-    // Handle ISO strings
+    // Handle ISO 8601 strings (this is what your API is sending)
     if (typeof timestamp === 'string') {
       const parsed = new Date(timestamp);
-      return isNaN(parsed.getTime()) ? new Date() : parsed;
+      // Return the valid date, or an invalid date if parsing fails
+      return isNaN(parsed.getTime()) ? new Date(NaN) : parsed;
     }
     
-    // Handle JavaScript Date objects
+    // Handle JavaScript Date objects that might be passed in
     if (timestamp instanceof Date) {
-      return isNaN(timestamp.getTime()) ? new Date() : timestamp;
+      return isNaN(timestamp.getTime()) ? new Date(NaN) : timestamp;
     }
     
     // Handle timestamps as numbers (milliseconds or seconds)
     if (typeof timestamp === 'number') {
-      // If it's likely in seconds (Unix timestamp), convert to milliseconds
+      // If it's likely a Unix timestamp (seconds), convert to milliseconds
       const date = timestamp < 10000000000 ? new Date(timestamp * 1000) : new Date(timestamp);
-      return isNaN(date.getTime()) ? new Date() : date;
+      return isNaN(date.getTime()) ? new Date(NaN) : date;
     }
     
-    // Fallback to current date
-    console.warn('Could not parse timestamp:', timestamp);
-    return new Date();
+    // If we can't parse it, return an invalid date
+    console.warn('Could not parse unknown timestamp format:', timestamp);
+    return new Date(NaN);
   };
-
-  // ✅ Load audit logs
+  // Load audit logs on change
   useEffect(() => {
     if (isOpen && teamId) {
-      loadAuditLogs();
+      // Reset page to 1 when filters change
+      loadAuditLogs(1, true); 
     }
   }, [isOpen, teamId, filter, sortBy]);
 
+
+  // ✅ STEP 2: Refactor loadAuditLogs to use the new service
   const loadAuditLogs = async (pageNum = 1, reset = true) => {
     try {
       setLoading(true);
       
-      if (!currentUser) throw new Error('User not authenticated');
-      
-      const token = await currentUser.getIdToken();
-      
-      const queryParams = new URLSearchParams({
-        teamId,
+      const data = await auditService().getLogs(teamId, {
         filter,
         sortBy,
-        page: pageNum.toString(),
-        limit: '20'
+        page: pageNum,
+        limit: 20
       });
       
-      const response = await fetch(`/api/enterprise/teams/${teamId}/audit-logs?${queryParams}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to load audit logs');
-      }
-
-      const data = await response.json();
-      
-      // ✅ FIXED: Process logs with proper timestamp handling
       const processedLogs = data.logs.map(log => ({
         ...log,
         timestamp: parseTimestamp(log.timestamp || log.createdAt),
-        displayTimestamp: log.timestamp || log.createdAt // Keep original for debugging
+        displayTimestamp: log.timestamp || log.createdAt
       }));
       
-      if (reset) {
-        setLogs(processedLogs);
-      } else {
-        setLogs(prev => [...prev, ...processedLogs]);
-      }
-      
+      setLogs(prev => (reset ? processedLogs : [...prev, ...processedLogs]));
       setHasMore(data.hasMore);
       setPage(pageNum);
       
     } catch (error) {
-      console.error('Error loading audit logs:', error);
-      toast.error(error.message || 'Failed to load audit logs');
+      const handled = ErrorHandler.handle(error, 'loadAuditLogs');
+      toast.error(handled.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Load more logs (pagination)
   const loadMore = () => {
     if (!loading && hasMore) {
       loadAuditLogs(page + 1, false);
     }
   };
+  
+  // ✅ STEP 3: Refactor handleExportLogs
+  const handleExportLogs = async () => {
+    const toastId = toast.loading('Exporting logs...');
+    try {
+      // The service now returns a blob directly
+      const blob = await auditService().exportLogs(teamId);
 
-  // ✅ Format action for display
+      // The download logic remains the same
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `team-${teamId}-audit-logs-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+      
+      toast.success('Audit logs exported successfully!', { id: toastId });
+    } catch (error) {
+      const handled = ErrorHandler.handle(error, 'exportLogs');
+      toast.error(handled.message, { id: toastId });
+    }
+  };
+
+const getRelativeTime = (logTimestamp) => {
+    // ✅ THE FIX: Add a guard clause to handle missing timestamps.
+    if (!logTimestamp || !(logTimestamp instanceof Date)) {
+        return 'Invalid time';
+    }
+
+    // Now we can safely assume logTimestamp is a valid Date object.
+    const now = new Date();
+    
+    // Check for invalid date objects which can result from `new Date(null)`
+    if (isNaN(logTimestamp.getTime())) {
+      return 'Invalid time';
+    }
+
+    const diffMs = now - logTimestamp;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    
+    return logTimestamp.toLocaleDateString();
+};
+// ✅ Format action for display
   const formatAction = (action) => {
     const actionMap = {
       'member_added': 'Member Added',
@@ -129,7 +160,7 @@ export default function TeamAuditLog({ teamId, teamName, userContext, isOpen, on
       'team_permissions_updated': 'Permissions Updated',
       'settings_changed': 'Settings Changed'
     };
-    return actionMap[action] || action.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return actionMap[action] || action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   // ✅ Get action color
@@ -149,120 +180,37 @@ export default function TeamAuditLog({ teamId, teamName, userContext, isOpen, on
     return colorMap[action] || 'text-gray-600 bg-gray-50';
   };
 
-  // ✅ FIXED: Format log details with better error handling
+  // ✅ Format log details with better error handling
   const formatDetails = (log) => {
-    const { action, details, targetUser, metadata } = log;
+    const { action, details, targetUser } = log;
     
     try {
       switch (action) {
         case 'member_added':
-          return `Added ${targetUser?.displayName || targetUser?.email || details?.targetUserName || details?.targetUserEmail || 'user'} as ${details?.role || 'member'}`;
+          return `Added ${targetUser?.displayName || details?.targetUserName || 'user'} as ${details?.role || 'member'}`;
         case 'member_removed':
-          return `Removed ${targetUser?.displayName || targetUser?.email || details?.targetUserName || details?.targetUserEmail || 'user'} from team`;
+          return `Removed ${targetUser?.displayName || details?.targetUserName || 'user'} from team`;
         case 'role_updated':
-          return `Changed ${targetUser?.displayName || targetUser?.email || details?.targetUserName || details?.targetUserEmail || 'user'}'s role from ${details?.oldRole || 'unknown'} to ${details?.newRole || 'unknown'}`;
+          return `Changed ${targetUser?.displayName || details?.targetUserName || 'user'}'s role from ${details?.oldRole || '?'} to ${details?.newRole || '?'}`;
         case 'invitation_sent':
-          return `Sent invitation to ${details?.invitedEmail || details?.email || 'unknown'} for ${details?.invitedRole || details?.role || 'member'} role`;
+          return `Sent invitation to ${details?.invitedEmail || '...'} for ${details?.invitedRole || 'member'} role`;
         case 'invitation_revoked':
-          return `Revoked invitation for ${details?.invitedEmail || details?.email || 'unknown'}`;
+          return `Revoked invitation for ${details?.invitedEmail || '...'}`;
         case 'invitation_resent':
-          return `Resent invitation to ${details?.invitedEmail || details?.email || 'unknown'}`;
+          return `Resent invitation to ${details?.invitedEmail || '...'}`;
         case 'team_permissions_updated':
           const changedRoles = details?.affectedRoles?.join(', ') || 'multiple roles';
           return `Updated permissions for ${changedRoles}`;
         case 'settings_changed':
           return `Modified team settings: ${details?.changedFields?.join(', ') || 'various fields'}`;
         default:
-          return details?.description || details?.roleChangeDescription || 'Team action performed';
+          return details?.description || 'Team action performed';
       }
     } catch (error) {
       console.warn('Error formatting log details:', error);
       return 'Team action performed';
     }
   };
-
- // ✅ Get relative time with better timestamp handling
-  const getRelativeTime = (timestamp) => {
-    try {
-      const now = new Date();
-      let logTime;
-      
-      // Handle different timestamp formats
-      if (timestamp?.toDate) {
-        // Firestore timestamp
-        logTime = timestamp.toDate();
-      } else if (typeof timestamp === 'string') {
-        // ISO string
-        logTime = new Date(timestamp);
-      } else if (timestamp instanceof Date) {
-        // Already a Date object
-        logTime = timestamp;
-      } else {
-        // Fallback
-        logTime = new Date(timestamp);
-      }
-      
-      // Check if date is valid
-      if (isNaN(logTime.getTime())) {
-        console.warn('Invalid timestamp:', timestamp);
-        return 'Unknown time';
-      }
-      
-      const diffMs = now - logTime;
-      const diffMins = Math.floor(diffMs / 60000);
-      const diffHours = Math.floor(diffMs / 3600000);
-      const diffDays = Math.floor(diffMs / 86400000);
-
-      if (diffMins < 1) return 'Just now';
-      if (diffMins < 60) return `${diffMins}m ago`;
-      if (diffHours < 24) return `${diffHours}h ago`;
-      if (diffDays < 7) return `${diffDays}d ago`;
-      
-      return logTime.toLocaleDateString();
-    } catch (error) {
-      console.error('Error parsing timestamp:', error, timestamp);
-      return 'Unknown time';
-    }
-  };
-
-  // ✅ Export logs function (for organization owners)
-  const handleExportLogs = async () => {
-    try {
-      if (!currentUser) throw new Error('User not authenticated');
-      
-      const token = await currentUser.getIdToken();
-      
-      const response = await fetch(`/api/enterprise/teams/${teamId}/audit-logs/export`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to export logs');
-      }
-
-      // Download the file
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = `team-${teamId}-audit-logs-${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      
-      toast.success('Audit logs exported successfully');
-    } catch (error) {
-      console.error('Error exporting logs:', error);
-      toast.error(error.message || 'Failed to export logs');
-    }
-  };
-
   if (!isOpen) return null;
 
   return (
@@ -418,7 +366,7 @@ export default function TeamAuditLog({ teamId, teamName, userContext, isOpen, on
                       {/* ✅ DEBUG: Show raw timestamp in development */}
                       {process.env.NODE_ENV === 'development' && (
                         <div className="mt-1 text-xs text-gray-400">
-                          Debug: {log.displayTimestamp?.toString()} → {log.timestamp?.toString()}
+                   {log.timestamp?.toString()}
                         </div>
                       )}
                     </div>

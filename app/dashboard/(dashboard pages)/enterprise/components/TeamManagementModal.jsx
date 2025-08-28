@@ -457,19 +457,44 @@ export default function OptimizedTeamManagementModal({ isOpen, onClose, teamId, 
     }
   };
 
-  // UI utility functions
-  const getInvitationStatusInfo = (invitation) => {
+
+const getInvitationStatusInfo = (invitation) => {
+    if (!invitation || !invitation.expiresAt) {
+      return { isExpired: true, daysUntilExpiry: 0, isExpiringSoon: false };
+    }
+    
+    let expiresAt;
+    const ts = invitation.expiresAt;
+
+    // Check 1: Is it a direct Firestore Timestamp object (from cache/realtime)?
+    if (ts.toDate && typeof ts.toDate === 'function') {
+      expiresAt = ts.toDate();
+    }
+    // ✅ THE FIX: Is it a serialized Firestore Timestamp from an API route?
+    else if (typeof ts === 'object' && ts._seconds !== undefined && ts._nanoseconds !== undefined) {
+      expiresAt = new Date(ts._seconds * 1000 + ts._nanoseconds / 1000000);
+    }
+    // Check 3: Is it an ISO string or something else `new Date` can handle?
+    else {
+      expiresAt = new Date(ts);
+    }
+    
+    // Final check for an invalid date
+    if (isNaN(expiresAt.getTime())) {
+      console.warn("Could not parse invitation expiration date:", ts);
+      return { isExpired: true, daysUntilExpiry: 0, isExpiringSoon: false };
+    }
+
     const now = new Date();
-    const expiresAt = new Date(invitation.expiresAt.toDate ? invitation.expiresAt.toDate() : invitation.expiresAt);
     const isExpired = now > expiresAt;
-    const daysUntilExpiry = Math.ceil((expiresAt - now) / (1000 * 60 * 60 * 24));
+    const daysUntilExpiry = isExpired ? 0 : Math.ceil((expiresAt - now) / (1000 * 60 * 60 * 24));
     
     return {
       isExpired,
       daysUntilExpiry,
-      isExpiringSoon: daysUntilExpiry <= 2 && daysUntilExpiry > 0
+      isExpiringSoon: !isExpired && daysUntilExpiry <= 2,
     };
-  };
+};
 
   const getFilteredAndSortedInvitations = () => {
     let filtered = [...invitations];
@@ -1040,7 +1065,7 @@ function OptimizedMemberCard({
   );
 }
 
-// 🚀 OPTIMIZED: Invitation Card Component
+// 🚀 OPTIMIZED: Invitation Card Component (with robust date handling)
 function OptimizedInvitationCard({ 
   invitation, 
   userContext,
@@ -1058,6 +1083,31 @@ function OptimizedInvitationCard({
   const canRevoke = hasPermission(userContext, PERMISSIONS.CAN_REVOKE_INVITATIONS, teamId);
   const canResend = hasPermission(userContext, PERMISSIONS.CAN_RESEND_INVITATIONS, teamId);
   const canManage = canRevoke || canResend;
+
+  // ✅ THE FIX: A robust helper to parse the 'createdAt' timestamp in any format
+  const getSentDate = (createdAt) => {
+    if (!createdAt) return 'Invalid Date';
+    
+    let date;
+    // Check 1: Firestore Timestamp object
+    if (createdAt.toDate && typeof createdAt.toDate === 'function') {
+      date = createdAt.toDate();
+    } 
+    // Check 2: Serialized Firestore Timestamp object
+    else if (typeof createdAt === 'object' && createdAt._seconds !== undefined) {
+      date = new Date(createdAt._seconds * 1000 + (createdAt._nanoseconds || 0) / 1000000);
+    } 
+    // Check 3: Fallback for ISO strings, etc.
+    else {
+      date = new Date(createdAt);
+    }
+
+    if (isNaN(date.getTime())) {
+      console.warn("Could not parse 'Sent' date:", createdAt);
+      return 'Invalid Date';
+    }
+    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  };
   
   return (
     <div className={`flex items-center justify-between p-4 border rounded-lg ${
@@ -1102,7 +1152,7 @@ function OptimizedInvitationCard({
               {invitation.role?.replace('_', ' ')}
             </span>
             <span className="text-xs text-gray-500">
-              Sent {new Date(invitation.createdAt?.toDate ? invitation.createdAt.toDate() : invitation.createdAt).toLocaleDateString()}
+              Sent {getSentDate(invitation.createdAt)}
             </span>
             {invitation.resentCount > 0 && (
               <span className="text-xs text-blue-500">
@@ -1128,7 +1178,7 @@ function OptimizedInvitationCard({
       {/* Action buttons */}
       {canManage && !showBulkActions && (
         <div className="flex items-center space-x-2">
-          {canResend && (
+          {canResend && !isExpired && (
             <button
               onClick={() => onResend(invitation.id)}
               disabled={isProcessing}
@@ -1138,7 +1188,7 @@ function OptimizedInvitationCard({
             </button>
           )}
           
-          {canRevoke && (
+          {canRevoke && !isExpired && (
             <button
               onClick={() => onRevoke(invitation.id)}
               disabled={isProcessing}

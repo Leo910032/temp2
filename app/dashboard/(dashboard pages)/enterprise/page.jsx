@@ -92,7 +92,7 @@ export default function FixedEnterprisePage() {
       }
 
       const newData = {
-        teams: Array.isArray(teamsData.teams) ? teamsData.teams : [],
+    teams: teamsData.teams ? Object.values(teamsData.teams) : [],
         userRole: effectiveRole,
         organizationId: subData?.organization?.id || teamsData.organizationId,
         organizationName: subData?.organization?.name || teamsData.organizationName,

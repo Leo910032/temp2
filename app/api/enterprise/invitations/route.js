@@ -137,50 +137,54 @@ export async function POST(request) {
   }
 }
 
-// GET method for fetching team invitations
+// Replace the entire GET handler with this new, more flexible version
 export async function GET(request) {
   try {
-    console.log('📨 GET /api/enterprise/invitations');
-
     const url = new URL(request.url);
     const teamId = url.searchParams.get('teamId');
     
-    if (!teamId) {
-      return NextResponse.json({ error: 'Team ID is required' }, { status: 400 });
-    }
-
     // Authentication
     const authHeader = request.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
     const token = authHeader.split('Bearer ')[1];
     const decodedToken = await adminAuth.verifyIdToken(token);
     const userId = decodedToken.uid;
+    const userEmail = decodedToken.email;
 
-    // Check permissions
-    const userContext = await EnterprisePermissionService.getUserContext(userId);
-    
-    if (!userContext.teams[teamId]) {
-      return NextResponse.json({ 
-        error: 'Access denied to this team' 
-      }, { status: 403 });
+    let invitations;
+
+    // ✅ THE FIX: Differentiate between fetching for a team vs. for a user
+    if (teamId) {
+      // --- LOGIC FOR FETCHING TEAM-SPECIFIC INVITATIONS (Manager View) ---
+      console.log('📨 GET /api/enterprise/invitations (for Team)');
+      const userContext = await EnterprisePermissionService.getUserContext(userId);
+      if (!userContext.teams[teamId]) {
+        return NextResponse.json({ error: 'Access denied to this team' }, { status: 403 });
+      }
+      invitations = await EnterpriseInvitationService.getInvitationsForTeam(teamId);
+      console.log('✅ Team invitations fetched:', { teamId, count: invitations.length });
+
+      return NextResponse.json({
+        success: true,
+        invitations,
+        teamId
+      });
+
+    } else {
+      // --- LOGIC FOR FETCHING USER'S OWN INVITATIONS (Banner View) ---
+      console.log('📨 GET /api/enterprise/invitations (for User)');
+       if (!userEmail) {
+            return NextResponse.json({ error: 'User email not found in token' }, { status: 400 });
+        }
+      invitations = await EnterpriseInvitationService.getInvitationsForUser(userEmail);
+      console.log('✅ User invitations fetched:', { userEmail, count: invitations.length });
+      
+      // We need to enhance this data for the banner
+      const enhancedInvitations = await EnterpriseInvitationService.enhanceInvitations(invitations);
+      return NextResponse.json(enhancedInvitations);
     }
-
-    // Get invitations for this team
-    const invitations = await EnterpriseInvitationService.getInvitationsForTeam(teamId);
-
-    console.log('✅ Invitations fetched:', {
-      teamId,
-      count: invitations.length
-    });
-
-    return NextResponse.json({
-      success: true,
-      invitations,
-      teamId
-    });
 
   } catch (error) {
     console.error('❌ Error fetching invitations:', error);

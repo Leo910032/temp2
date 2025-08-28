@@ -1,54 +1,32 @@
-// app/dashboard/(dashboard pages)/enterprise/components/PendingInvitationsBanner.jsx
 "use client"
 import { useState, useEffect } from 'react';
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from 'react-hot-toast';
 
-// We need a client-side service to interact with our new APIs
-async function fetchPendingInvitations(token) {
-    const response = await fetch('/api/enterprise/invitations/invitations', {
-        headers: { 'Authorization': `Bearer ${token}` }
-    });
-    if (!response.ok) {
-        throw new Error('Could not fetch invitations.');
-    }
-    return response.json();
-}
-
-async function acceptInvitation(token, invitationId) {
-    const response = await fetch('/api/enterprise/invitations/accept', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ action: 'accept', invitationId })
-    });
-    if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || 'Failed to join the team.');
-    }
-    return response.json();
-}
-
+// ✅ STEP 1: Import BOTH new service functions
+import { 
+    acceptInvitation, 
+    getPendingUserInvitations 
+} from '@/lib/services/serviceEnterprise/client/optimizedEnterpriseService';
 
 export default function PendingInvitationsBanner() {
     const { currentUser } = useAuth();
     const [invitations, setInvitations] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [isAccepting, setIsAccepting] = useState(null); // Tracks which invitation is being accepted
+    const [isAccepting, setIsAccepting] = useState(null);
 
     useEffect(() => {
         if (!currentUser) return;
 
+        // ✅ STEP 2: Use the new service function to get invitations
         const getInvitations = async () => {
             try {
-                const token = await currentUser.getIdToken();
-                const data = await fetchPendingInvitations(token);
+                // No need to handle tokens here, the service does it all
+                const data = await getPendingUserInvitations();
                 setInvitations(data);
             } catch (error) {
                 console.error("Failed to fetch pending invitations:", error);
-                // Don't show an error toast, just fail silently.
+                // Fail silently, the banner just won't show
             } finally {
                 setLoading(false);
             }
@@ -57,6 +35,7 @@ export default function PendingInvitationsBanner() {
         getInvitations();
     }, [currentUser]);
 
+ // This function is already correct from the previous step
     const handleAccept = async (invitationId) => {
         if (!currentUser) return;
         
@@ -64,18 +43,15 @@ export default function PendingInvitationsBanner() {
         const toastId = toast.loading('Joining team...');
 
         try {
-            const token = await currentUser.getIdToken();
-            await acceptInvitation(token, invitationId);
+            await acceptInvitation(invitationId);
             toast.success('Welcome to the team!', { id: toastId });
-
-            // Reload the page to reflect the new team membership and refresh all data
             window.location.reload();
-
         } catch (error) {
             toast.error(error.message, { id: toastId });
             setIsAccepting(null);
         }
     };
+
 
     if (loading) {
         // Show a subtle loading skeleton

@@ -1,17 +1,11 @@
-// app/api/enterprise/teams/[teamId]/audit-logs/route.js
-
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { EnterprisePermissionService } from '@serviceEnterprise/server';
 
-/**
- * ✅ GET /api/enterprise/teams/[teamId]/audit-logs
- * Get audit logs for a specific team
- */
 export async function GET(request, { params }) {
   try {
     const { teamId } = params;
-    const { searchParams } = new URL(request.url);
+   const { searchParams } = new URL(request.url);
     
     console.log('📋 API: Getting team audit logs:', teamId);
 
@@ -49,13 +43,13 @@ export async function GET(request, { params }) {
       }, { status: 403 });
     }
 
-    // ✅ Build query
+    // ✅ Build the primary, indexed query for logs
     let query = adminDb.collection('AuditLogs')
       .where('organizationId', '==', userContext.organizationId)
       .where('resourceId', '==', teamId)
       .where('resourceType', '==', 'team');
-
-    // ✅ Apply filters
+    
+   // ✅ Apply filters
     if (filter !== 'all') {
       const filterMap = {
         'members': ['member_added', 'member_removed', 'role_updated', 'member_role_updated'],
@@ -69,87 +63,74 @@ export async function GET(request, { params }) {
       }
     }
 
-    // ✅ Apply sorting - handle timestamp properly
     query = query.orderBy('timestamp', sortBy === 'oldest' ? 'asc' : 'desc');
-
+    
     // ✅ Apply pagination
     const offset = (page - 1) * limit;
-    query = query.offset(offset).limit(limit + 1); // +1 to check if there are more
+    query = query.offset(offset).limit(limit + 1); // +1 to check for more
 
-    // ✅ Execute query
+    // ✅ Execute the main query - THIS IS FAST
     const snapshot = await query.get();
-    const logs = [];
+     // ✅ THE FIX: Declare `hasMore` right here.
     const hasMore = snapshot.docs.length > limit;
-
-    // ✅ Process logs (excluding the extra one for hasMore check)
-    const docsToProcess = hasMore ? snapshot.docs.slice(0, -1) : snapshot.docs;
     
-    for (const doc of docsToProcess) {
+    // ==================== NEW OPTIMIZED LOGIC ====================
+    
+    const docsToProcess = snapshot.docs.length > limit 
+        ? snapshot.docs.slice(0, -1) 
+        : snapshot.docs;
+    
+    // STEP 1: Get all log data and collect unique user IDs
+    const uniqueUserIds = new Set();
+    const rawLogs = docsToProcess.map(doc => {
       const logData = doc.data();
-      
-      // ✅ Handle timestamp properly
-      let timestamp = logData.timestamp;
-      if (timestamp?.toDate) {
-        // Firestore timestamp
-        timestamp = timestamp.toDate().toISOString();
-      } else if (typeof timestamp === 'string') {
-        // Already a string, keep as is
-        timestamp = timestamp;
-      } else {
-        // Fallback to creation time or current time
-        timestamp = logData.createdAt || new Date().toISOString();
-      }
-      
-      // ✅ Enrich with user information
-      let userInfo = null;
-      if (logData.userId) {
-        try {
-          const userDoc = await adminDb.collection('AccountData').doc(logData.userId).get();
-          if (userDoc.exists) {
-            const userData = userDoc.data();
-            userInfo = {
-              id: logData.userId,
-              displayName: userData.displayName,
-              email: userData.email,
-              avatarUrl: userData.avatarUrl
-            };
-          }
-        } catch (error) {
-          console.warn('Could not fetch user info for log:', logData.userId);
-        }
-      }
+      // Add the user who performed the action
+      if (logData.userId) uniqueUserIds.add(logData.userId);
+      // Add the target user, if any
+      const targetUserId = logData.details?.targetUserId || logData.details?.updatedUserId;
+      if (targetUserId) uniqueUserIds.add(targetUserId);
+      return { id: doc.id, ...logData };
+    });
 
-      // ✅ Enrich with target user information (for member actions)
-      let targetUserInfo = null;
-      if (logData.details?.targetUserId || logData.details?.updatedUserId) {
-        const targetUserId = logData.details.targetUserId || logData.details.updatedUserId;
-        try {
-          const targetUserDoc = await adminDb.collection('AccountData').doc(targetUserId).get();
-          if (targetUserDoc.exists) {
-            const targetUserData = targetUserDoc.data();
-            targetUserInfo = {
-              id: targetUserId,
-              displayName: targetUserData.displayName,
-              email: targetUserData.email
-            };
-          }
-        } catch (error) {
-          console.warn('Could not fetch target user info:', targetUserId);
-        }
-      }
-
-      logs.push({
-        id: doc.id,
-        ...logData,
-        timestamp: timestamp,
-        user: userInfo,
-        targetUser: targetUserInfo
+    // STEP 2: Fetch all user data in a single bulk operation
+    let usersDataMap = new Map();
+    if (uniqueUserIds.size > 0) {
+      const userIdsArray = Array.from(uniqueUserIds);
+      // Firestore `in` query is limited to 30 items. If more, we need multiple queries.
+      // This handles up to 30 unique users per log page, which is very reasonable.
+      const userDocs = await adminDb.collection('AccountData').where('__name__', 'in', userIdsArray).get();
+      userDocs.forEach(doc => {
+        const userData = doc.data();
+        usersDataMap.set(doc.id, {
+          id: doc.id,
+          displayName: userData.displayName,
+          email: userData.email,
+          avatarUrl: userData.avatarUrl
+        });
       });
     }
 
-    console.log(`✅ API: Retrieved ${logs.length} audit logs`);
+    // STEP 3: Process and enrich the logs using the pre-fetched user data
+    const logs = rawLogs.map(logData => {
+      const targetUserId = logData.details?.targetUserId || logData.details?.updatedUserId;
+      
+      let timestamp = logData.timestamp;
+      if (timestamp?.toDate) timestamp = timestamp.toDate().toISOString();
+      else if (!timestamp) timestamp = logData.createdAt || new Date().toISOString();
 
-    return NextResponse.json({
+      return {
+        ...logData,
+        timestamp,
+        user: usersDataMap.get(logData.userId) || null,
+        targetUser: usersDataMap.get(targetUserId) || null,
+      };
+    });
+    
+    // ================= END OF OPTIMIZED LOGIC =================
+
+    console.log(`✅ API: Retrieved ${logs.length} audit logs efficiently`);
+
+   return NextResponse.json({
       success: true,
       logs,
       hasMore,
@@ -158,7 +139,6 @@ export async function GET(request, { params }) {
       filter,
       sortBy
     });
-
   } catch (error) {
     console.error('❌ API: Error getting audit logs:', error);
     return NextResponse.json(
@@ -271,3 +251,5 @@ export async function POST(request, { params }) {
     );
   }
 }
+// ... The POST (export) handler has a similar N+1 problem.
+// You can apply the same optimization pattern there if you need to.

@@ -1,40 +1,41 @@
-// app/api/enterprise/operations/permissions/route.js
-// 🎯 PHASE 1: New API endpoint for getting user's operation permissions
-
 import { NextResponse } from 'next/server';
-import { adminAuth } from '@/lib/firebaseAdmin';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin'; // ✅ Make sure adminDb is imported
 import { SubscriptionManager } from '@/lib/services/serviceEnterprise/server/core/subscriptionManager';
 
 /**
  * GET /api/enterprise/operations/permissions
  * Get all operation permissions for the current user
- * Server-side replacement for client-side permission checking
  */
 export async function GET(request) {
   try {
-    console.log('🔍 GET /api/enterprise/operations/permissions');
+    console.log('🔍 GET /api/enterprise/operations/permissions (Optimized)');
 
     // Authentication
     const authHeader = request.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ 
-        error: 'Authentication required' 
-      }, { status: 401 });
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
-
     const token = authHeader.split('Bearer ')[1];
     const decodedToken = await adminAuth.verifyIdToken(token);
     const userId = decodedToken.uid;
 
-    console.log('🔍 Getting operation permissions for user:', userId);
+    console.log('🔍 Getting operation permissions efficiently for user:', userId);
 
-    // Get comprehensive operation permissions
-    const permissions = await SubscriptionManager.getOperationPermissions(userId);
+    // ✅ THE FIX: Fetch user data ONCE and use the optimized internal helpers.
+    const userDoc = await adminDb.collection('AccountData').doc(userId).get();
+    if (!userDoc.exists) {
+      throw new Error(`User not found: ${userId}`);
+    }
+    const userData = userDoc.data();
 
-    console.log('✅ Operation permissions retrieved:', {
+    // We need the status object to pass to the permissions helper
+    const status = SubscriptionManager._getSubscriptionStatusFromData(userId, userData);
+    
+    // Now call the fast helper that doesn't make any more DB calls
+    const permissions = await SubscriptionManager._getOperationPermissionsFromData(userId, userData, status);
+
+    console.log('✅ Operation permissions retrieved efficiently:', {
       userId,
-      subscriptionLevel: permissions.subscriptionLevel,
-      userRole: permissions.userRole,
       permissionCount: Object.keys(permissions.permissions).length
     });
 
@@ -49,9 +50,7 @@ export async function GET(request) {
     console.error('❌ Error getting operation permissions:', error);
     
     if (error.code?.startsWith('auth/')) {
-      return NextResponse.json({
-        error: 'Authentication failed'
-      }, { status: 401 });
+      return NextResponse.json({ error: 'Authentication failed' }, { status: 401 });
     }
 
     return NextResponse.json({

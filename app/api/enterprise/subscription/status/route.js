@@ -1,6 +1,9 @@
 // app/api/enterprise/subscription/status/route.js
+// 🎯 PHASE 1: Updated to use server-side SubscriptionManager
+
 import { NextResponse } from 'next/server';
-import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { adminAuth } from '@/lib/firebaseAdmin';
+import { SubscriptionManager } from '@/lib/services/serviceEnterprise/server/core/subscriptionManager';
 
 export async function GET(request) {
   try {
@@ -16,44 +19,26 @@ export async function GET(request) {
     const decodedToken = await adminAuth.verifyIdToken(token);
     const userId = decodedToken.uid;
 
-    // Get user document
-    const userDoc = await adminDb.collection('AccountData').doc(userId).get();
-    if (!userDoc.exists) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
+    console.log('📊 Getting subscription status for user:', userId);
 
-    const userData = userDoc.data();
-    const accountType = userData.accountType || 'free';
-    const enterprise = userData.enterprise || {};
+    // ✅ NEW: Use server-side SubscriptionManager instead of client logic
+    const [subscriptionStatus, featureAccess, operationPermissions] = await Promise.all([
+      SubscriptionManager.getSubscriptionStatus(userId),
+      SubscriptionManager.getFeatureAccess(userId),
+      SubscriptionManager.getOperationPermissions(userId)
+    ]);
 
-    // Build response data
-    const responseData = {
-      accountType,
-      hasEnterpriseAccess: ['business', 'premium', 'enterprise'].includes(accountType.toLowerCase()),
-      
-      user: {
-        id: userId,
-        email: userData.email,
-        displayName: userData.displayName,
-        role: enterprise.organizationRole || 'employee',
-        organizationId: enterprise.organizationId || null,
-        teams: enterprise.teams || {},
-        isAdmin: userData.isAdmin || false
-      },
-      
-      organization: null,
-      teams: enterprise.teams || {},
-      upgradeMessage: null
-    };
-
-    // If user is part of an organization, get organization details
-    if (enterprise.organizationId) {
+    // Get organization context if user is part of one
+    let organization = null;
+    if (subscriptionStatus.enterprise?.organizationId) {
       try {
-        const orgDoc = await adminDb.collection('Organizations').doc(enterprise.organizationId).get();
+        const orgDoc = await adminDb.collection('Organizations')
+          .doc(subscriptionStatus.enterprise.organizationId)
+          .get();
+        
         if (orgDoc.exists) {
           const orgData = orgDoc.data();
-          
-          responseData.organization = {
+          organization = {
             id: orgDoc.id,
             name: orgData.name,
             domain: orgData.domain,
@@ -67,20 +52,66 @@ export async function GET(request) {
       }
     }
 
-    // Add upgrade message for non-enterprise users
-    if (!responseData.hasEnterpriseAccess) {
-      responseData.upgradeMessage = {
+    // Build comprehensive response
+    const responseData = {
+      // ✅ Server-validated subscription info
+      accountType: subscriptionStatus.subscriptionLevel,
+      hasEnterpriseAccess: subscriptionStatus.hasEnterpriseAccess,
+      
+      // ✅ Server-validated features
+      features: featureAccess.features,
+      featureMap: featureAccess.featureMap,
+      enterpriseFeatures: featureAccess.features.filter(f => 
+        Object.values(SubscriptionManager.ENTERPRISE_FEATURES).includes(f)
+      ),
+      
+      // ✅ Server-validated limits
+      limits: subscriptionStatus.limits,
+      
+      // ✅ User context
+      user: {
+        id: userId,
+        email: decodedToken.email,
+        role: operationPermissions.userRole,
+        organizationId: subscriptionStatus.enterprise?.organizationId || null,
+        teams: subscriptionStatus.enterprise?.teams || {},
+        isAdmin: subscriptionStatus.enterprise?.isSystemAdmin || false
+      },
+      
+      // ✅ Organization info
+      organization: organization,
+      
+      // ✅ Operation permissions
+      operations: operationPermissions.permissions,
+      
+      // ✅ Upgrade information (server-calculated)
+      upgradeMessage: subscriptionStatus.canUpgrade ? {
         title: 'Unlock Enterprise Features',
-        message: 'Upgrade to Business plan to access team management, contact sharing, and more.',
+        message: 'Upgrade to Enterprise plan to access team management, contact sharing, and more.',
         action: 'Upgrade Now',
-        requiredPlan: 'business'
-      };
-    }
+        requiredPlan: 'enterprise',
+        currentPlan: subscriptionStatus.subscriptionLevel
+      } : null,
+      
+      canUpgrade: subscriptionStatus.canUpgrade,
+      nextTier: subscriptionStatus.nextTier,
+      
+      // ✅ Constants for client use
+      constants: {
+        subscriptionLevels: SubscriptionManager.SUBSCRIPTION_LEVELS,
+        enterpriseFeatures: SubscriptionManager.ENTERPRISE_FEATURES
+      },
+      
+      // Metadata
+      timestamp: new Date().toISOString(),
+      source: 'server-validated'
+    };
 
     console.log('✅ Subscription status retrieved:', {
       userId,
-      accountType,
-      hasAccess: responseData.hasEnterpriseAccess
+      subscriptionLevel: responseData.accountType,
+      hasAccess: responseData.hasEnterpriseAccess,
+      featureCount: responseData.features.length
     });
 
     return NextResponse.json(responseData);
@@ -88,19 +119,36 @@ export async function GET(request) {
   } catch (error) {
     console.error('❌ Error getting subscription status:', error);
     
-    // Return safe defaults on error
+    // Return safe defaults on error with server validation
     return NextResponse.json({
       accountType: 'free',
       hasEnterpriseAccess: false,
+      features: [],
+      featureMap: {},
+      enterpriseFeatures: [],
+      limits: {
+        maxTeams: 0,
+        maxMembers: 0,
+        maxContacts: 100
+      },
       user: null,
       organization: null,
-      teams: {},
+      operations: {},
       upgradeMessage: {
         title: 'Service Temporarily Unavailable',
         message: 'Unable to verify subscription status. Please try again.',
         action: 'Retry',
-        requiredPlan: 'business'
-      }
+        requiredPlan: 'enterprise'
+      },
+      canUpgrade: true,
+      nextTier: 'enterprise',
+      constants: {
+        subscriptionLevels: SubscriptionManager.SUBSCRIPTION_LEVELS,
+        enterpriseFeatures: SubscriptionManager.ENTERPRISE_FEATURES
+      },
+      timestamp: new Date().toISOString(),
+      source: 'error-fallback',
+      error: error.message
     }, { status: 500 });
   }
 }

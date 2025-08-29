@@ -2,20 +2,34 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 
-// Import your constants
-import {
-  TEAM_ROLES,
-  PERMISSIONS,
-  DEFAULT_PERMISSIONS_BY_ROLE,
-  TEAM_ROLE_HIERARCHY
-} from '@/lib/services/serviceEnterprise/constants/enterpriseConstants';
+// ✅ STEP 1: Import the new Phase 3 services and constants
+import { teamService, subscriptionService, ErrorHandler } from '@/lib/services/serviceEnterprise/client/enhanced-index';
+import { TEAM_ROLES, PERMISSIONS, DEFAULT_PERMISSIONS_BY_ROLE } from '@/lib/services/serviceEnterprise/constants/enterpriseConstants';
 
-// Import your services - no more direct API calls or auth
-import { 
-  getTeamPermissions,
-  updateTeamPermissions 
-} from '@/lib/services/serviceEnterprise/client/optimizedEnterpriseService';
+// Helper components for loading and access denied states
+const LoadingState = () => (
+    <div className="flex justify-center items-center h-full p-6">
+        <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading permissions...</p>
+        </div>
+    </div>
+);
 
+const AccessDeniedState = ({ onClose }) => (
+    <div className="p-6 text-center">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Access Denied</h3>
+        <p className="text-gray-600 mb-6">
+            Only team managers and organization owners can modify team permissions.
+        </p>
+        <button
+            onClick={onClose}
+            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+            Close
+        </button>
+    </div>
+);
 export default function AdvancedTeamPermissions({ 
   isOpen, 
   onClose, 
@@ -28,6 +42,7 @@ export default function AdvancedTeamPermissions({
   const [saving, setSaving] = useState(false);
   const [permissions, setPermissions] = useState({});
   const [hasChanges, setHasChanges] = useState(false);
+  const [canManage, setCanManage] = useState(false);
 
   // Permission labels for better UX
   const PERMISSION_LABELS = {
@@ -92,49 +107,47 @@ const PERMISSION_CATEGORIES = {
     return teamData?.role || TEAM_ROLES.EMPLOYEE;
   };
 
-  // Load current team permissions - FIXED VERSION
+
+  // ✅ STEP 2: Refactor data loading and permission checking
   useEffect(() => {
-    const loadPermissions = async () => {
+    const loadData = async () => {
       if (!isOpen || !teamId) return;
       
       setLoading(true);
       try {
-        console.log('Loading team permissions for team:', teamId);
+        // Use the subscription service to check permissions first
+        const canManagePerms = await subscriptionService().canPerformOperation('manage_team_permissions', { teamId });
+        setCanManage(canManagePerms);
+
+        if (!canManagePerms) {
+            setLoading(false);
+            return; // Don't fetch data if user doesn't have permission
+        }
         
-        // Use the service to get team permissions
-        const teamPermissions = await getTeamPermissions(teamId);
+        // Use the new team service to get team permissions
+        const teamPermissionsData = await teamService().getTeamPermissions(teamId);
         
-        // Check if we got custom permissions or defaults
-        if (teamPermissions && Object.keys(teamPermissions).length > 0) {
-          // We got custom permissions from the team
-          console.log('Loaded custom team permissions:', teamPermissions);
-          setPermissions(teamPermissions);
+        if (teamPermissionsData?.permissions && Object.keys(teamPermissionsData.permissions).length > 0) {
+          console.log('Loaded custom team permissions:', teamPermissionsData.permissions);
+          setPermissions(teamPermissionsData.permissions);
         } else {
-          // No custom permissions found, use defaults
           console.log('No custom permissions found, using defaults');
           setPermissions(DEFAULT_PERMISSIONS_BY_ROLE);
         }
         
       } catch (error) {
-        console.error('Error loading team permissions:', error);
-        
-        // If there's an error (like API not implemented yet), fall back to defaults
-        if (error.message.includes('Failed to fetch team permissions') || 
-            error.message.includes('Team permissions API not available')) {
-          console.log('Team permissions API not available, using defaults');
-          setPermissions(DEFAULT_PERMISSIONS_BY_ROLE);
-          toast.error('Custom permissions not available, using defaults');
-        } else {
-          toast.error('Failed to load team permissions');
-          setPermissions(DEFAULT_PERMISSIONS_BY_ROLE);
-        }
+        const handledError = ErrorHandler.handle(error, 'loadPermissions');
+        toast.error(handledError.message);
+        // Fallback to defaults on error
+        setPermissions(DEFAULT_PERMISSIONS_BY_ROLE);
       } finally {
         setLoading(false);
       }
     };
 
-    loadPermissions();
+    loadData();
   }, [isOpen, teamId]);
+  
 
   // Handle permission toggle
   const handlePermissionToggle = (role, permission) => {
@@ -159,7 +172,7 @@ const PERMISSION_CATEGORIES = {
   };
 
   // Save permissions using service
-  const handleSave = async () => {
+    const handleSave = async () => {
     if (!hasChanges) {
       onClose();
       return;
@@ -168,29 +181,26 @@ const PERMISSION_CATEGORIES = {
     setSaving(true);
     const toastId = toast.loading('Updating team permissions...');
     
+   
     try {
-      console.log('Saving team permissions:', { teamId, permissions });
-      
-      // Use the service instead of direct API call
-      await updateTeamPermissions(teamId, permissions);
+      // Use the new team service to update permissions
+      await teamService().updateTeamPermissions(teamId, permissions);
       
       toast.success('Team permissions updated successfully!', { id: toastId });
       setHasChanges(false);
       
-      // Notify parent component
       if (onPermissionsUpdated) {
         onPermissionsUpdated(permissions);
       }
       
       onClose();
     } catch (error) {
-      console.error('Error updating permissions:', error);
-      toast.error(error.message || 'Failed to update permissions', { id: toastId });
+      const handledError = ErrorHandler.handle(error, 'updatePermissions');
+      toast.error(handledError.message, { id: toastId });
     } finally {
       setSaving(false);
     }
   };
-
   // Handle close with unsaved changes warning
   const handleClose = () => {
     if (hasChanges) {

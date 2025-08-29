@@ -3,17 +3,49 @@ import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 
 // Phase 3 imports - enhanced services
+// ✅ Phase 3 Service Imports
 import { 
   teamService,
   invitationService,
-  subscriptionService,
+  analyticsService, // Import our new service
   ErrorHandler
 } from '@/lib/services/serviceEnterprise/client/enhanced-index';
-
 import {
   TEAM_ROLES,
   PERMISSIONS
 } from '@/lib/services/serviceEnterprise/constants/enterpriseConstants';
+const StatCard = ({ label, value, colorClass = 'text-gray-900' }) => (
+  <div className="bg-gray-50 rounded-lg p-4 text-center">
+    <div className={`text-3xl font-bold ${colorClass}`}>{value}</div>
+    <div className="text-sm text-gray-600">{label}</div>
+  </div>
+);
+const Leaderboard = ({ title, data, metric, unit = '' }) => (
+  <div>
+    <h3 className="font-semibold text-gray-900 mb-3">{title}</h3>
+    <div className="space-y-3">
+      {data && data.length > 0 ? data.map((item, index) => (
+        <div key={item.id} className="flex items-center space-x-3 p-2 bg-white rounded-lg border">
+          <div className="text-lg font-bold w-6 text-center text-gray-500">
+            {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
+          </div>
+          <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+            {/* You can add user avatars here if available via item.avatar */}
+            <span className="font-bold text-gray-600">{item.displayName?.charAt(0).toUpperCase()}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-900 truncate">{item.displayName}</p>
+          </div>
+          <div className="font-bold text-gray-800">
+            {item[metric]} <span className="font-normal text-gray-500 text-sm">{unit}</span>
+          </div>
+        </div>
+      )) : (
+        <p className="text-sm text-gray-500 text-center py-4">Not enough data for a leaderboard yet.</p>
+      )}
+    </div>
+  </div>
+);
 
 export default function TeamPreview({ selectedTeam, onManageTeam, userContext, canManage }) {
   // State management
@@ -48,64 +80,37 @@ export default function TeamPreview({ selectedTeam, onManageTeam, userContext, c
     return ['owner', 'manager', 'team_lead'].includes(userRole);
   };
 
-  // Fetch team details using Phase 3 services
+  // ✅ UPDATED: Fetch team data including REAL analytics
   const fetchTeamData = async () => {
     if (!selectedTeam?.id) return;
-
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-
       console.log('Fetching team data with Phase 3 services for team:', selectedTeam.id);
 
-      const team = teamService();
-      const invitation = invitationService();
+      const dataPromises = [
+        teamService().getTeamDetails(selectedTeam.id),
+        invitationService().getTeamInvitations(selectedTeam.id)
+      ];
 
-      // Fetch team details and invitations in parallel
-      const [teamDetails, teamInvitations] = await Promise.allSettled([
-        team.getTeamDetails(selectedTeam.id),
-        invitation.getTeamInvitations(selectedTeam.id)
-      ]);
-
-      // Process results
-      const members = teamDetails.status === 'fulfilled' 
-        ? teamDetails.value.members || []
-        : [];
-
-      const invitations = teamInvitations.status === 'fulfilled'
-        ? teamInvitations.value || []
-        : [];
-
-      // Get analytics if user has permissions
-      let analytics = null;
-      if (canViewTeamAnalytics() && members.length > 0) {
-        try {
-          // For now, we'll create a placeholder for analytics
-          // You'll need to implement the analytics service in Phase 3
-          analytics = await fetchTeamAnalytics(selectedTeam.id, members);
-        } catch (analyticsError) {
-          console.warn('Analytics fetch failed:', analyticsError.message);
-          // Don't fail the whole component if analytics fails
-        }
+      // Only add the analytics promise if the user has permission
+      if (canViewTeamAnalytics()) {
+        dataPromises.push(analyticsService().getTeamAnalytics(selectedTeam.id));
       }
 
-      setTeamData({
-        members,
-        invitations,
-        analytics,
-        permissions: teamDetails.status === 'fulfilled' 
-          ? teamDetails.value.permissions 
-          : null
-      });
+      const [teamDetailsRes, teamInvitationsRes, teamAnalyticsRes] = await Promise.allSettled(dataPromises);
 
-      console.log('Team data loaded:', {
-        membersCount: members.length,
-        invitationsCount: invitations.length,
-        hasAnalytics: !!analytics
-      });
+      const members = teamDetailsRes.status === 'fulfilled' ? teamDetailsRes.value.members || [] : [];
+      const invitations = teamInvitationsRes.status === 'fulfilled' ? teamInvitationsRes.value || [] : [];
+      const analytics = teamAnalyticsRes?.status === 'fulfilled' ? teamAnalyticsRes.value : null;
+
+      if (teamAnalyticsRes?.status === 'rejected') {
+          console.warn('Analytics fetch failed:', teamAnalyticsRes.reason.message);
+      }
+
+      setTeamData({ members, invitations, analytics, permissions: teamDetailsRes.value?.permissions });
 
     } catch (err) {
-      console.error('Error fetching team data:', err);
       const handledError = ErrorHandler.handle(err, 'fetchTeamData');
       setError(handledError.message);
     } finally {
@@ -179,9 +184,15 @@ export default function TeamPreview({ selectedTeam, onManageTeam, userContext, c
   };
 
   // Effect to load team data when team changes
-  useEffect(() => {
+    useEffect(() => {
     if (selectedTeam?.id) {
-      fetchTeamData();
+        fetchTeamData();
+        // Default to analytics tab if they can view it and have previously selected it
+        if(canViewTeamAnalytics() && activeTab === 'analytics') {
+            setActiveTab('analytics');
+        } else {
+            setActiveTab('overview');
+        }
     } else {
       setTeamData({ members: [], invitations: [], analytics: null, permissions: null });
     }
@@ -477,24 +488,28 @@ export default function TeamPreview({ selectedTeam, onManageTeam, userContext, c
             )}
 
             {/* Analytics Tab - Only shown if user has permissions */}
-            {activeTab === 'analytics' && canViewTeamAnalytics() && (
-              <div className="space-y-6">
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
+          {activeTab === 'analytics' && canViewTeamAnalytics() && (
+              <div className="space-y-8">
+                {analytics ? (
+                  <>
+                    {/* Aggregate Stats */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <StatCard label="Total Clicks" value={analytics.totalClicks} colorClass="text-purple-600" />
+                      <StatCard label="Total Views" value={analytics.totalViews} colorClass="text-blue-600" />
+                      <StatCard label="Total Contacts" value={analytics.totalContacts} colorClass="text-green-600" />
+                      <StatCard label="Avg Clicks/Member" value={analytics.avgClicksPerMember} colorClass="text-gray-800" />
+                    </div>
+
+                    {/* Leaderboards */}
+                    <Leaderboard title="🏆 Clicks Leaderboard" data={analytics.clickLeaderboard} metric="clicks" unit="clicks" />
+                    <Leaderboard title="👀 Views Leaderboard" data={analytics.viewLeaderboard} metric="views" unit="views" />
+                    <Leaderboard title="🤝 Contacts Leaderboard" data={analytics.contactLeaderboard} metric="contacts" unit="contacts" />
+                  </>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-gray-500">Could not load team analytics.</p>
                   </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Analytics Coming Soon</h3>
-                  <p className="text-sm text-gray-500 mb-4">
-                    Team analytics will be integrated with the Phase 3 services in the next update.
-                  </p>
-                  <div className="bg-blue-50 rounded-lg p-4">
-                    <p className="text-xs text-blue-700">
-                      Phase 3 services are active and ready for analytics integration.
-                    </p>
-                  </div>
-                </div>
+                )}
               </div>
             )}
           </>

@@ -5,21 +5,13 @@ import { toast } from 'react-hot-toast';
 import AdvancedTeamPermissions from './AdvancedTeamPermissions';
 import TeamAuditLog from './TeamAuditLog';
 
-// 🚀 OPTIMIZED: Import the new optimized services
 import {
-  updateMemberRole,
-  removeTeamMember,
-  inviteTeamMember,
-  resendInvitation,
-  revokeInvitation,
-  bulkResendInvitations,
-  bulkRevokeInvitations,
-  getTeamPermissions,
-  updateTeamPermissions,
-  getCacheStats
-} from '@/lib/services/serviceEnterprise/client/optimizedEnterpriseService';
+  teamService,
+  invitationService,
+  cacheService,
+  ErrorHandler
+} from '@/lib/services/serviceEnterprise/client/enhanced-index';
 
-// 🚀 OPTIMIZED: Use the new team data hook
 import { useOptimizedTeamData } from '@/lib/hooks/useOptimizedEnterpriseData';
 
 // Import constants
@@ -188,10 +180,11 @@ export default function OptimizedTeamManagementModal({ isOpen, onClose, teamId, 
     if (!checkAdvancedPermissions()) return;
     
     try {
-      const permissions = await getTeamPermissions(teamId);
+      const permissions = await teamService().getTeamPermissions(teamId);
       setTeamCustomPermissions(permissions);
     } catch (error) {
-      console.warn('Could not load team permissions:', error.message);
+      const handledError = ErrorHandler.handle(error, 'loadTeamPermissions');
+      console.warn(handledError.message);
       setTeamCustomPermissions(null);
     }
   }, [teamId, checkAdvancedPermissions]);
@@ -270,7 +263,7 @@ export default function OptimizedTeamManagementModal({ isOpen, onClose, teamId, 
     const memberName = member.displayName || member.email || 'Member';
 
     const success = await handleApiAction(
-      updateMemberRole(teamId, memberId, newRole),
+      teamService().updateMemberRole(teamId, memberId, newRole),
       `${memberName}'s role updated to ${newRole.replace('_', ' ')}`,
       'Failed to update member role'
     );
@@ -278,7 +271,7 @@ export default function OptimizedTeamManagementModal({ isOpen, onClose, teamId, 
     if (success) {
       // 🚀 Show cache stats in development
       if (process.env.NODE_ENV === 'development') {
-        console.log('📊 Cache stats after role update:', getCacheStats());
+        console.log('📊 Cache stats after role update:', cacheService().getCacheStats());
       }
     }
   };
@@ -298,7 +291,7 @@ export default function OptimizedTeamManagementModal({ isOpen, onClose, teamId, 
     }
 
     await handleApiAction(
-      removeTeamMember(teamId, memberId),
+      teamService().removeMember(teamId, memberId),
       `${memberName} removed from team`,
       'Failed to remove team member'
     );
@@ -322,10 +315,7 @@ export default function OptimizedTeamManagementModal({ isOpen, onClose, teamId, 
     }
 
     const success = await handleApiAction(
-      inviteTeamMember(teamId, { 
-        email: inviteEmail.trim(),
-        role: inviteRole 
-      }, members.length),
+      invitationService().sendInvitation(teamId, inviteEmail.trim(), inviteRole),
       `Invitation sent to ${inviteEmail}`,
       'Failed to send invitation'
     );
@@ -353,7 +343,7 @@ export default function OptimizedTeamManagementModal({ isOpen, onClose, teamId, 
 
     await handleInvitationAction(
       inviteId,
-      revokeInvitation(inviteId),
+      invitationService().revokeInvitation(inviteId),
       `Invitation to ${invitation.invitedEmail} revoked`,
       'Failed to revoke invitation'
     );
@@ -368,7 +358,7 @@ export default function OptimizedTeamManagementModal({ isOpen, onClose, teamId, 
 
     await handleInvitationAction(
       inviteId,
-      resendInvitation(inviteId),
+      invitationService().resendInvitation(inviteId),
       `Invitation resent to ${invitation.invitedEmail}`,
       'Failed to resend invitation'
     );
@@ -389,7 +379,7 @@ export default function OptimizedTeamManagementModal({ isOpen, onClose, teamId, 
     }
 
     const success = await handleApiAction(
-      bulkResendInvitations(inviteIds),
+      invitationService().bulkResendInvitations(inviteIds),
       `${count} invitation${count > 1 ? 's' : ''} resent successfully`,
       'Failed to resend some invitations'
     );
@@ -414,7 +404,7 @@ export default function OptimizedTeamManagementModal({ isOpen, onClose, teamId, 
     }
 
     const success = await handleApiAction(
-      bulkRevokeInvitations(inviteIds),
+      invitationService().bulkRevokeInvitations(inviteIds),
       `${count} invitation${count > 1 ? 's' : ''} revoked successfully`,
       'Failed to revoke some invitations'
     );
@@ -567,7 +557,7 @@ const getInvitationStatusInfo = (invitation) => {
               {/* 🚀 Performance indicators in development */}
               {process.env.NODE_ENV === 'development' && (
                 <div className="mt-2 text-xs text-gray-400">
-                  📊 Cache Stats: {getCacheStats().hitRate} hit rate | 
+                  📊 Cache Stats: {cacheService().getCacheStats().hitRate} hit rate |
                   ⚡ Members: {stats?.totalMembers || 0} | 
                   📨 Invites: {stats?.totalInvitations || 0}
                 </div>
@@ -927,9 +917,9 @@ const getInvitationStatusInfo = (invitation) => {
                   <section className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                     <h4 className="text-sm font-semibold text-yellow-800 mb-2">🚀 Performance Debug Info</h4>
                     <div className="text-xs text-yellow-700 space-y-1">
-                      <p><strong>Cache Stats:</strong> {getCacheStats().hitRate} hit rate, {getCacheStats().cacheSize} entries</p>
+                      <p><strong>Cache Stats:</strong> {cacheService().getCacheStats().hitRate} hit rate, {cacheService().getCacheStats().cacheSize} entries</p>
                       <p><strong>Load Performance:</strong> Single batch call vs {members.length + invitations.length + 2} individual calls</p>
-                      <p><strong>Request Deduplication:</strong> {getCacheStats().deduplicated} requests deduplicated</p>
+                      <p><strong>Request Deduplication:</strong> {cacheService().getCacheStats().deduplicated} requests deduplicated</p>
                       <p><strong>Team Data:</strong> {stats?.totalMembers || 0} members, {stats?.totalInvitations || 0} invites loaded in one batch</p>
                     </div>
                   </section>

@@ -1,12 +1,13 @@
-// FIXED: app/api/enterprise/teams/[teamId]/members/[memberId]/role/route.js
-// Missing imports were causing the errors
-
+// app/api/enterprise/teams/[teamId]/members/[memberId]/role/route.js
 import { NextResponse } from 'next/server';
 import { adminAuth } from '@/lib/firebaseAdmin';
+
+// ✅ FIXED: Import all required server services
 import { 
   EnterpriseTeamService,
-  EnterprisePermissionService
-} from '@serviceEnterprise/server';
+  EnterprisePermissionService,
+  EnterpriseSecurityService  // ✅ This was missing - causing the error
+} from '@/lib/services/serviceEnterprise/server';
 
 /**
  * PUT /api/enterprise/teams/[teamId]/members/[memberId]/role
@@ -78,13 +79,16 @@ export async function PUT(request, { params }) {
       }, { status: 400 });
     }
 
-    console.log('🔍 BEFORE UPDATE - Current context for user:', memberId, {
-      currentRole: userContext.teams[teamId]?.role,
+    console.log('🔍 About to update member role:', {
+      userId,
+      organizationId: userContext.organizationId,
+      teamId,
+      memberId,
       newRole: role
     });
 
-    // Update member role using the enterprise service
-    await EnterpriseTeamService.updateMemberRole(
+    // ✅ This should now work because all services are properly imported
+    const result = await EnterpriseTeamService.updateMemberRole(
       userId, 
       userContext.organizationId, 
       teamId, 
@@ -92,26 +96,7 @@ export async function PUT(request, { params }) {
       role
     );
 
-    console.log('✅ BACKEND UPDATE COMPLETE:', {
-      teamId,
-      memberId,
-      newRole: role,
-      updatedBy: userId
-    });
-
-    // ✅ VERIFICATION: Check the update worked
-    setTimeout(async () => {
-      try {
-        const verifyContext = await EnterprisePermissionService.getUserContext(memberId);
-        console.log('🔍 VERIFICATION - Updated context for user:', memberId, {
-          teamRole: verifyContext.teams[teamId]?.role,
-          expectedRole: role,
-          updateSuccess: verifyContext.teams[teamId]?.role === role
-        });
-      } catch (error) {
-        console.error('⚠️ Verification failed:', error);
-      }
-    }, 1000);
+    console.log('✅ Member role updated successfully:', result);
 
     return NextResponse.json({
       success: true,
@@ -119,6 +104,7 @@ export async function PUT(request, { params }) {
       memberId,
       newRole: role,
       teamId,
+      result,
       timestamp: new Date().toISOString()
     });
 

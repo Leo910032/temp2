@@ -3,11 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from 'react-hot-toast';
 
-// ✅ STEP 1: Import BOTH new service functions
-import { 
-    acceptInvitation, 
-    getPendingUserInvitations 
-} from '@/lib/services/serviceEnterprise/client/optimizedEnterpriseService';
+import { invitationService, ErrorHandler } from '@/lib/services/serviceEnterprise/client/enhanced-index';
 
 export default function PendingInvitationsBanner() {
     const { currentUser } = useAuth();
@@ -18,14 +14,14 @@ export default function PendingInvitationsBanner() {
     useEffect(() => {
         if (!currentUser) return;
 
-        // ✅ STEP 2: Use the new service function to get invitations
         const getInvitations = async () => {
             try {
-                // No need to handle tokens here, the service does it all
-                const data = await getPendingUserInvitations();
+                const service = invitationService();
+                const data = await service.getPendingUserInvitations();
                 setInvitations(data);
             } catch (error) {
-                console.error("Failed to fetch pending invitations:", error);
+                const handledError = ErrorHandler.handle(error, 'getPendingInvitations');
+                console.error(handledError.message);
                 // Fail silently, the banner just won't show
             } finally {
                 setLoading(false);
@@ -35,7 +31,6 @@ export default function PendingInvitationsBanner() {
         getInvitations();
     }, [currentUser]);
 
- // This function is already correct from the previous step
     const handleAccept = async (invitationId) => {
         if (!currentUser) return;
         
@@ -43,11 +38,13 @@ export default function PendingInvitationsBanner() {
         const toastId = toast.loading('Joining team...');
 
         try {
-            await acceptInvitation(invitationId);
+            const service = invitationService();
+            await service.acceptInvitation(invitationId);
             toast.success('Welcome to the team!', { id: toastId });
             window.location.reload();
         } catch (error) {
-            toast.error(error.message, { id: toastId });
+            const handledError = ErrorHandler.handle(error, 'acceptInvitation');
+            toast.error(handledError.message, { id: toastId });
             setIsAccepting(null);
         }
     };

@@ -10,13 +10,10 @@ import {
   analyticsService,
   cacheService,
   useOptimizedTeamData,
-  ErrorHandler
-} from '@/lib/services/serviceEnterprise';
-
-import {
   TEAM_ROLES,
   PERMISSIONS
 } from '@/lib/services/serviceEnterprise';
+
 
 const StatCard = ({ label, value, colorClass = 'text-gray-900' }) => (
   <div className="bg-gray-50 rounded-lg p-4 text-center">
@@ -81,9 +78,19 @@ export default function EnhancedTeamPreview({ selectedTeam, onManageTeam, userCo
     return teamData?.role || 'employee';
   };
 
-  const canViewTeamAnalytics = () => {
+const canViewTeamAnalytics = () => {
     if (!selectedTeam?.id || !userContext) return false;
     
+    // Organization owners can always view analytics
+    if (userContext.organizationRole === 'owner') return true;
+    
+    // Check the user's specific permissions for this team from server data
+    const teamData = userContext.teams?.[selectedTeam.id];
+    if (teamData?.permissions?.canViewTeamAnalytics) {
+      return true;
+    }
+    
+    // Fallback to role-based check for backwards compatibility
     const userRole = getUserTeamRole();
     return ['owner', 'manager', 'team_lead'].includes(userRole);
   };
@@ -101,15 +108,15 @@ export default function EnhancedTeamPreview({ selectedTeam, onManageTeam, userCo
       console.log('Loading team analytics with Enhanced Services...');
       
       const analytics = analyticsService();
-      const analyticsData = await analytics.getTeamAnalytics(selectedTeam.id);
+const analyticsData = await analytics.getAggregatedTeamAnalytics(selectedTeam.id, userContext?.userId);
       
       console.log('Team analytics loaded:', analyticsData);
       setTeamAnalytics(analyticsData);
       
     } catch (err) {
       console.error('Failed to fetch team analytics:', err);
-      const handledError = ErrorHandler.handle(err, 'fetchTeamAnalytics');
-      setAnalyticsError(handledError.message);
+    console.error('Failed to fetch team analytics:', err);
+setAnalyticsError(err.message || 'Failed to load analytics');
     } finally {
       setAnalyticsLoading(false);
     }
@@ -153,8 +160,8 @@ export default function EnhancedTeamPreview({ selectedTeam, onManageTeam, userCo
       
     } catch (error) {
       console.error('Failed to access impersonated analytics:', error);
-      const handledError = ErrorHandler.handle(error, 'handleViewUserAnalytics');
-      toast.error(handledError.message, { id: toastId });
+     console.error('Failed to access impersonated analytics:', error);
+toast.error(error.message || 'Failed to access analytics', { id: toastId });
     }
   };
 

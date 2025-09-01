@@ -9,8 +9,9 @@ import {
 } from '@/lib/services/serviceEnterprise/server/enterprisePermissionService';
 import { 
   PERMISSIONS, 
-  TEAM_ROLES // ✅ ADDED THIS MISSING IMPORT
+  TEAM_ROLES 
 } from '@/lib/services/serviceEnterprise/constants/enterpriseConstants';
+
 /**
  * GET /api/enterprise/teams/[teamId]/permissions
  * Get team permissions
@@ -39,20 +40,44 @@ export async function GET(request, { params }) {
       }, { status: 403 });
     }
 
-    // Check if user has permission to view team permissions
-    const canView = await EnterprisePermissionService.hasPermission(
+    // ✅ FIX: Check for EITHER permission, not just manage settings
+    const canManageSettings = EnterprisePermissionService.hasPermission(
       userContext, 
       PERMISSIONS.CAN_MANAGE_TEAM_SETTINGS, 
       teamId
     );
-
-    if (!canView) {
+    
+    const canViewAnalytics = EnterprisePermissionService.hasPermission(
+      userContext,
+      PERMISSIONS.CAN_VIEW_TEAM_ANALYTICS,
+      teamId
+    );
+    
+    // ✅ FIX: Allow access if user has EITHER permission
+    if (!canManageSettings && !canViewAnalytics) {
+      console.log('Permission check failed:', {
+        userId,
+        teamId,
+        canManageSettings,
+        canViewAnalytics,
+        userRole: EnterprisePermissionService.getUserTeamRole(userContext, teamId),
+        teamData: userContext.teams?.[teamId]
+      });
+      
       return NextResponse.json({ 
-        error: 'Insufficient permissions to view team permissions' 
+        error: 'Insufficient permissions to view team permissions. You need either CAN_MANAGE_TEAM_SETTINGS or CAN_VIEW_TEAM_ANALYTICS permission.' 
       }, { status: 403 });
     }
 
-    // Get team permissions
+    console.log('Permission check passed:', {
+      userId,
+      teamId,
+      canManageSettings,
+      canViewAnalytics,
+      accessGranted: true
+    });
+
+    // Get team permissions (this part is now correctly protected)
     const permissions = await EnterpriseTeamPermissionService.getTeamPermissions(
       userContext.organizationId, 
       teamId
@@ -61,7 +86,14 @@ export async function GET(request, { params }) {
     return NextResponse.json({
       success: true,
       permissions,
-      teamId
+      teamId,
+      // Include user's access level for client-side UI decisions
+      userAccess: {
+        canManageSettings,
+        canViewAnalytics,
+        canModify: canManageSettings, // Only managers can modify
+        canView: canManageSettings || canViewAnalytics
+      }
     });
 
   } catch (error) {
@@ -103,7 +135,9 @@ export async function PUT(request, { params }) {
         error: 'Invalid permissions data' 
       }, { status: 400 });
     }
-const employeePermissions = permissions[TEAM_ROLES.EMPLOYEE];
+
+    // ✅ VALIDATION: Ensure employee permissions are not granted restricted permissions
+    const employeePermissions = permissions[TEAM_ROLES.EMPLOYEE];
     if (employeePermissions) {
       const restrictedPermissions = [
         PERMISSIONS.CAN_INVITE_TEAM_MEMBERS,
@@ -115,7 +149,8 @@ const employeePermissions = permissions[TEAM_ROLES.EMPLOYEE];
         PERMISSIONS.CAN_SHARE_CONTACTS_WITH_TEAM,
         PERMISSIONS.CAN_EDIT_TEAM_CONTACTS
       ];
-         for (const restrictedPerm of restrictedPermissions) {
+      
+      for (const restrictedPerm of restrictedPermissions) {
         if (employeePermissions[restrictedPerm] === true) {
           return NextResponse.json({ 
             error: `Employees cannot be granted the permission: ${restrictedPerm}. This is a system-level restriction.` 
@@ -123,6 +158,7 @@ const employeePermissions = permissions[TEAM_ROLES.EMPLOYEE];
         }
       }
     }
+
     console.log('Updating team permissions:', { userId, teamId, permissions });
 
     // Get user context to determine organization
@@ -134,8 +170,8 @@ const employeePermissions = permissions[TEAM_ROLES.EMPLOYEE];
       }, { status: 403 });
     }
 
-    // Check if user has permission to manage team permissions
-    const canManage = await EnterprisePermissionService.hasPermission(
+    // ✅ FIX: For MODIFY operations, only check CAN_MANAGE_TEAM_SETTINGS
+    const canManage = EnterprisePermissionService.hasPermission(
       userContext, 
       PERMISSIONS.CAN_MANAGE_TEAM_SETTINGS, 
       teamId
@@ -152,14 +188,14 @@ const employeePermissions = permissions[TEAM_ROLES.EMPLOYEE];
     }
 
     // Update team permissions
-   const result = await EnterpriseTeamPermissionService.updateTeamPermissions(
+    const result = await EnterpriseTeamPermissionService.updateTeamPermissions(
       userId,
       userContext.organizationId, 
       teamId,
       permissions
     );
 
-   return NextResponse.json({
+    return NextResponse.json({
       success: true,
       message: result.employeeRestrictionsEnforced 
         ? 'Team permissions updated successfully. Employee permissions were automatically adjusted to comply with role restrictions.'

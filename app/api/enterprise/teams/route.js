@@ -10,6 +10,9 @@ import {
 import { PERMISSIONS } from '@/lib/services/serviceEnterprise/constants/enterpriseConstants';
 
 
+// app/api/enterprise/teams/route.js
+// FIX: Update the GET endpoint to return teams as an array
+
 export async function GET(request) {
     try {
         const token = request.headers.get('Authorization')?.split('Bearer ')[1];
@@ -18,11 +21,12 @@ export async function GET(request) {
         const decodedToken = await adminAuth.verifyIdToken(token);
         const userContext = await EnterprisePermissionService.getUserContext(decodedToken.uid);
         
-        // If user isn't in an org or has no teams, return empty.
+        // If user isn't in an org or has no teams, return empty array
         if (!userContext.organizationId || Object.keys(userContext.teams).length === 0) {
             return NextResponse.json({ 
-                teams: {}, 
+                teams: [], // ✅ FIX: Return empty array instead of empty object
                 organizationId: userContext.organizationId, 
+                organizationName: null,
                 userRole: userContext.organizationRole || 'employee'
             });
         }
@@ -30,11 +34,11 @@ export async function GET(request) {
         // Get the full organization document to enrich the team data
         const orgDoc = await adminDb.collection('Organizations').doc(userContext.organizationId).get();
         if (!orgDoc.exists) {
-            return NextResponse.json({ teams: {} });
+            return NextResponse.json({ teams: [] }); // ✅ FIX: Return empty array
         }
         
         const allTeamsData = orgDoc.data().teams || {};
-        const accessibleTeams = {};
+        const accessibleTeamsArray = []; // ✅ FIX: Use array instead of object
         let highestRole = 'employee';
         
         for (const teamId in userContext.teams) {
@@ -47,28 +51,35 @@ export async function GET(request) {
                     highestRole = teamRole;
                 }
                 
-                accessibleTeams[teamId] = {
+                // ✅ FIX: Push to array with consistent structure
+                accessibleTeamsArray.push({
                     ...allTeamsData[teamId],
                     id: teamId,
+                    name: allTeamsData[teamId].name || 'Unnamed Team',
+                    description: allTeamsData[teamId].description || '',
                     memberCount: Object.keys(allTeamsData[teamId].members || {}).length,
                     role: teamRole,
                     permissions: userTeamData.permissions,
-                };
+                    createdAt: allTeamsData[teamId].createdAt,
+                    lastModified: allTeamsData[teamId].lastModified
+                });
             }
         }
 
+        console.log(`✅ Teams API: Returning ${accessibleTeamsArray.length} teams as array for user ${decodedToken.uid}`);
+
         return NextResponse.json({
-            teams: accessibleTeams,
+            teams: accessibleTeamsArray, // ✅ FIX: Return array instead of object
             organizationId: userContext.organizationId,
             organizationName: orgDoc.data().name,
             userRole: highestRole,
             organizationRole: userContext.organizationRole,
-            teamCount: Object.keys(accessibleTeams).length
+            teamCount: accessibleTeamsArray.length
         });
         
     } catch (error) {
         console.error('❌ API Error in GET /api/enterprise/teams:', error);
-        return NextResponse.json({ error: error.message, teams: {} }, { status: 500 });
+        return NextResponse.json({ error: error.message, teams: [] }, { status: 500 }); // ✅ FIX: Return empty array on error
     }
 }
 

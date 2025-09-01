@@ -9,7 +9,6 @@ import TeamAuditLog from './TeamAuditLog';
 import { 
   teamService,
   invitationService,
-  cacheService,
   useOptimizedTeamData,
   getCacheStats,
   ErrorHandler,
@@ -18,6 +17,7 @@ import {
   PERMISSIONS,
   DEFAULT_PERMISSIONS_BY_ROLE
 } from '@/lib/services/serviceEnterprise';
+// Remove cacheService if you're not using it directly
 
 // Helper functions (remain unchanged as they operate on hook data)
 const getUserTeamRole = (userContext, teamId) => {
@@ -332,7 +332,8 @@ export default function EnhancedTeamManagementModal({ isOpen, onClose, teamId, t
 
   const filteredInvitations = getFilteredAndSortedInvitations();
   const allSelected = filteredInvitations.length > 0 && filteredInvitations.every(inv => selectedInvitations.has(inv.id));
-  
+  const someSelected = selectedInvitations.size > 0;
+
   if (!isOpen) return null;
 
   // The JSX structure remains mostly the same, but now it's powered by the new services.

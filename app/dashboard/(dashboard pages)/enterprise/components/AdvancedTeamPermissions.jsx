@@ -12,55 +12,9 @@ import {
   CUSTOMIZABLE_ROLES,
   PERMISSION_CATEGORIES,
   PERMISSION_LABELS,
-  ErrorHandler
+  ErrorHandler,
+  isEmployeeRestrictedPermission
 } from '@/lib/services/serviceEnterprise';
-
-// ✅ SAFETY: Fallback constants in case imports fail
-const SAFE_CUSTOMIZABLE_ROLES = CUSTOMIZABLE_ROLES || [
-  'manager', 
-  'team_lead', 
-  'employee'
-];
-
-const SAFE_PERMISSION_CATEGORIES = PERMISSION_CATEGORIES || {
-  'Team Management': [
-    'canInviteTeamMembers',
-    'canRemoveTeamMembers',
-    'canUpdateMemberRoles',
-    'canManageTeamSettings'
-  ],
-  'Team Operations': [
-    'canViewTeamAnalytics',
-    'canRevokeInvitations',
-    'canResendInvitations',
-    'canExportTeamData'
-  ],
-  'Organization Level': [
-    'canCreateTeams',
-    'canDeleteTeams'
-  ],
-  'Contact Management': [
-    'canViewAllTeamContacts',
-    'canShareContactsWithTeam',
-    'canEditTeamContacts'
-  ]
-};
-
-const SAFE_PERMISSION_LABELS = PERMISSION_LABELS || {
-  'canViewAllTeamContacts': 'View Team Contacts',
-  'canEditTeamContacts': 'Edit Team Contacts',
-  'canShareContactsWithTeam': 'Share Contacts',
-  'canExportTeamData': 'Export Team Data',
-  'canInviteTeamMembers': 'Invite Members',
-  'canCreateTeams': 'Create Teams',
-  'canDeleteTeams': 'Delete Teams',
-  'canManageTeamSettings': 'Manage Settings',
-  'canRemoveTeamMembers': 'Remove Members',
-  'canUpdateMemberRoles': 'Update Roles',
-  'canRevokeInvitations': 'Revoke Invitations',
-  'canResendInvitations': 'Resend Invitations',
-  'canViewTeamAnalytics': 'View Analytics'
-};
 
 export default function AdvancedTeamPermissions({ 
   isOpen, 
@@ -140,22 +94,17 @@ export default function AdvancedTeamPermissions({
   };
 
   const canModifyPermission = (role, permission) => {
-    // Employees cannot have certain restricted permissions
-    if (role === TEAM_ROLES.EMPLOYEE) {
-      const restrictedPermissions = [
-        PERMISSIONS.CAN_INVITE_TEAM_MEMBERS,
-        PERMISSIONS.CAN_REMOVE_TEAM_MEMBERS,
-        PERMISSIONS.CAN_UPDATE_MEMBER_ROLES,
-        PERMISSIONS.CAN_MANAGE_TEAM_SETTINGS,
-        PERMISSIONS.CAN_CREATE_TEAMS,
-        PERMISSIONS.CAN_DELETE_TEAMS,
-        PERMISSIONS.CAN_REVOKE_INVITATIONS,
-        PERMISSIONS.CAN_SHARE_CONTACTS_WITH_TEAM,
-        PERMISSIONS.CAN_EDIT_TEAM_CONTACTS,
-        PERMISSIONS.CAN_RESEND_INVITATIONS
-      ];
-      return !restrictedPermissions.includes(permission);
+    // Owner role cannot be modified (always has all permissions)
+    if (role === TEAM_ROLES.OWNER) {
+      return false;
     }
+    
+    // For employees, use the single source of truth from our constants file.
+    if (role === TEAM_ROLES.EMPLOYEE) {
+      return !isEmployeeRestrictedPermission(permission);
+    }
+    
+    // All other roles (Manager, Team Lead) can have any permission modified.
     return true;
   };
 
@@ -405,7 +354,7 @@ export default function AdvancedTeamPermissions({
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10">
                           Permission
                         </th>
-                        {SAFE_CUSTOMIZABLE_ROLES.map(role => (
+                        {CUSTOMIZABLE_ROLES.map(role => (
                           <th key={role} className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                             <div className="flex flex-col items-center space-y-2">
                               <span className="capitalize">{role.replace('_', ' ')}</span>
@@ -430,11 +379,11 @@ export default function AdvancedTeamPermissions({
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {Object.entries(SAFE_PERMISSION_CATEGORIES).map(([category, categoryPermissions]) => (
+                      {Object.entries(PERMISSION_CATEGORIES).map(([category, categoryPermissions]) => (
                         <React.Fragment key={category}>
                           {/* Category Header */}
                           <tr className="bg-gray-25">
-                            <td colSpan={SAFE_CUSTOMIZABLE_ROLES.length + 2} className="px-6 py-3">
+                            <td colSpan={CUSTOMIZABLE_ROLES.length + 2} className="px-6 py-3">
                               <h4 className="text-sm font-semibold text-gray-900 flex items-center">
                                 <svg className="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -449,14 +398,14 @@ export default function AdvancedTeamPermissions({
                             <tr key={permission} className="hover:bg-gray-50">
                               <td className="px-6 py-4 text-sm text-gray-900 sticky left-0 bg-white z-10 border-r border-gray-200">
                                 <div className="flex flex-col">
-                                  <span className="font-medium">{SAFE_PERMISSION_LABELS[permission] || permission}</span>
+                                  <span className="font-medium">{PERMISSION_LABELS[permission]}</span>
                                   <span className="text-xs text-gray-500 mt-1">
                                     {getPermissionDescription(permission)}
                                   </span>
                                 </div>
                               </td>
                               
-                              {SAFE_CUSTOMIZABLE_ROLES.map(role => {
+                              {CUSTOMIZABLE_ROLES.map(role => {
                                 const isRestricted = !canModifyPermission(role, permission);
                                 const isEmployeeRestricted = role === TEAM_ROLES.EMPLOYEE && isRestricted;
                                 

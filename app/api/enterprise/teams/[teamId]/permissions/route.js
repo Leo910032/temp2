@@ -9,7 +9,8 @@ import {
 } from '@/lib/services/serviceEnterprise/server/enterprisePermissionService';
 import { 
   PERMISSIONS, 
-  TEAM_ROLES 
+  TEAM_ROLES,
+  EMPLOYEE_RESTRICTED_PERMISSIONS 
 } from '@/lib/services/serviceEnterprise/constants/enterpriseConstants';
 
 /**
@@ -113,81 +114,65 @@ export async function GET(request, { params }) {
  * PUT /api/enterprise/teams/[teamId]/permissions
  * Update team permissions
  */
+/**
+ * PUT /api/enterprise/teams/[teamId]/permissions
+ * Update team permissions with robust server-side validation.
+ */
 export async function PUT(request, { params }) {
   try {
-    // Authentication
+    // 1. AUTHENTICATION
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
     const token = authHeader.split('Bearer ')[1];
     const decodedToken = await adminAuth.verifyIdToken(token);
     const userId = decodedToken.uid;
-    const teamId = params.teamId;
+    const { teamId } = params;
 
-    // Parse request body
+    // 2. PARSE AND VALIDATE INPUT
     const body = await request.json();
     const { permissions } = body;
-
     if (!permissions || typeof permissions !== 'object') {
-      return NextResponse.json({ 
-        error: 'Invalid permissions data' 
-      }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid permissions data provided' }, { status: 400 });
     }
 
-    // ✅ VALIDATION: Ensure employee permissions are not granted restricted permissions
+    // 3. 🛡️ CRITICAL SECURITY CHECK: Enforce Employee Role Restrictions
     const employeePermissions = permissions[TEAM_ROLES.EMPLOYEE];
     if (employeePermissions) {
-      const restrictedPermissions = [
-        PERMISSIONS.CAN_INVITE_TEAM_MEMBERS,
-        PERMISSIONS.CAN_REMOVE_TEAM_MEMBERS,
-        PERMISSIONS.CAN_UPDATE_MEMBER_ROLES,
-        PERMISSIONS.CAN_MANAGE_TEAM_SETTINGS,
-        PERMISSIONS.CAN_CREATE_TEAMS,
-        PERMISSIONS.CAN_DELETE_TEAMS,
-        PERMISSIONS.CAN_SHARE_CONTACTS_WITH_TEAM,
-        PERMISSIONS.CAN_EDIT_TEAM_CONTACTS
-      ];
-      
-      for (const restrictedPerm of restrictedPermissions) {
+      // Use the single source of truth from the constants file to check for violations.
+      for (const restrictedPerm of EMPLOYEE_RESTRICTED_PERMISSIONS) {
         if (employeePermissions[restrictedPerm] === true) {
+          // Log the security attempt and reject the request immediately.
+          console.warn(`SECURITY: Blocked attempt by user ${userId} to grant restricted permission '${restrictedPerm}' to an employee on team ${teamId}.`);
           return NextResponse.json({ 
             error: `Employees cannot be granted the permission: ${restrictedPerm}. This is a system-level restriction.` 
           }, { status: 400 });
         }
       }
     }
-
-    console.log('Updating team permissions:', { userId, teamId, permissions });
-
-    // Get user context to determine organization
-    const userContext = await EnterprisePermissionService.getUserContext(userId);
     
+    // 4. CHECK USER'S PERMISSION TO MODIFY
+    const userContext = await EnterprisePermissionService.getUserContext(userId);
     if (!userContext.organizationId) {
-      return NextResponse.json({ 
-        error: 'User is not part of an organization' 
-      }, { status: 403 });
+      return NextResponse.json({ error: 'User is not part of an organization' }, { status: 403 });
     }
 
-    // ✅ FIX: For MODIFY operations, only check CAN_MANAGE_TEAM_SETTINGS
+    // A user must have the 'CAN_MANAGE_TEAM_SETTINGS' permission to modify the settings.
     const canManage = EnterprisePermissionService.hasPermission(
       userContext, 
       PERMISSIONS.CAN_MANAGE_TEAM_SETTINGS, 
       teamId
     );
 
-    // Additional check: only organization owners and team managers can modify permissions
-    const isOrgOwner = userContext.organizationRole === 'owner';
-    const isTeamManager = EnterprisePermissionService.getUserTeamRole(userContext, teamId) === 'manager';
-
-    if (!canManage && !isOrgOwner && !isTeamManager) {
+    if (!canManage) {
       return NextResponse.json({ 
         error: 'Only organization owners and team managers can modify team permissions' 
       }, { status: 403 });
     }
 
-    // Update team permissions
+    // 5. EXECUTE THE UPDATE
+    console.log(`User ${userId} is updating permissions for team ${teamId}...`);
     const result = await EnterpriseTeamPermissionService.updateTeamPermissions(
       userId,
       userContext.organizationId, 
@@ -195,35 +180,27 @@ export async function PUT(request, { params }) {
       permissions
     );
 
+    // 6. RETURN SUCCESS RESPONSE
     return NextResponse.json({
       success: true,
-      message: result.employeeRestrictionsEnforced 
-        ? 'Team permissions updated successfully. Employee permissions were automatically adjusted to comply with role restrictions.'
-        : 'Team permissions updated successfully',
+      message: 'Team permissions updated successfully.',
       teamId,
-      result,
-      employeeRestrictionsEnforced: result.employeeRestrictionsEnforced || false
+      // Pass back details from the service if needed
+      details: result 
     });
 
   } catch (error) {
-    console.error('Error updating team permissions:', error);
+    console.error('❌ Error updating team permissions:', error);
     
-    if (error.message.includes('Employees cannot have permission')) {
-      return NextResponse.json({ 
-        error: error.message + ' This restriction is enforced at the system level.'
-      }, { status: 400 });
-    }
-    
+    // Provide specific error messages for known issues
     if (error.message.includes('Invalid permissions')) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
-    
     if (error.message.includes('not found')) {
       return NextResponse.json({ error: error.message }, { status: 404 });
     }
     
-    return NextResponse.json({ 
-      error: 'Internal server error' 
-    }, { status: 500 });
+    // Generic fallback for all other errors
+    return NextResponse.json({ error: 'An internal server error occurred' }, { status: 500 });
   }
 }

@@ -2,10 +2,12 @@
 import { NextResponse } from 'next/server';
 import { adminAuth } from '@/lib/firebaseAdmin';
 
-// ✅ Import your existing enterprise services
+// ✅ Import the specific helpers we need, including the new role function
 import { 
+    EnterprisePermissionService, // Import the full service to access static methods
     validateTeamPermission,
-    checkUserTeamMembership 
+    checkUserTeamMembership,
+    getUserTeamRole as getTeamRole // Use an alias to avoid naming conflicts
 } from '@/lib/services/serviceEnterprise/server/enterprisePermissionService';
 import { 
     PERMISSIONS 
@@ -32,34 +34,50 @@ export async function GET(request, { params }) {
 
         console.log(`[${requestId}] 🔒 Checking impersonation permissions: ${managerId} -> ${memberId} in team ${teamId}`);
 
-        // ✅ Quick permission checks
+        // Prevent self-impersonation early
+        if (managerId === memberId) {
+            return NextResponse.json({ canImpersonate: false, reasons: { isNotSelf: false } });
+        }
+
+         // 1. Basic permission checks (are both users in the team and does the manager have the base permission?)
         const [hasViewPermission, isManagerInTeam, isTargetInTeam] = await Promise.all([
             validateTeamPermission(managerId, teamId, PERMISSIONS.CAN_VIEW_TEAM_ANALYTICS),
             checkUserTeamMembership(managerId, teamId),
             checkUserTeamMembership(memberId, teamId)
         ]);
+        // If basic checks fail, deny immediately.
+        if (!hasViewPermission || !isManagerInTeam || !isTargetInTeam) {
+            return NextResponse.json({
+                canImpersonate: false,
+                reasons: { hasViewPermission, isManagerInTeam, isTargetInTeam, hierarchyCheckPassed: false }
+            });
+        }
 
-        const canImpersonate = hasViewPermission && isManagerInTeam && isTargetInTeam && managerId !== memberId;
+        // 2. ✅ HIERARCHY CHECK: Get both users' roles and compare them.
+        const [managerRole, targetRole] = await Promise.all([
+            getTeamRole(managerId, teamId),
+            getTeamRole(memberId, teamId)
+        ]);
+
+        const hierarchyCheckPassed = EnterprisePermissionService.canManageRole(managerRole, targetRole);
+        const canImpersonate = hierarchyCheckPassed;
 
         console.log(`[${requestId}] ✅ Impersonation check result: ${canImpersonate}`);
 
         return NextResponse.json({
             canImpersonate,
-            teamId,
-            memberId,
             reasons: {
                 hasViewPermission,
                 isManagerInTeam,
                 isTargetInTeam,
-                isNotSelf: managerId !== memberId
+                hierarchyCheckPassed,
+                managerRole,
+                targetRole
             }
         });
 
     } catch (error) {
-        console.error(`[${requestId}] ❌ Impersonation permission check error:`, error);
-        return NextResponse.json({ 
-            canImpersonate: false,
-            error: 'Permission check failed'
-        }, { status: 500 });
+        console.error(`Impersonation permission check error:`, error);
+        return NextResponse.json({ canImpersonate: false, error: 'Permission check failed' }, { status: 500 });
     }
 }

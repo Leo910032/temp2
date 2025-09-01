@@ -11,6 +11,7 @@ import {
   cacheService,
   useOptimizedTeamData,
   TEAM_ROLES,
+  TEAM_ROLE_HIERARCHY, // ✅ Import the hierarchy constant
   PERMISSIONS
 } from '@/lib/services/serviceEnterprise';
 
@@ -93,6 +94,27 @@ const canViewTeamAnalytics = () => {
     // Fallback to role-based check for backwards compatibility
     const userRole = getUserTeamRole();
     return ['owner', 'manager', 'team_lead'].includes(userRole);
+  };
+ const canViewMemberAnalytics = (targetMember) => {
+    // Basic check: Does the current user have the general permission to view any analytics at all?
+    if (!canViewTeamAnalytics()) {
+      return false;
+    }
+
+    // Don't show the button for the user themselves.
+    if (targetMember.id === userContext?.userId) {
+      return false;
+    }
+
+    // HIERARCHY CHECK: Compare the current user's role level to the target member's role level.
+    const currentUserRole = getUserTeamRole();
+    const targetUserRole = targetMember.role;
+
+    const currentUserLevel = TEAM_ROLE_HIERARCHY[currentUserRole] || 0;
+    const targetUserLevel = TEAM_ROLE_HIERARCHY[targetUserRole] || 0;
+    
+    // The button should only be shown if the current user's level is >= the target's level.
+    return currentUserLevel >= targetUserLevel;
   };
 
   // Enhanced analytics fetching with proper error handling
@@ -534,12 +556,12 @@ toast.error(error.message || 'Failed to access analytics', { id: toastId });
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        {canViewTeamAnalytics() && member?.id !== userContext?.userId && (
-                          <button
-                            onClick={() => handleViewUserAnalytics(member)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title={`View analytics for ${member?.displayName || member?.email}`}
-                          >
+                         {canViewMemberAnalytics(member) && (
+        <button
+          onClick={() => handleViewUserAnalytics(member)}
+          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+          title={`View analytics for ${member?.displayName || member?.email}`}
+        >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                             </svg>

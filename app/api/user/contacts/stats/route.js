@@ -1,47 +1,75 @@
 // app/api/contacts/stats/route.js
-// Contact statistics API route following enterprise pattern
-
 import { NextResponse } from 'next/server';
-import { verifyIdToken } from '@/lib/firebaseAdmin';
 import { ContactService } from '@/lib/services/serviceContact/server/contactService';
+import { adminAuth } from '@/lib/firebaseAdmin';
 
-/**
- * GET /api/contacts/stats - Get contact statistics
- */
 export async function GET(request) {
   try {
-    console.log('📊 GET /api/contacts/stats - Getting contact statistics');
+    console.log('📊 API: Getting contact statistics');
 
-    // Authenticate user
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
+    // Get the authorization header
+    const authHeader = request.headers.get('authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('❌ API: No valid authorization header');
       return NextResponse.json(
-        { error: 'Authentication required' }, 
+        { error: 'Authentication required', code: 'UNAUTHORIZED' },
         { status: 401 }
       );
     }
 
-    const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await verifyIdToken(token);
-    const userId = decodedToken.uid;
+    // Extract and verify the token
+    const idToken = authHeader.replace('Bearer ', '');
+    
+    let decodedToken;
+    try {
+      decodedToken = await adminAuth.verifyIdToken(idToken);
+    } catch (authError) {
+      console.error('❌ API: Token verification failed:', authError);
+      return NextResponse.json(
+        { error: 'Invalid authentication token', code: 'INVALID_TOKEN' },
+        { status: 401 }
+      );
+    }
 
-    // Get contact statistics
+    const userId = decodedToken.uid;
+    console.log('👤 API: User ID:', userId);
+
+    // Get contact statistics from service
     const result = await ContactService.getContactStats(userId);
 
-    console.log('✅ Contact statistics retrieved successfully');
+    console.log('✅ API: Contact statistics retrieved successfully');
+    
     return NextResponse.json({
       success: true,
       ...result
     });
 
   } catch (error) {
-    console.error('❌ Error in GET /api/contacts/stats:', error);
-    
+    console.error('❌ API Error getting contact statistics:', error);
+
+    // Handle specific error types
+    if (error.message?.includes('User not found')) {
+      return NextResponse.json(
+        { error: 'User not found', code: 'USER_NOT_FOUND' },
+        { status: 404 }
+      );
+    }
+
+    if (error.message?.includes('Authentication')) {
+      return NextResponse.json(
+        { error: 'Authentication failed', code: 'AUTH_ERROR' },
+        { status: 401 }
+      );
+    }
+
+    // Generic server error
     return NextResponse.json(
       { 
-        error: error.message || 'Failed to get contact statistics',
-        success: false 
-      }, 
+        error: 'Failed to get contact statistics', 
+        code: 'SERVER_ERROR',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     );
   }

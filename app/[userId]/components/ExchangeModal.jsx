@@ -1,16 +1,24 @@
-// app/[userId]/components/ExchangeModal.jsx - SERVER-SIDE VERSION
+// app/[userId]/components/ExchangeModal.jsx - Modern version using new service architecture
 "use client"
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useTranslation } from '@/lib/translation/useTranslation';
-import { validateEmail } from '@/lib/utilities';
 import { toast } from 'react-hot-toast';
+
+// Import the new service functions
+import {
+  submitExchangeContact,
+  getCurrentLocation,
+  checkLocationPermission,
+  verifyProfileByUsername,
+  verifyProfileByUserId
+} from '@/lib/services/serviceContact';
 
 export default function ExchangeModal({ 
     isOpen, 
     onClose, 
     profileOwnerUsername, 
-    profileOwnerId = null // ✅ Optional: pass user ID directly for ultra-fast submission
+    profileOwnerId = null
 }) {
     const { t } = useTranslation();
     const [formData, setFormData] = useState({
@@ -23,90 +31,100 @@ export default function ExchangeModal({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState({});
     const [location, setLocation] = useState(null);
-    const [locationStatus, setLocationStatus] = useState('unavailable'); // ✅ Track location permission status
-    const [isLocationPermissionGranted, setIsLocationPermissionGranted] = useState(false);
+    const [locationPermission, setLocationPermission] = useState({ state: 'unavailable', supported: false });
+    const [profileVerified, setProfileVerified] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
             console.log("🔄 Exchange modal opened for:", profileOwnerUsername);
-            
-            // ✅ Enhanced geolocation permission checking
-            if (navigator.geolocation && navigator.permissions) {
-                navigator.permissions.query({ name: 'geolocation' }).then((result) => {
-                    console.log("📍 Geolocation permission status:", result.state);
-                    setLocationStatus(result.state);
-                    setIsLocationPermissionGranted(result.state === 'granted');
-                    
-                    if (result.state === 'granted') {
-                        // Automatically get location if permission is already granted
-                        getCurrentLocation();
-                    }
-                    
-                    // Listen for permission changes
-                    result.addEventListener('change', () => {
-                        console.log("📍 Geolocation permission changed to:", result.state);
-                        setLocationStatus(result.state);
-                        setIsLocationPermissionGranted(result.state === 'granted');
-                    });
-                }).catch((error) => {
-                    console.warn("⚠️ Permission API not supported:", error);
-                    setLocationStatus('unavailable');
-                });
-            } else {
-                console.warn("⚠️ Geolocation not supported");
-                setLocationStatus('unavailable');
-            }
+            initializeModal();
         }
-    }, [isOpen, profileOwnerUsername]);
+    }, [isOpen, profileOwnerUsername, profileOwnerId]);
 
-    const getCurrentLocation = () => {
-        return new Promise((resolve) => {
-            if (!navigator.geolocation) {
-                console.warn("⚠️ Geolocation not supported");
-                setLocationStatus('unavailable');
-                resolve(null);
-                return;
+    const initializeModal = async () => {
+        try {
+            // Check location permission status
+            const permission = await checkLocationPermission();
+            setLocationPermission(permission);
+            
+            if (permission.state === 'granted') {
+                // Automatically get location if permission is already granted
+                await requestLocation();
             }
 
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const userLocation = {
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude,
-                        accuracy: position.coords.accuracy,
-                        timestamp: new Date().toISOString()
-                    };
-                    
-                    console.log("📍 Location obtained:", userLocation);
-                    setLocation(userLocation);
-                    setLocationStatus('granted');
-                    setIsLocationPermissionGranted(true);
-                    resolve(userLocation);
+            // Verify profile exists and is available for exchange
+            await verifyTargetProfile();
+
+        } catch (error) {
+            console.error("❌ Error initializing modal:", error);
+        }
+    };
+
+    const verifyTargetProfile = async () => {
+        try {
+            let verification;
+            
+            if (profileOwnerId) {
+                verification = await verifyProfileByUserId(profileOwnerId);
+            } else if (profileOwnerUsername) {
+                verification = await verifyProfileByUsername(profileOwnerUsername);
+            } else {
+                throw new Error('No profile identifier provided');
+            }
+
+            setProfileVerified(verification.available);
+            
+            if (!verification.available) {
+                toast.error(t('exchange.profile_unavailable') || 'This profile is not available for contact exchange');
+            }
+
+        } catch (error) {
+            console.error("❌ Error verifying profile:", error);
+            setProfileVerified(false);
+            toast.error(t('exchange.profile_verification_failed') || 'Unable to verify profile availability');
+        }
+    };
+
+    const requestLocation = async () => {
+        try {
+            console.log("🔍 Requesting location...");
+            
+            const userLocation = await getCurrentLocation({
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 300000 // 5 minutes
+            });
+            
+            setLocation(userLocation);
+            setLocationPermission(prev => ({ ...prev, state: 'granted' }));
+            
+            toast.success(t('exchange.location_obtained') || 'Location obtained successfully!', {
+                style: {
+                    border: '1px solid #10B981',
+                    padding: '16px',
+                    color: '#10B981',
                 },
-                (error) => {
-                    console.error("❌ Geolocation error:", error);
-                    
-                    // Handle different error cases
-                    if (error.code === error.PERMISSION_DENIED) {
-                        setLocationStatus('denied');
-                        console.log("❌ Location permission denied by user");
-                    } else if (error.code === error.POSITION_UNAVAILABLE) {
-                        setLocationStatus('unavailable');
-                        console.log("❌ Location position unavailable");
-                    } else if (error.code === error.TIMEOUT) {
-                        setLocationStatus('timeout');
-                        console.log("❌ Location request timeout");
-                    }
-                    
-                    resolve(null);
+                iconTheme: {
+                    primary: '#10B981',
+                    secondary: '#FFFAEE',
                 },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 300000 // 5 minutes
-                }
-            );
-        });
+            });
+            
+            return userLocation;
+            
+        } catch (error) {
+            console.error("❌ Error getting location:", error);
+            
+            // Update permission state based on error
+            if (error.message.includes('denied')) {
+                setLocationPermission(prev => ({ ...prev, state: 'denied' }));
+                toast.error(t('exchange.location_permission_denied') || 'Location permission denied');
+            } else {
+                toast.error(t('exchange.location_retrieval_failed') || 'Failed to get location');
+            }
+            
+            return null;
+        }
     };
 
     const handleInputChange = (field, value) => {
@@ -115,6 +133,7 @@ export default function ExchangeModal({
             [field]: value
         }));
         
+        // Clear errors when user starts typing
         if (errors[field]) {
             setErrors(prev => ({
                 ...prev,
@@ -132,97 +151,12 @@ export default function ExchangeModal({
         
         if (!formData.email.trim()) {
             newErrors.email = t('exchange.email_required') || 'Email is required';
-        } else if (!validateEmail(formData.email)) {
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
             newErrors.email = t('exchange.email_invalid') || 'Invalid email format';
         }
         
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
-    };
-
-    const requestLocation = async () => {
-        console.log("🔍 Requesting location permission...");
-        
-        if (!navigator.geolocation) {
-            toast.error(t('exchange.geolocation_not_supported') || 'Geolocation not supported');
-            return null;
-        }
-
-        try {
-            const userLocation = await getCurrentLocation();
-            
-            if (userLocation) {
-                toast.success(t('exchange.location_obtained') || 'Location obtained successfully!', {
-                    style: {
-                        border: '1px solid #10B981',
-                        padding: '16px',
-                        color: '#10B981',
-                    },
-                    iconTheme: {
-                        primary: '#10B981',
-                        secondary: '#FFFAEE',
-                    },
-                });
-            } else {
-                // Show appropriate error message based on status
-                if (locationStatus === 'denied') {
-                    toast.error(t('exchange.location_permission_denied') || 'Location permission denied');
-                } else {
-                    toast.error(t('exchange.location_retrieval_failed') || 'Failed to get location');
-                }
-            }
-            
-            return userLocation;
-        } catch (error) {
-            console.error("❌ Error requesting location:", error);
-            toast.error(t('exchange.location_retrieval_failed') || 'Failed to get location');
-            return null;
-        }
-    };
-
-    // ✅ NEW: Server-side contact submission
-    const submitContactToServer = async (contactData) => {
-        console.log("🚀 Submitting contact via server API...", {
-            username: profileOwnerUsername,
-            userId: profileOwnerId,
-            hasLocation: !!(contactData.location)
-        });
-
-        try {
-            const requestBody = {
-                contact: contactData
-            };
-
-            // ✅ Use userId if available for fastest submission, otherwise username
-            if (profileOwnerId) {
-                requestBody.userId = profileOwnerId;
-                console.log("⚡ Using direct user ID for ultra-fast submission:", profileOwnerId);
-            } else {
-                requestBody.username = profileOwnerUsername;
-                console.log("🔍 Using username lookup:", profileOwnerUsername);
-            }
-
-            const response = await fetch('/api/contacts/submit', {
-                method: 'POST',  
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestBody)
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            const result = await response.json();
-            console.log("✅ Contact submitted successfully:", result);
-            
-            return result;
-        } catch (error) {
-            console.error("❌ Server submission error:", error);
-            throw error;
-        }
     };
 
     const handleSubmit = async (e) => {
@@ -231,35 +165,44 @@ export default function ExchangeModal({
         if (!validateForm()) {
             return;
         }
+
+        if (!profileVerified) {
+            toast.error(t('exchange.profile_not_verified') || 'Profile verification required');
+            return;
+        }
         
         setIsSubmitting(true);
         console.log("🚀 Submitting contact form...");
         
         try {
-            // ✅ Enhanced contact data with better location tracking
-            const contactData = {
-                ...formData,
-                submittedAt: new Date().toISOString(),
-                location: location, // Include location data if available
-                locationStatus: locationStatus, // Track permission status
-                
-                // ✅ Enhanced metadata
-                userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : '',
-                referrer: typeof window !== 'undefined' ? document.referrer : '',
-                sessionId: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+            // Prepare exchange data using the new service
+            const exchangeData = {
+                targetUserId: profileOwnerId,
+                targetUsername: profileOwnerUsername,
+                contact: {
+                    ...formData,
+                    location: location
+                },
+                metadata: {
+                    userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : '',
+                    referrer: typeof window !== 'undefined' ? document.referrer : '',
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    language: navigator.language || 'en'
+                }
             };
             
-            console.log("📋 Contact data prepared:", {
-                ...contactData,
-                userAgent: contactData.userAgent.substring(0, 50) + '...' // Log truncated user agent
+            console.log("📋 Exchange data prepared:", {
+                hasLocation: !!location,
+                targetUserId: profileOwnerId,
+                targetUsername: profileOwnerUsername
             });
             
-            // ✅ Submit via new server-side API
-            const result = await submitContactToServer(contactData);
+            // Submit using the new service
+            const result = await submitExchangeContact(exchangeData);
             
             console.log("✅ Contact submitted successfully:", result.contactId);
             
-            // ✅ Enhanced success message based on location sharing
+            // Enhanced success message
             let successMessage = t('exchange.success_message') || 'Contact submitted successfully!';
             if (location) {
                 successMessage += ` ${t('exchange.success_with_location') || 'Location shared.'}`;
@@ -278,31 +221,24 @@ export default function ExchangeModal({
                 duration: 4000
             });
             
-            // Reset form
-            setFormData({
-                name: '',
-                email: '',
-                phone: '',
-                company: '',
-                message: ''
-            });
-            setLocation(null);
-            setLocationStatus('unavailable');
-            setIsLocationPermissionGranted(false);
+            // Reset form and close modal
+            resetForm();
             onClose();
             
         } catch (error) {
             console.error('❌ Error submitting contact:', error);
             
-            // ✅ Better error handling with specific messages
+            // Enhanced error handling with specific messages
             let errorMessage = t('exchange.error_message') || 'Failed to submit contact';
             
-            if (error.message.includes('not found') || error.message.includes('Profile not found')) {
+            if (error.message?.includes('not found') || error.code === 'PROFILE_NOT_FOUND') {
                 errorMessage = t('exchange.profile_not_found') || 'Profile not found';
-            } else if (error.message.includes('validation') || error.message.includes('Invalid') || error.message.includes('required')) {
+            } else if (error.message?.includes('validation') || error.code === 'VALIDATION_ERROR') {
                 errorMessage = t('exchange.validation_error') || 'Please check your information';
-            } else if (error.message.includes('Too many')) {
+            } else if (error.message?.includes('rate limit') || error.code === 'RATE_LIMIT_EXCEEDED') {
                 errorMessage = t('exchange.rate_limit_error') || 'Too many requests. Please try again in a moment.';
+            } else if (error.code === 'EXCHANGE_DISABLED') {
+                errorMessage = t('exchange.exchange_disabled') || 'Contact exchange is not enabled for this profile';
             }
             
             toast.error(errorMessage, {
@@ -321,15 +257,31 @@ export default function ExchangeModal({
         }
     };
 
+    const resetForm = () => {
+        setFormData({
+            name: '',
+            email: '',
+            phone: '',
+            company: '',
+            message: ''
+        });
+        setLocation(null);
+        setLocationPermission({ state: 'unavailable', supported: false });
+        setProfileVerified(false);
+        setErrors({});
+    };
+
     if (!isOpen) return null;
 
-    // ✅ Enhanced location status display
+    // Location status display helper
     const getLocationStatusDisplay = () => {
-        switch (locationStatus) {
+        switch (locationPermission.state) {
             case 'granted':
                 return {
                     color: 'text-green-600',
-                    message: location ? (t('exchange.location_shared') || 'Location shared') : (t('exchange.location_granted') || 'Location access granted'),
+                    message: location 
+                        ? (t('exchange.location_shared') || 'Location shared') 
+                        : (t('exchange.location_granted') || 'Location access granted'),
                     icon: '✓'
                 };
             case 'denied':
@@ -358,7 +310,7 @@ export default function ExchangeModal({
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden">
-
+                {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-100">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
@@ -381,14 +333,23 @@ export default function ExchangeModal({
                     </button>
                 </div>
 
-            
+                {/* Content */}
                 <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
                     <p className="text-gray-600 mb-6 text-sm">
                         {t('exchange.description') || 'Share your contact information with this profile owner.'}
                     </p>
 
+                    {/* Profile verification status */}
+                    {!profileVerified && (
+                        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <p className="text-yellow-800 text-sm">
+                                {t('exchange.verifying_profile') || 'Verifying profile availability...'}
+                            </p>
+                        </div>
+                    )}
+
                     <form onSubmit={handleSubmit} className="space-y-4">
-                    
+                        {/* Name Field */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 {t('exchange.name_label') || 'Name'} *
@@ -401,13 +362,14 @@ export default function ExchangeModal({
                                     errors.name ? 'border-red-500' : 'border-gray-300'
                                 }`}
                                 placeholder={t('exchange.name_placeholder') || 'Your full name'}
+                                disabled={isSubmitting}
                             />
                             {errors.name && (
                                 <p className="text-red-500 text-xs mt-1">{errors.name}</p>
                             )}
                         </div>
 
-       
+                        {/* Email Field */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 {t('exchange.email_label') || 'Email'} *
@@ -420,13 +382,14 @@ export default function ExchangeModal({
                                     errors.email ? 'border-red-500' : 'border-gray-300'
                                 }`}
                                 placeholder={t('exchange.email_placeholder') || 'your.email@example.com'}
+                                disabled={isSubmitting}
                             />
                             {errors.email && (
                                 <p className="text-red-500 text-xs mt-1">{errors.email}</p>
                             )}
                         </div>
 
-              
+                        {/* Phone Field */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 {t('exchange.phone_label') || 'Phone'}
@@ -437,10 +400,11 @@ export default function ExchangeModal({
                                 onChange={(e) => handleInputChange('phone', e.target.value)}
                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                                 placeholder={t('exchange.phone_placeholder') || '+1 (555) 123-4567'}
+                                disabled={isSubmitting}
                             />
                         </div>
 
-        
+                        {/* Company Field */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 {t('exchange.company_label') || 'Company'}
@@ -451,10 +415,11 @@ export default function ExchangeModal({
                                 onChange={(e) => handleInputChange('company', e.target.value)}
                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                                 placeholder={t('exchange.company_placeholder') || 'Your company or organization'}
+                                disabled={isSubmitting}
                             />
                         </div>
 
-        
+                        {/* Message Field */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 {t('exchange.message_label') || 'Message'}
@@ -465,10 +430,11 @@ export default function ExchangeModal({
                                 rows={3}
                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors resize-none"
                                 placeholder={t('exchange.message_placeholder') || 'Optional message or note...'}
+                                disabled={isSubmitting}
                             />
                         </div>
                         
-      
+                        {/* Location Sharing Section */}
                         <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border">
                             <svg className="w-5 h-5 text-gray-400 mt-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -487,19 +453,20 @@ export default function ExchangeModal({
                                     {t('exchange.location_share_description') || 'Optional: Share your current location to help with networking and follow-ups.'}
                                 </p>
                                 
-                        
+                                {/* Location accuracy display */}
                                 {location && location.accuracy && (
                                     <p className="text-xs text-green-600 mt-1">
                                         {t('exchange.location_accuracy') || 'Accuracy'}: ~{Math.round(location.accuracy)}m
                                     </p>
                                 )}
                                 
-                       
-                                {(locationStatus === 'prompt' || locationStatus === 'unavailable') && (
+                                {/* Location request button */}
+                                {(locationPermission.state === 'prompt' || locationPermission.state === 'unavailable') && locationPermission.supported && (
                                     <button
                                         type="button"
                                         onClick={requestLocation}
-                                        className="text-xs font-semibold text-blue-600 hover:text-blue-700 mt-2 flex items-center gap-1"
+                                        disabled={isSubmitting}
+                                        className="text-xs font-semibold text-blue-600 hover:text-blue-700 mt-2 flex items-center gap-1 disabled:opacity-50"
                                     >
                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -510,18 +477,19 @@ export default function ExchangeModal({
                             </div>
                         </div>
 
-                  
+                        {/* Action Buttons */}
                         <div className="flex gap-3 pt-4">
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="flex-1 py-3 px-4 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                                disabled={isSubmitting}
+                                className="flex-1 py-3 px-4 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
                             >
                                 {t('exchange.cancel') || 'Cancel'}
                             </button>
                             <button
                                 type="submit"
-                                disabled={isSubmitting}
+                                disabled={isSubmitting || !profileVerified}
                                 className="flex-1 py-3 px-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium rounded-lg hover:from-blue-600 hover:to-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
                                 {isSubmitting ? (

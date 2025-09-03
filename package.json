@@ -12,6 +12,7 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@google-cloud/vision": "^5.3.3",
+    "@google/generative-ai": "^0.24.1",
     "@googlemaps/js-api-loader": "^1.16.10",
     "@types/react-beautiful-dnd": "^13.1.8",
     "autoprefixer": "10.4.14",

@@ -1,23 +1,26 @@
-// app/dashboard/(dashboard pages)/contacts/components/BusinessCardScanner.jsx - VERSION CORRIGÉE
+// app/dashboard/(dashboard pages)/contacts/components/BusinessCardScanner.jsx - UPDATED VERSION
 "use client"
 
 import { useTranslation } from '@/lib/translation/useTranslation';
 import { toast } from 'react-hot-toast';
 import { useState, useRef, useEffect } from 'react';
-import { scanBusinessCard } from '@/lib/services/contactsService';
-import imageCompression from 'browser-image-compression'; // --- NEW: Import library ---
+import imageCompression from 'browser-image-compression';
+import { ContactServiceFactory } from '@/lib/services/serviceContact/client/factories/ContactServiceFactory';
 
 export default function BusinessCardScanner({ isOpen, onClose, onContactParsed }) {
     const { t } = useTranslation();
     const [isProcessing, setIsProcessing] = useState(false);
     const [capturedImage, setCapturedImage] = useState(null);
-    const [processingStatus, setProcessingStatus] = useState(''); // --- NEW: For detailed status ---
+    const [processingStatus, setProcessingStatus] = useState('');
     const [showCamera, setShowCamera] = useState(false);
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
     const fileInputRef = useRef(null);    
     const [mediaStream, setMediaStream] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
+
+    // Get business card service instance
+    const businessCardService = ContactServiceFactory.getBusinessCardService();
 
     // Media stream management
     useEffect(() => {
@@ -169,7 +172,7 @@ export default function BusinessCardScanner({ isOpen, onClose, onContactParsed }
         console.log('🧹 Input cleared for reuse');
     };
 
-   const processImage = async () => {
+    const processImage = async () => {
         if (!capturedImage) {
             toast.error('No image to process');
             return;
@@ -178,7 +181,7 @@ export default function BusinessCardScanner({ isOpen, onClose, onContactParsed }
         setIsProcessing(true);
         
         try {
-            // --- NEW: Client-Side Image Compression Step ---
+            // Client-side image compression
             setProcessingStatus(t('business_card_scanner.compressing_image') || 'Compressing image...');
             console.log(`Original image size: ${(capturedImage.size / 1024 / 1024).toFixed(2)} MB`);
             
@@ -190,13 +193,12 @@ export default function BusinessCardScanner({ isOpen, onClose, onContactParsed }
             };
             const compressedFile = await imageCompression(capturedImage, options);
             console.log(`Compressed image size: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
-            // --- End of Compression Step ---
 
             setProcessingStatus(t('business_card_scanner.scanning_card') || 'Scanning business card...');
             toast.loading(processingStatus, { id: 'scanning-toast' });
 
-            // The scanBusinessCard service function is robust enough to handle the File object directly
-            const scanResult = await scanBusinessCard(compressedFile);
+            // Use the new BusinessCardService
+            const scanResult = await businessCardService.scanBusinessCard(compressedFile);
 
             toast.dismiss('scanning-toast');
 
@@ -217,7 +219,13 @@ export default function BusinessCardScanner({ isOpen, onClose, onContactParsed }
         } catch (error) {
             toast.dismiss('scanning-toast');
             console.error('❌ Image processing error:', error);
-            toast.error(error.message || t('business_card_scanner.processing_failed') || 'Processing failed');
+            
+            // Handle different error types
+            if (error.type === 'subscription') {
+                toast.error('Business card scanning requires a Pro subscription', { duration: 4000 });
+            } else {
+                toast.error(error.message || t('business_card_scanner.processing_failed') || 'Processing failed');
+            }
         } finally {
             setIsProcessing(false);
             setProcessingStatus('');
@@ -432,7 +440,7 @@ export default function BusinessCardScanner({ isOpen, onClose, onContactParsed }
                                                     {t('business_card_scanner.processing_server') || 'Processing with AI...'}
                                                 </p>
                                                 <p className="text-xs text-blue-700">
-                                                    {t('business_card_scanner.processing_description') || 'Extracting text and QR codes from your business card'}
+                                                    {processingStatus || (t('business_card_scanner.processing_description') || 'Extracting text and QR codes from your business card')}
                                                 </p>
                                             </div>
                                         </div>
@@ -449,25 +457,25 @@ export default function BusinessCardScanner({ isOpen, onClose, onContactParsed }
                                         <span className="sm:hidden">{t('business_card_scanner.retake') || 'Retake'}</span>
                                     </button>
                                     <button
-        onClick={processImage}
-        disabled={isProcessing}
-        className="flex-1 px-3 sm:px-4 py-2 sm:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
-    >
-        {isProcessing ? (
-            <>
-                <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white"></div>
-                <span>{processingStatus || (t('business_card_scanner.processing') || 'Processing...')}</span>
-            </>
-        ) : (
-            <>
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <span className="hidden sm:inline">{t('business_card_scanner.scan_card') || 'Scan Card'}</span>
-                <span className="sm:hidden">{t('business_card_scanner.scan') || 'Scan'}</span>
-            </>
-        )}
-    </button>
+                                        onClick={processImage}
+                                        disabled={isProcessing}
+                                        className="flex-1 px-3 sm:px-4 py-2 sm:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
+                                    >
+                                        {isProcessing ? (
+                                            <>
+                                                <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white"></div>
+                                                <span>{processingStatus || (t('business_card_scanner.processing') || 'Processing...')}</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                </svg>
+                                                <span className="hidden sm:inline">{t('business_card_scanner.scan_card') || 'Scan Card'}</span>
+                                                <span className="sm:hidden">{t('business_card_scanner.scan') || 'Scan'}</span>
+                                            </>
+                                        )}
+                                    </button>
                                 </div>
 
                                 {/* Pro tip */}

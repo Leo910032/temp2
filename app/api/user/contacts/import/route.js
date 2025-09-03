@@ -2,9 +2,9 @@
 // Contact import API route following enterprise pattern
 
 import { NextResponse } from 'next/server';
-import { verifyIdToken } from '@/lib/firebaseAdmin';
+// ✅ CHANGED: Using adminAuth directly from your firebaseAdmin setup
+import { adminAuth } from '@/lib/firebaseAdmin'; 
 import { ContactService } from '@/lib/services/serviceContact/server/contactService';
-import { ContactValidationService } from '@/lib/services/serviceContact/server/contactValidationService';
 import Papa from 'papaparse';
 
 /**
@@ -12,42 +12,34 @@ import Papa from 'papaparse';
  */
 export async function POST(request) {
   try {
-    console.log('📥 POST /api/contacts/import - Importing contacts');
+    console.log('📥 POST /api/contacts/import - Starting contact import process');
 
-    // Authenticate user
+    // 1. Authenticate user
     const authHeader = request.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Authentication required' }, 
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
-
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await verifyIdToken(token);
+    
+    // ✅ CHANGED: Using the standard adminAuth.verifyIdToken method
+    const decodedToken = await adminAuth.verifyIdToken(token);
     const userId = decodedToken.uid;
 
-    // Parse form data
+    // 2. Parse form data and get the file
     const formData = await request.formData();
     const file = formData.get('file');
     const format = formData.get('format') || 'csv';
 
     if (!file) {
-      return NextResponse.json(
-        { error: 'File is required' }, 
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'File is required' }, { status: 400 });
     }
 
-    // Validate file size (max 5MB)
+    // 3. Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json(
-        { error: 'File size must be less than 5MB' }, 
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'File size must be less than 5MB' }, { status: 400 });
     }
 
-    // Parse file based on format
+    // 4. Parse file content into a raw array of objects
     let contactsData = [];
     const fileText = await file.text();
 
@@ -60,101 +52,55 @@ export async function POST(request) {
           const jsonData = JSON.parse(fileText);
           contactsData = Array.isArray(jsonData) ? jsonData : [jsonData];
         } catch (error) {
-          return NextResponse.json(
-            { error: 'Invalid JSON format' }, 
-            { status: 400 }
-          );
+          return NextResponse.json({ error: 'Invalid JSON format' }, { status: 400 });
         }
         break;
       default:
-        return NextResponse.json(
-          { error: 'Unsupported file format' }, 
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'Unsupported file format' }, { status: 400 });
     }
-
-    // Validate import data
-    const validation = ContactValidationService.validateImportData(contactsData);
-    if (!validation.isValid) {
-      return NextResponse.json(
-        { error: validation.errors.join(', ') }, 
-        { status: 400 }
-      );
-    }
-
-    // Import contacts
+    
+    // 5. Import contacts using the service layer
+    // The ContactService will handle the strict validation for each row.
     const result = await ContactService.importContacts(userId, contactsData, `import_${format}`);
 
-    console.log('✅ Contacts imported successfully');
+    console.log('✅ Import process completed by service. Sending result to client.');
     return NextResponse.json(result);
 
   } catch (error) {
-    console.error('❌ Error in POST /api/contacts/import:', error);
+    console.error('❌ Critical Error in POST /api/contacts/import:', error);
     
-    let status = 500;
-    let errorMessage = error.message || 'Failed to import contacts';
-
-    if (error.message?.includes('limit') || error.message?.includes('subscription')) {
-      status = 402;
-    } else if (error.message?.includes('Invalid') || error.message?.includes('format')) {
-      status = 400;
+    // Check if the error is a Firebase Auth error
+    if (error.code && error.code.startsWith('auth/')) {
+        return NextResponse.json({ error: 'Invalid or expired token.' }, { status: 401 });
     }
 
-    return NextResponse.json(
-      { 
-        error: errorMessage,
-        success: false 
-      }, 
-      { status }
-    );
+    let status = 500;
+    let errorMessage = error.message || 'Failed to import contacts due to a server error.';
+
+    if (error.message?.includes('limit') || error.message?.includes('subscription')) {
+      status = 402; // Payment Required
+    } else if (error.message?.includes('Invalid') || error.message?.includes('format')) {
+      status = 400; // Bad Request
+    }
+
+    return NextResponse.json({ error: errorMessage, success: false }, { status });
   }
 }
 
 /**
- * Parse CSV file to contact data
+ * Parse CSV file to a raw array of objects.
  */
 async function parseCSVFile(csvText) {
   return new Promise((resolve, reject) => {
     Papa.parse(csvText, {
       header: true,
-      dynamicTyping: true,
       skipEmptyLines: true,
-      delimitersToGuess: [',', '\t', '|', ';'],
       complete: (results) => {
         if (results.errors.length > 0) {
           reject(new Error(`CSV parsing error: ${results.errors[0].message}`));
           return;
         }
-
-        // Map CSV columns to contact fields
-        const contactsData = results.data.map(row => {
-          const contact = {};
-          
-          // Map common column variations
-          Object.entries(row).forEach(([key, value]) => {
-            const lowerKey = key.toLowerCase().trim();
-            
-            if (lowerKey.includes('name') && !lowerKey.includes('company')) {
-              contact.name = value;
-            } else if (lowerKey.includes('email')) {
-              contact.email = value;
-            } else if (lowerKey.includes('phone') || lowerKey.includes('tel')) {
-              contact.phone = value;
-            } else if (lowerKey.includes('company') || lowerKey.includes('organization')) {
-              contact.company = value;
-            } else if (lowerKey.includes('title') || lowerKey.includes('position')) {
-              contact.jobTitle = value;
-            } else if (lowerKey.includes('website') || lowerKey.includes('url')) {
-              contact.website = value;
-            } else if (lowerKey.includes('message') || lowerKey.includes('note')) {
-              contact.message = value;
-            }
-          });
-
-          return contact;
-        });
-
-        resolve(contactsData);
+        resolve(results.data);
       },
       error: (error) => {
         reject(new Error(`CSV parsing failed: ${error.message}`));

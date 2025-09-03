@@ -1,7 +1,7 @@
-// components/ContactsMap/GroupClusterManager.js - Group Cluster Manager Class
+// components/ContactsMap/GroupClusterManager.js - Enhanced Group Cluster Manager Class
 export default class GroupClusterManager {
     constructor(map, groups, contacts, options = {}) {
-        console.log('🆕 GroupClusterManager v2.2 constructor called');
+        console.log('🆕 GroupClusterManager v2.3 constructor called');
         this.map = map;
         this.groups = groups;
         this.contacts = contacts;
@@ -14,20 +14,26 @@ export default class GroupClusterManager {
                 groupClusters: 12,  // Below zoom 12: show group clusters
                 individualMarkers: 15 // Above zoom 15: show individual markers
             },
-            // INCREASED: A much larger offset for better visibility at low zoom
             collisionOffset: 0.015,
+            // NEW: Maximum distance threshold for "wide" groups (in kilometers)
+            wideGroupThreshold: 500, // 500km - groups wider than this are considered "wide"
             ...options
         };
         
         this.groupMarkers = new Map();
         this.individualMarkers = new Map();
+        this.wideGroups = new Set(); // Track which groups are "wide"
+        this.directionalArrows = new Map();
         this.currentZoom = this.map.getZoom();
         this.isInitialized = false;
+        
+        // Initialize activeContactIds to include all contacts by default
+        this.activeContactIds = new Set(this.contacts.map(c => c.id));
     }
 
     async initialize() {
-        console.log('🚀 Initializing group cluster visualization v2.2');
-        console.log('🆕 VERSION 2.2 - Enhanced with Spider-fying Collision Logic');
+        console.log('🚀 Initializing group cluster visualization v2.3');
+        console.log('🆕 VERSION 2.3 - Enhanced with Wide Group Detection');
         
         if (this.isInitialized) {
             console.log('⚠️ Already initialized, skipping...');
@@ -55,7 +61,6 @@ export default class GroupClusterManager {
     async processGroups() {
         const { AdvancedMarkerElement } = await google.maps.importLibrary('marker');
         
-        // NEW: A map to track marker counts at each coordinate for spider-fying
         const positionCounts = new Map();
 
         for (const [index, group] of this.groups.entries()) {
@@ -71,9 +76,16 @@ export default class GroupClusterManager {
 
             const groupData = this.calculateGroupClusterData(group, contactsWithLocation, index);
             
-            // --- NEW SPIDER-FYING LOGIC ---
+            // NEW: Check if this is a "wide" group
+            const isWideGroup = this.isWideGroup(contactsWithLocation);
+            if (isWideGroup) {
+                this.wideGroups.add(group.id);
+                groupData.isWide = true;
+                console.log(`📏 Wide group detected: ${group.name} (max distance: ${groupData.maxDistance.toFixed(2)}km)`);
+            }
+            
+            // Spider-fying logic
             const originalPosition = groupData.center;
-            // Create a key to group nearly identical coordinates
             const posKey = `${originalPosition.lat.toFixed(5)},${originalPosition.lng.toFixed(5)}`;
             
             const countAtPosition = positionCounts.get(posKey) || 0;
@@ -83,9 +95,7 @@ export default class GroupClusterManager {
             groupData.adjustedPosition = newPosition;
             groupData.isAdjusted = adjusted;
 
-            // Update the count for this coordinate
             positionCounts.set(posKey, countAtPosition + 1);
-            // --- END NEW LOGIC ---
 
             // Create marker using the (potentially adjusted) position
             const groupClusterMarker = await this.createGroupClusterMarker(groupData);
@@ -105,18 +115,36 @@ export default class GroupClusterManager {
             });
         }
     }
+
+    // NEW: Check if a group is "wide" (members are geographically far apart)
+    isWideGroup(contacts) {
+        if (contacts.length < 2) return false;
+        
+        let maxDistance = 0;
+        for (let i = 0; i < contacts.length; i++) {
+            for (let j = i + 1; j < contacts.length; j++) {
+                const distance = this.calculateDistance(
+                    contacts[i].location.latitude,
+                    contacts[i].location.longitude,
+                    contacts[j].location.latitude,
+                    contacts[j].location.longitude
+                ) / 1000; // Convert to kilometers
+                
+                maxDistance = Math.max(maxDistance, distance);
+            }
+        }
+        
+        return maxDistance > this.options.wideGroupThreshold;
+    }
     
-    // NEW: Robust function to spread out overlapping markers
     getSpiderfiedPosition(position, count) {
         if (count === 0) {
-            // This is the first marker. Place it at the center.
             console.log(`📍 Placing first marker for position: ${position.lat.toFixed(5)}, ${position.lng.toFixed(5)}`);
             return { newPosition: position, adjusted: false };
         }
         
         console.log(`💥 Collision #${count} detected at ${position.lat.toFixed(5)}, ${position.lng.toFixed(5)}. Spider-fying...`);
 
-        // Use a spiral formula for ever-increasing separation
         const angle = count * 0.5;
         const separation = this.options.collisionOffset * Math.sqrt(count);
 
@@ -130,11 +158,25 @@ export default class GroupClusterManager {
         return { newPosition, adjusted: true };
     }
 
-
     calculateGroupClusterData(group, contactsWithLocation, colorIndex) {
         const center = this.calculateCenter(contactsWithLocation);
         const radius = this.calculateRadius(contactsWithLocation, center);
         const color = this.options.groupColors[colorIndex % this.options.groupColors.length];
+        
+        // NEW: Calculate maximum distance between any two contacts
+        let maxDistance = 0;
+        for (let i = 0; i < contactsWithLocation.length; i++) {
+            for (let j = i + 1; j < contactsWithLocation.length; j++) {
+                const distance = this.calculateDistance(
+                    contactsWithLocation[i].location.latitude,
+                    contactsWithLocation[i].location.longitude,
+                    contactsWithLocation[j].location.latitude,
+                    contactsWithLocation[j].location.longitude
+                ) / 1000; // Convert to kilometers
+                
+                maxDistance = Math.max(maxDistance, distance);
+            }
+        }
         
         return {
             group: group,
@@ -143,7 +185,8 @@ export default class GroupClusterManager {
             radius: radius,
             color: color,
             memberCount: contactsWithLocation.length,
-            bounds: this.calculateBounds(contactsWithLocation)
+            bounds: this.calculateBounds(contactsWithLocation),
+            maxDistance: maxDistance // NEW: Add max distance
         };
     }
 
@@ -198,23 +241,83 @@ export default class GroupClusterManager {
         
         const marker = new AdvancedMarkerElement({
             map: null,
-            // Use the adjusted position for the marker
             position: groupData.adjustedPosition, 
             content: clusterElement,
-            title: `${groupData.group.name} (${groupData.memberCount} members) - Position adjusted: ${groupData.isAdjusted}`,
+            title: `${groupData.group.name} (${groupData.memberCount} members)${groupData.isWide ? ' - Wide group' : ''}`,
         });
 
         clusterElement.addEventListener('click', () => {
-            this.zoomToGroup(groupData);
+            if (groupData.isWide) {
+                // For wide groups, show a message and then zoom to bounds
+                this.showWideGroupMessage(groupData);
+                setTimeout(() => {
+                    this.zoomToGroup(groupData);
+                }, 1500); // Delay to let user read the message
+            } else {
+                this.zoomToGroup(groupData);
+            }
         });
 
         return marker;
+    }
+
+    // NEW: Show message for wide groups
+    showWideGroupMessage(groupData) {
+        // Create a temporary message overlay
+        const messageContainer = document.createElement('div');
+        messageContainer.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 500;
+            text-align: center;
+            z-index: 10000;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            line-height: 1.4;
+        `;
+        
+        messageContainer.innerHTML = `
+            <div style="margin-bottom: 8px;">📏 Wide Group Detected</div>
+            <div style="font-size: 14px; opacity: 0.9;">
+                "${groupData.group.name}" has members spread across 
+                ${Math.round(groupData.maxDistance)}km. 
+                Zooming to show all members...
+            </div>
+        `;
+        
+        document.body.appendChild(messageContainer);
+        
+        // Fade in
+        messageContainer.style.opacity = '0';
+        requestAnimationFrame(() => {
+            messageContainer.style.transition = 'opacity 0.3s ease';
+            messageContainer.style.opacity = '1';
+        });
+        
+        // Remove after delay
+        setTimeout(() => {
+            messageContainer.style.opacity = '0';
+            setTimeout(() => {
+                if (document.body.contains(messageContainer)) {
+                    document.body.removeChild(messageContainer);
+                }
+            }, 300);
+        }, 1200);
     }
 
     createClusterElement(groupData, isAdjusted = false) {
         const container = document.createElement('div');
         container.className = 'group-cluster-container';
         if(isAdjusted) container.title = 'Position adjusted to avoid overlap';
+        if(groupData.isWide) container.title += ' - Wide group (members far apart)';
+        
         container.style.cssText = `
             position: relative;
             cursor: pointer;
@@ -223,8 +326,14 @@ export default class GroupClusterManager {
 
         const circle = document.createElement('div');
         circle.className = 'group-cluster-circle';
-        // Add a dashed border if the position was adjusted
-        const borderStyle = isAdjusted ? '3px dashed white' : '3px solid white';
+        
+        // Different styling for wide groups
+        const borderStyle = groupData.isWide 
+            ? '3px dotted white' 
+            : isAdjusted 
+                ? '3px dashed white' 
+                : '3px solid white';
+        
         circle.style.cssText = `
             width: ${Math.max(40, Math.min(80, groupData.memberCount * 8))}px;
             height: ${Math.max(40, Math.min(80, groupData.memberCount * 8))}px;
@@ -236,7 +345,21 @@ export default class GroupClusterManager {
             align-items: center;
             justify-content: center;
             transition: all 0.2s ease;
+            ${groupData.isWide ? 'animation: pulse-wide 2s infinite;' : ''}
         `;
+
+        // Add CSS animation for wide groups
+        if (groupData.isWide && !document.getElementById('wide-group-animation')) {
+            const style = document.createElement('style');
+            style.id = 'wide-group-animation';
+            style.textContent = `
+                @keyframes pulse-wide {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.7; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
 
         const count = document.createElement('span');
         count.textContent = groupData.memberCount.toString();
@@ -281,7 +404,13 @@ export default class GroupClusterManager {
         `;
         popup.appendChild(arrow);
         
-        const popupText = isAdjusted ? `${groupData.group.name} (Position adjusted)` : groupData.group.name;
+        let popupText = groupData.group.name;
+        if (groupData.isWide) {
+            popupText += ` (Wide: ${Math.round(groupData.maxDistance)}km)`;
+        } else if (isAdjusted) {
+            popupText += ` (Position adjusted)`;
+        }
+        
         popup.innerHTML = `${popupText}<br><small>${groupData.memberCount} members</small>` + popup.innerHTML;
 
         container.addEventListener('mouseenter', () => {
@@ -632,7 +761,6 @@ export default class GroupClusterManager {
 
     showMixedView() {
         this.groupMarkers.forEach((groupInfo, groupId) => {
-            // In mixed view, show a cluster if the group is large, otherwise show individuals
             const shouldShowCluster = groupInfo.data.memberCount >= 3; 
             const individualInfo = this.individualMarkers.get(groupId);
 
@@ -657,7 +785,6 @@ export default class GroupClusterManager {
             }
         });
 
-        // Always show ungrouped contacts in mixed view
         const ungroupedInfo = this.individualMarkers.get('ungrouped');
         if (ungroupedInfo && !ungroupedInfo.visible) {
             ungroupedInfo.markers.forEach(({ marker }) => marker.map = this.map);
@@ -680,6 +807,7 @@ export default class GroupClusterManager {
         this.cleanup();
         this.groups = groups;
         this.contacts = contacts;
+        this.wideGroups.clear(); // Clear wide groups tracking
         this.isInitialized = false;
         await this.initialize();
     }
@@ -697,6 +825,7 @@ export default class GroupClusterManager {
         
         this.groupMarkers.clear();
         this.individualMarkers.clear();
+        this.wideGroups.clear();
         console.log('🧹 Cleaned up old markers.');
     }
 
@@ -705,7 +834,8 @@ export default class GroupClusterManager {
             currentZoom: this.currentZoom,
             groupMarkersVisible: Array.from(this.groupMarkers.values()).filter(g => g.visible).length,
             individualMarkersVisible: Array.from(this.individualMarkers.values())
-                .reduce((total, markerInfo) => total + (markerInfo.visible ? markerInfo.markers.length : 0), 0)
+                .reduce((total, markerInfo) => total + (markerInfo.visible ? markerInfo.markers.length : 0), 0),
+            wideGroupsCount: this.wideGroups.size
         };
     }
 }

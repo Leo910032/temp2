@@ -1,4 +1,4 @@
-// app/api/contacts/groups/route.js
+// app/api/user/contacts/groups/route.js
 import { NextResponse } from 'next/server';
 import { ContactGroupService } from '@/lib/services/serviceContact/server/contactService';
 import { adminAuth } from '@/lib/firebaseAdmin';

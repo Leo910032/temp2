@@ -29,3 +29,5 @@ if (!getApps().length) {
 export const fireApp = getFirestore(app);
 export const appStorage = getStorage(app);
 export const auth = getAuth(app);
+// ✅ ADD THIS LINE TO FIX THE EXPORT PROBLEM
+export { app };

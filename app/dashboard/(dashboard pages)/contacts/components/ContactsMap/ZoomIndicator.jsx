@@ -1,4 +1,6 @@
-// components/ContactsMap/ZoomIndicator.jsx
+
+//UPDATED
+// app/dashboard/(dashboard pages)/contacts/components/ContactsMap/ZoomIndicator.jsx
 import React from 'react';
 
 export function ZoomIndicator({ isLoaded, currentZoom, clusterState }) {

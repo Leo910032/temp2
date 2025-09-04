@@ -1,4 +1,4 @@
-// scripts/generateRandomContacts.js - Random Contact Generator with Event Locations
+// scripts/generateRandomContacts.js - Random Contact Generator with Event Locations and Notes
 import { adminDb } from '@/lib/firebaseAdmin';
 
 // ✅ REAL EVENT LOCATIONS FROM SEARCH RESULTS
@@ -294,6 +294,94 @@ const EMAIL_DOMAINS = [
     'protonmail.com', 'company.com', 'work.co', 'tech.io', 'dev.org'
 ];
 
+// ✅ NEW: NOTE TEMPLATES FOR TESTING AI FEATURES
+const NOTE_TEMPLATES = {
+    // Company matching scenarios - test gemini-1.5-flash on PRO tier
+    companyMatching: [
+        "Works at Microsoft Corp - seems senior in cloud division",
+        "Microsoft employee, mentioned Azure partnerships",
+        "From Microsoft Inc., works on enterprise solutions",
+        "MSFT - cloud architect, very knowledgeable",
+        "Microsoft Corporation - talked about Teams integration",
+        "Works at Apple Inc. - iOS development team",
+        "Apple employee, mentioned App Store policies",
+        "From Apple Corporation, works on privacy features",
+        "AAPL - hardware engineer, iPhone team",
+        "Apple Inc - discussed AR/VR roadmap",
+        "Google LLC employee, search algorithms",
+        "Works at Google Inc. - ads platform team",
+        "Googler - mentioned Bard and AI initiatives",
+        "Google Corporation, cloud sales",
+        "GOOGL - YouTube product manager"
+    ],
+
+    // Industry detection scenarios - test on PREMIUM tier
+    industryDetection: [
+        "Fintech startup founder, building payment solutions",
+        "Healthcare AI company, FDA approval process",
+        "EdTech platform for K-12 schools",
+        "Cybersecurity consultant, penetration testing",
+        "Real estate PropTech, blockchain property records",
+        "Automotive software, autonomous driving",
+        "Retail e-commerce, supply chain optimization",
+        "Energy sector, smart grid technology",
+        "Agriculture tech, IoT sensors for farms",
+        "Gaming industry, mobile game monetization",
+        "Media streaming, content recommendation engines",
+        "Legal tech, contract analysis automation",
+        "Insurance claims processing AI",
+        "Manufacturing robotics, factory automation",
+        "Transportation logistics, route optimization"
+    ],
+
+    // Relationship detection scenarios - test on BUSINESS tier
+    relationshipDetection: [
+        "Introduced me to Sarah Johnson at Salesforce",
+        "Worked with Mike Chen at previous company",
+        "College roommate, now at startup",
+        "Met through Jennifer at networking event",
+        "Vendor relationship, provides API services",
+        "Client from Q3 project, very satisfied",
+        "Competitor but friendly, share market insights",
+        "Board advisor to our company",
+        "Potential hire, strong Python skills",
+        "Partnership opportunity, complementary products",
+        "Investor connection, Series A round",
+        "Mentor from accelerator program",
+        "Conference speaker, AI expert",
+        "Customer champion, great testimonial",
+        "Former colleague, left for Google"
+    ],
+
+    // Deep strategic analysis scenarios - test gemini-2.5-pro on ENTERPRISE
+    strategicAnalysis: [
+        "Key decision maker for enterprise software procurement at Fortune 500 company. Budget cycle starts Q1. Previously implemented Salesforce, now evaluating alternatives. Strong relationship with CTO who attended MIT with our founder. Risk: considering competitor solution due to pricing concerns. Opportunity: their current system has integration issues we can solve. Follow-up: send case study from similar customer within 2 weeks.",
+        "Startup founder in stealth mode, AI-powered logistics. Raised $2M seed round led by Sequoia. Team of 12 engineers, mostly ex-Uber. Building solution that could integrate with our platform. Market opportunity: $50B logistics automation. Competitive landscape: competing with established players but has novel IP. Strategic value: potential acquisition target or partnership for market expansion. Next step: intro to our BD team.",
+        "VP of Engineering at mid-stage SaaS company (200 employees). Technical debt issues, considering microservices migration. Budget: $500K for infrastructure overhaul. Decision timeline: next 6 months. Influences: CTO (technical), CEO (cost), CFO (ROI). Our solution addresses 3 of their 5 pain points. Competitive advantage: only vendor with specific compliance certification they need. Risk: internal team wants to build vs buy.",
+        "Government contractor, defense industry. Security clearance required. Procurement process: RFP in Q2, 18-month evaluation cycle. Value: $10M+ multi-year contract. Relationships: knows our advisory board member from previous project. Compliance requirements: FedRAMP, FISMA. Competitive moat: our encryption technology. Timeline: pre-RFP engagement critical. Action: arrange demo with technical evaluation team.",
+        "Healthcare system CIO, 15 hospitals, 50K employees. Digital transformation initiative, $25M budget over 3 years. Pain points: data silos, patient experience, cost reduction. Our platform ROI: 15% cost savings based on similar deployments. Decision committee: CIO, CMIO, CFO. Vendor evaluation: Q4 this year. Competitive position: strong in integration, weak in industry-specific features. Strategy: partner with healthcare software vendor."
+    ],
+
+    // Mixed complexity for general testing
+    general: [
+        "Great conversation about React vs Vue",
+        "Interested in our API documentation",
+        "Looking for JavaScript developers",
+        "Building a mobile app, needs backend help",
+        "Impressed by our company culture",
+        "Asked about remote work policies",
+        "Mentioned they're hiring senior engineers",
+        "Discussed the future of AI in their industry",
+        "Very knowledgeable about cloud architecture",
+        "Potential collaboration opportunity",
+        "Following up on project proposal",
+        "Recommended by mutual connection",
+        "Speaking at upcoming conference",
+        "Recently completed successful funding round",
+        "Expanding into European markets"
+    ]
+};
+
 // ✅ UTILITY FUNCTIONS
 function randomChoice(array) {
     return array[Math.floor(Math.random() * array.length)];
@@ -393,33 +481,97 @@ function generateBusinessCardDetails() {
     };
 }
 
-// ✅ MAIN GENERATION FUNCTIONS
+// ✅ NEW: Generate notes based on testing scenario
+function generateContactNote(scenario = 'mixed', complexity = 'medium') {
+    let notePool = [];
+    
+    switch (scenario) {
+        case 'companyMatching':
+            notePool = NOTE_TEMPLATES.companyMatching;
+            break;
+        case 'industryDetection':
+            notePool = NOTE_TEMPLATES.industryDetection;
+            break;
+        case 'relationshipDetection':
+            notePool = NOTE_TEMPLATES.relationshipDetection;
+            break;
+        case 'strategicAnalysis':
+            notePool = NOTE_TEMPLATES.strategicAnalysis;
+            break;
+        case 'general':
+            notePool = NOTE_TEMPLATES.general;
+            break;
+        case 'mixed':
+        default:
+            // Mix all types based on complexity
+            if (complexity === 'strategic') {
+                notePool = [
+                    ...NOTE_TEMPLATES.strategicAnalysis,
+                    ...NOTE_TEMPLATES.relationshipDetection
+                ];
+            } else if (complexity === 'business') {
+                notePool = [
+                    ...NOTE_TEMPLATES.relationshipDetection,
+                    ...NOTE_TEMPLATES.industryDetection,
+                    ...NOTE_TEMPLATES.companyMatching
+                ];
+            } else if (complexity === 'premium') {
+                notePool = [
+                    ...NOTE_TEMPLATES.industryDetection,
+                    ...NOTE_TEMPLATES.companyMatching,
+                    ...NOTE_TEMPLATES.general
+                ];
+            } else { // pro or basic
+                notePool = [
+                    ...NOTE_TEMPLATES.companyMatching,
+                    ...NOTE_TEMPLATES.general
+                ];
+            }
+            break;
+    }
+    
+    return randomChoice(notePool);
+}
+
+
 export function generateRandomContact(options = {}) {
     const {
         forceEventLocation = false,
         forceRandomLocation = false,
-        eventProbability = 0.4, // 40% chance of being at an event
-        source = null
+        eventProbability = 0.4,
+        source = null,
+        // Note options
+        includeNotes = true,
+        noteScenario = 'mixed',
+        noteComplexity = 'medium',
+        noteProbability = 0.7,
+        // NEW: Message options
+        includeMessages = false,
+        messageProbability = 0.7,
+        forceExchangeForm = false // Force all to be exchange_form for messages
     } = options;
     
     const businessCard = generateBusinessCardDetails();
-    const submittedAt = new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000).toISOString(); // Random time in last 90 days
+    const submittedAt = new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000).toISOString();
     
     let location = null;
     let locationEvent = null;
     let contactSource = source || randomChoice(['business_card_scan', 'exchange_form', 'manual']);
     
+    // NEW: Force exchange_form if we want messages on all contacts
+    if (forceExchangeForm || (includeMessages && Math.random() < messageProbability)) {
+        contactSource = 'exchange_form';
+    }
+    
     // Determine if contact has location
-    const shouldHaveLocation = forceEventLocation || forceRandomLocation || Math.random() < 0.7; // 70% have location
+    const shouldHaveLocation = forceEventLocation || forceRandomLocation || Math.random() < 0.7;
     
     if (shouldHaveLocation) {
         if (forceEventLocation || (!forceRandomLocation && Math.random() < eventProbability)) {
-            // Contact is from an event
             locationEvent = randomChoice(EVENT_LOCATIONS);
-            location = addLocationNoise(locationEvent.location, 1); // Within 1km of event venue
-            contactSource = 'business_card_scan'; // Most event contacts are from business card scans
+            location = addLocationNoise(locationEvent.location, 1);
+            contactSource = forceExchangeForm ? 'exchange_form' : 'business_card_scan';
         } else {
-            // Random location around tech hubs
             location = generateRandomLocation();
         }
     }
@@ -431,7 +583,7 @@ export function generateRandomContact(options = {}) {
         phone: businessCard.phone,
         company: businessCard.company,
         details: businessCard.details,
-        status: randomChoice(['new', 'new', 'new', 'viewed', 'archived']), // 60% new, 25% viewed, 15% archived
+        status: randomChoice(['new', 'new', 'new', 'viewed', 'archived']),
         submittedAt: submittedAt,
         lastModified: submittedAt,
         source: contactSource
@@ -440,9 +592,21 @@ export function generateRandomContact(options = {}) {
     if (location) {
         contact.location = location;
     }
+
+    // Add notes for AI testing
+    if (includeNotes && Math.random() < noteProbability) {
+        contact.notes = generateContactNote(noteScenario, noteComplexity);
+        contact.hasNotes = true;
+        contact.noteLength = contact.notes.length;
+        contact.noteComplexity = noteComplexity;
+        contact.noteScenario = noteScenario;
+    }
     
-    // Add metadata for exchange_form contacts
-    if (contactSource === 'exchange_form') {
+    // NEW: Enhanced message logic - add messages based on probability, not just source
+    const shouldHaveMessage = includeMessages || contactSource === 'exchange_form';
+    
+    if (shouldHaveMessage) {
+        // Add metadata for all contacts that should have messages
         contact.metadata = {
             userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
             referrer: 'https://networking-app.com/profile/tech-pro',
@@ -453,7 +617,7 @@ export function generateRandomContact(options = {}) {
             language: 'en-US'
         };
         
-        // Add message for exchange form contacts
+        // Generate messages
         const messages = [
             `Met at ${locationEvent?.name || 'networking event'}, excited to connect!`,
             'Great conversation about the future of tech!',
@@ -461,7 +625,15 @@ export function generateRandomContact(options = {}) {
             'Nice meeting you at the conference.',
             'Let\'s stay in touch and explore synergies.',
             `Really enjoyed our discussion about ${randomChoice(['AI', 'cloud computing', 'cybersecurity', 'data analytics', 'mobile development'])}.`,
-            'Hope to work together soon!'
+            'Hope to work together soon!',
+            'Great insights on industry trends.',
+            'Excited about potential collaboration.',
+            'Thanks for the business card exchange!',
+            'Looking forward to our follow-up.',
+            `Impressive work at ${businessCard.company}!`,
+            'Let\'s schedule a call next week.',
+            'Valuable networking connection.',
+            'Shared interesting perspectives on tech.'
         ];
         contact.message = randomChoice(messages);
     }
@@ -479,11 +651,21 @@ export function generateRandomContact(options = {}) {
     return contact;
 }
 
+// Update generateRandomContacts function
 export function generateRandomContacts(count, options = {}) {
     const contacts = [];
     const {
-        eventPercentage = 0.4, // 40% from events
-        locationPercentage = 0.7, // 70% have location
+        eventPercentage = 0.4,
+        locationPercentage = 0.7,
+        // Note options
+        includeNotes = false,
+        noteScenario = 'mixed',
+        noteComplexity = 'medium',
+        noteProbability = 0.7,
+        // NEW: Message options
+        includeMessages = false,
+        messageProbability = 1.0, // Default to 100% if messages are enabled
+        forceExchangeForm = false,
         ...otherOptions
     } = options;
     
@@ -494,13 +676,133 @@ export function generateRandomContacts(count, options = {}) {
         const contactOptions = {
             ...otherOptions,
             forceEventLocation: shouldBeFromEvent && shouldHaveLocation,
-            forceRandomLocation: !shouldBeFromEvent && shouldHaveLocation
+            forceRandomLocation: !shouldBeFromEvent && shouldHaveLocation,
+            includeNotes,
+            noteScenario,
+            noteComplexity,
+            noteProbability,
+            // NEW: Pass message options
+            includeMessages,
+            messageProbability,
+            forceExchangeForm
         };
         
         contacts.push(generateRandomContact(contactOptions));
     }
     
     return contacts;
+}
+
+
+// ✅ NEW: Generate contacts optimized for specific AI tier testing
+export function generateContactsForTierTesting(tier, count = 50) {
+    const tierConfigs = {
+        'base': {
+            includeNotes: false, // No AI features
+            noteComplexity: null
+        },
+        'pro': {
+            includeNotes: true,
+            noteScenario: 'companyMatching',
+            noteComplexity: 'pro',
+            noteProbability: 0.8 // 80% have notes for testing
+        },
+        'premium': {
+            includeNotes: true,
+            noteScenario: 'mixed',
+            noteComplexity: 'premium',
+            noteProbability: 0.9 // 90% have notes
+        },
+        'business': {
+            includeNotes: true,
+            noteScenario: 'mixed',
+            noteComplexity: 'business',
+            noteProbability: 0.95 // 95% have notes
+        },
+        'enterprise': {
+            includeNotes: true,
+            noteScenario: 'mixed',
+            noteComplexity: 'strategic',
+            noteProbability: 1.0 // 100% have notes
+        }
+    };
+    
+    const config = tierConfigs[tier] || tierConfigs['pro'];
+    
+    return generateRandomContacts(count, {
+        eventPercentage: 0.6, // Good mix for testing
+        locationPercentage: 0.8,
+        ...config
+    });
+}
+
+// ✅ NEW: Generate test dataset for AI model comparison
+export function generateAITestDataset() {
+    const testSets = {
+        // Test Company Matching (PRO tier - gemini-1.5-flash)
+        companyMatching: generateRandomContacts(25, {
+            includeNotes: true,
+            noteScenario: 'companyMatching',
+            noteComplexity: 'pro',
+            noteProbability: 1.0,
+            eventPercentage: 0.3,
+            locationPercentage: 0.6
+        }),
+        
+        // Test Industry Detection (PREMIUM tier - gemini-1.5-flash)
+        industryDetection: generateRandomContacts(30, {
+            includeNotes: true,
+            noteScenario: 'industryDetection',
+            noteComplexity: 'premium',
+            noteProbability: 1.0,
+            eventPercentage: 0.5,
+            locationPercentage: 0.7
+        }),
+        
+        // Test Relationship Detection (BUSINESS tier - gemini-2.5-flash-lite)
+        relationshipDetection: generateRandomContacts(35, {
+            includeNotes: true,
+            noteScenario: 'relationshipDetection',
+            noteComplexity: 'business',
+            noteProbability: 1.0,
+            eventPercentage: 0.7,
+            locationPercentage: 0.8
+        }),
+        
+        // Test Strategic Analysis (ENTERPRISE tier - gemini-2.5-pro)
+        strategicAnalysis: generateRandomContacts(20, {
+            includeNotes: true,
+            noteScenario: 'strategicAnalysis',
+            noteComplexity: 'strategic',
+            noteProbability: 1.0,
+            eventPercentage: 0.8,
+            locationPercentage: 0.9
+        })
+    };
+    
+    // Combine all test sets
+    const allTestContacts = [
+        ...testSets.companyMatching,
+        ...testSets.industryDetection,
+        ...testSets.relationshipDetection,
+        ...testSets.strategicAnalysis
+    ];
+    
+    return {
+        testSets,
+        allTestContacts,
+        statistics: {
+            total: allTestContacts.length,
+            withNotes: allTestContacts.filter(c => c.hasNotes).length,
+            byComplexity: {
+                pro: allTestContacts.filter(c => c.noteComplexity === 'pro').length,
+                premium: allTestContacts.filter(c => c.noteComplexity === 'premium').length,
+                business: allTestContacts.filter(c => c.noteComplexity === 'business').length,
+                strategic: allTestContacts.filter(c => c.noteComplexity === 'strategic').length
+            },
+            avgNoteLength: allTestContacts.filter(c => c.notes).reduce((sum, c) => sum + c.noteLength, 0) / allTestContacts.filter(c => c.notes).length
+        }
+    };
 }
 
 // ✅ FIREBASE INSERTION FUNCTION
@@ -529,12 +831,14 @@ export async function insertRandomContactsToFirebase(userId, count = 50, options
             viewedContacts: allContacts.filter(c => c.status === 'viewed').length,
             archivedContacts: allContacts.filter(c => c.status === 'archived').length,
             contactsWithLocation: allContacts.filter(c => c.location && c.location.latitude).length,
+            contactsWithNotes: allContacts.filter(c => c.notes && c.notes.length > 0).length,
             lastSubmissionDate: new Date().toISOString(),
             sources: {
                 exchange_form: allContacts.filter(c => c.source === 'exchange_form').length,
                 business_card_scan: allContacts.filter(c => c.source === 'business_card_scan').length,
-                manual: allContacts.filter(c => c.source === 'manual' || !c.source).length,
-                import: allContacts.filter(c => c.source === 'import' || c.source === 'import_csv').length
+                manual: allContacts.filter(c => c.source === 'manual' || (!c.source && !c.testData)).length,
+                import: allContacts.filter(c => c.source === 'import' || c.source === 'import_csv').length,
+                admin_test: allContacts.filter(c => c.source === 'admin_test' || c.testData === true).length
             }
         };
         
@@ -552,6 +856,7 @@ export async function insertRandomContactsToFirebase(userId, count = 50, options
             newGenerated: contacts.length,
             withEvents: contacts.filter(c => c.eventInfo).length,
             withLocation: contacts.filter(c => c.location).length,
+            withNotes: contacts.filter(c => c.notes).length,
             companies: [...new Set(contacts.map(c => c.company))].length,
             events: [...new Set(contacts.filter(c => c.eventInfo).map(c => c.eventInfo.eventName))]
         });
@@ -573,42 +878,42 @@ export async function insertRandomContactsToFirebase(userId, count = 50, options
 // ✅ USAGE EXAMPLES
 
 /*
-// Example 1: Generate 50 random contacts (default mix)
-const contacts = generateRandomContacts(50);
+// Example 1: Generate contacts for testing PRO tier (Company Matching)
+const proTierContacts = generateContactsForTierTesting('pro', 50);
 
-// Example 2: Generate 100 contacts with 60% from events
-const eventContacts = generateRandomContacts(100, {
-    eventPercentage: 0.6,
-    locationPercentage: 0.8
+// Example 2: Generate contacts for testing PREMIUM tier (Industry Detection)
+const premiumTierContacts = generateContactsForTierTesting('premium', 75);
+
+// Example 3: Generate comprehensive AI test dataset
+const aiTestDataset = generateAITestDataset();
+console.log('AI Test Dataset:', aiTestDataset.statistics);
+
+// Example 4: Generate specific scenario for testing
+const companyMatchingTest = generateRandomContacts(30, {
+    includeNotes: true,
+    noteScenario: 'companyMatching',
+    noteComplexity: 'pro',
+    noteProbability: 1.0
 });
 
-// Example 3: Generate contacts for testing auto-grouping
-const testContacts = generateRandomContacts(30, {
-    eventPercentage: 0.8, // 80% from events for better grouping
-    locationPercentage: 0.9 // 90% have location
+// Example 5: Insert test data for specific tier testing
+await insertRandomContactsToFirebase('test_user_pro', 50, {
+    includeNotes: true,
+    noteScenario: 'companyMatching',
+    noteComplexity: 'pro',
+    noteProbability: 0.8
 });
 
-// Example 4: Insert directly to Firebase (replace with actual user ID)
-await insertRandomContactsToFirebase('YOUR_USER_ID_HERE', 75, {
-    eventPercentage: 0.5,
-    locationPercentage: 0.8
-});
-
-// Example 5: Generate specific scenarios for testing
-const cesContacts = generateRandomContacts(20, {
-    forceEventLocation: true // All from events
-});
-
-const randomLocationContacts = generateRandomContacts(15, {
-    forceRandomLocation: true // All have random locations
-});
 */
 
 export default {
     generateRandomContact,
     generateRandomContacts,
+    generateContactsForTierTesting,
+    generateAITestDataset,
     insertRandomContactsToFirebase,
     EVENT_LOCATIONS,
     TECH_COMPANIES,
-    JOB_TITLES
+    JOB_TITLES,
+    NOTE_TEMPLATES
 };

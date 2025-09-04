@@ -1,16 +1,12 @@
-// app/api/admin/generate-contacts/route.js - Generate Random Contacts API (UPDATED)
+// app/api/admin/generate-contacts/route.js - FIXED VERSION
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
-
-// ✅ Import our contact generator
 import { generateRandomContacts } from '../../../../scripts/generateRandomContacts.js';
 
-// ✅ POST - Generate and insert random contacts (UPDATED with test data marking)
 export async function POST(request) {
     try {
         console.log('🎲 POST /api/admin/generate-contacts - Generating random contacts');
 
-        // Authenticate admin user (you can modify this for your needs)
         const authHeader = request.headers.get('Authorization');
         if (!authHeader?.startsWith('Bearer ')) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -20,7 +16,7 @@ export async function POST(request) {
         const decodedToken = await adminAuth.verifyIdToken(token);
         const userId = decodedToken.uid;
 
-        // Parse request body
+        // Parse request body - FIXED: Include all the new options
         const body = await request.json();
         const {
             count = 50,
@@ -28,10 +24,18 @@ export async function POST(request) {
             locationPercentage = 0.7,
             forceEventLocation = false,
             forceRandomLocation = false,
-            targetUserId = null // Allow generating for specific user
+            targetUserId = null,
+            // FIXED: Extract message options from request body
+            includeMessages = false,
+            messageProbability = 1.0,
+            forceExchangeForm = false,
+            // FIXED: Extract note options too
+            includeNotes = true,
+            noteScenario = 'mixed',
+            noteComplexity = 'medium',
+            noteProbability = 0.7
         } = body;
 
-        // Use targetUserId if provided (for admin), otherwise use authenticated user
         const finalUserId = targetUserId || userId;
 
         console.log('🎲 Generation parameters:', {
@@ -40,26 +44,41 @@ export async function POST(request) {
             eventPercentage,
             locationPercentage,
             forceEventLocation,
-            forceRandomLocation
+            forceRandomLocation,
+            // FIXED: Log message options
+            includeMessages,
+            messageProbability,
+            forceExchangeForm,
+            includeNotes,
+            noteProbability
         });
 
-        // Generate random contacts
+        // FIXED: Pass all options to generateRandomContacts
         const rawContacts = generateRandomContacts(count, {
             eventPercentage,
             locationPercentage,
             forceEventLocation,
-            forceRandomLocation
+            forceRandomLocation,
+            // FIXED: Pass through message options
+            includeMessages,
+            messageProbability,
+            forceExchangeForm,
+            // FIXED: Pass through note options
+            includeNotes,
+            noteScenario,
+            noteComplexity,
+            noteProbability
         });
 
-        // ✅ NEW: Mark all generated contacts as test data
+        // Mark all generated contacts as test data
         const contacts = rawContacts.map(contact => ({
             ...contact,
-            testData: true, // Mark as test data for easy identification
-            source: contact.source || 'admin_test', // Ensure source is marked
-            generatedBy: 'admin_panel', // Track generation source
-            generatedAt: new Date().toISOString(), // Track when generated
-            generatedByAdmin: userId, // Track which admin generated it
-            generatedForUser: finalUserId // Track which user it was generated for
+            testData: true,
+            source: contact.source || 'admin_test',
+            generatedBy: 'admin_panel',
+            generatedAt: new Date().toISOString(),
+            generatedByAdmin: userId,
+            generatedForUser: finalUserId
         }));
 
         // Get existing contacts
@@ -71,16 +90,18 @@ export async function POST(request) {
             existingContacts = contactsDoc.data().contacts || [];
         }
 
-        // Add new contacts to the beginning of the array
         const allContacts = [...contacts, ...existingContacts];
 
-        // Calculate statistics
+        // Calculate statistics - FIXED: Include message stats
         const statistics = {
             totalSubmissions: allContacts.length,
             newContacts: allContacts.filter(c => c.status === 'new').length,
             viewedContacts: allContacts.filter(c => c.status === 'viewed').length,
             archivedContacts: allContacts.filter(c => c.status === 'archived').length,
             contactsWithLocation: allContacts.filter(c => c.location && c.location.latitude).length,
+            // FIXED: Add message statistics
+            contactsWithMessages: allContacts.filter(c => c.message && c.message.length > 0).length,
+            contactsWithNotes: allContacts.filter(c => c.notes && c.notes.length > 0).length,
             lastSubmissionDate: new Date().toISOString(),
             sources: {
                 exchange_form: allContacts.filter(c => c.source === 'exchange_form').length,
@@ -89,11 +110,13 @@ export async function POST(request) {
                 import: allContacts.filter(c => c.source === 'import' || c.source === 'import_csv').length,
                 admin_test: allContacts.filter(c => c.source === 'admin_test' || c.testData === true).length
             },
-            // ✅ NEW: Test data statistics
             testDataStats: {
                 totalTestContacts: allContacts.filter(c => c.testData === true).length,
                 testContactsWithLocation: allContacts.filter(c => c.testData === true && c.location && c.location.latitude).length,
                 testContactsFromEvents: allContacts.filter(c => c.testData === true && c.eventInfo).length,
+                // FIXED: Add test data message stats
+                testContactsWithMessages: allContacts.filter(c => c.testData === true && c.message && c.message.length > 0).length,
+                testContactsWithNotes: allContacts.filter(c => c.testData === true && c.notes && c.notes.length > 0).length,
                 lastTestGeneration: new Date().toISOString(),
                 generatedByAdmins: [...new Set(allContacts.filter(c => c.generatedByAdmin).map(c => c.generatedByAdmin))].length
             }
@@ -107,24 +130,30 @@ export async function POST(request) {
             statistics: statistics
         }, { merge: true });
 
-        // Calculate insights for response
+        // Calculate insights for response - FIXED: Include message insights
         const insights = {
             eventsRepresented: [...new Set(contacts.filter(c => c.eventInfo).map(c => c.eventInfo.eventName))],
             companiesRepresented: [...new Set(contacts.map(c => c.company))],
             contactsFromEvents: contacts.filter(c => c.eventInfo).length,
             contactsWithLocation: contacts.filter(c => c.location).length,
+            // FIXED: Add message insights
+            contactsWithMessages: contacts.filter(c => c.message && c.message.length > 0).length,
+            contactsWithNotes: contacts.filter(c => c.notes && c.notes.length > 0).length,
             sourceDistribution: {
                 business_card_scan: contacts.filter(c => c.source === 'business_card_scan').length,
                 exchange_form: contacts.filter(c => c.source === 'exchange_form').length,
                 manual: contacts.filter(c => c.source === 'manual').length,
                 admin_test: contacts.filter(c => c.source === 'admin_test').length
             },
-            // ✅ NEW: Test data specific insights
             testDataInsights: {
                 allMarkedAsTestData: contacts.every(c => c.testData === true),
                 generationTimestamp: new Date().toISOString(),
                 generatedByAdmin: userId,
-                targetUser: finalUserId
+                targetUser: finalUserId,
+                // FIXED: Add message generation insights
+                messageGenerationEnabled: includeMessages,
+                expectedMessagesCount: includeMessages ? Math.round(count * messageProbability) : 0,
+                actualMessagesCount: contacts.filter(c => c.message).length
             }
         };
 
@@ -134,6 +163,9 @@ export async function POST(request) {
             total: allContacts.length,
             withEvents: insights.contactsFromEvents,
             withLocation: insights.contactsWithLocation,
+            // FIXED: Log message generation results
+            withMessages: insights.contactsWithMessages,
+            withNotes: insights.contactsWithNotes,
             testDataMarked: contacts.filter(c => c.testData === true).length
         });
 
@@ -150,6 +182,9 @@ export async function POST(request) {
                     company: contact.company,
                     source: contact.source,
                     hasLocation: !!contact.location,
+                    // FIXED: Include message info in sample
+                    hasMessage: !!contact.message,
+                    hasNotes: !!contact.notes,
                     eventInfo: contact.eventInfo?.eventName || null,
                     testData: contact.testData,
                     generatedBy: contact.generatedBy
@@ -166,7 +201,7 @@ export async function POST(request) {
     }
 }
 
-// ✅ GET - Get generation options and statistics (UPDATED with test data info)
+// GET endpoint remains the same but add message stats
 export async function GET(request) {
     try {
         console.log('📊 GET /api/admin/generate-contacts - Getting generation info');
@@ -178,7 +213,6 @@ export async function GET(request) {
         let testDataInfo = null;
         
         if (userId) {
-            // Get current contact statistics
             const contactsRef = adminDb.collection('Contacts').doc(userId);
             const contactsDoc = await contactsRef.get();
             
@@ -186,11 +220,14 @@ export async function GET(request) {
                 const data = contactsDoc.data();
                 const contacts = data.contacts || [];
                 
-                // Regular stats
+                // Regular stats - FIXED: Include message stats
                 currentStats = {
                     totalContacts: contacts.length,
                     withLocation: contacts.filter(c => c.location && c.location.latitude).length,
                     fromEvents: contacts.filter(c => c.eventInfo).length,
+                    // FIXED: Add message and notes stats
+                    withMessages: contacts.filter(c => c.message && c.message.length > 0).length,
+                    withNotes: contacts.filter(c => c.notes && c.notes.length > 0).length,
                     byStatus: {
                         new: contacts.filter(c => c.status === 'new').length,
                         viewed: contacts.filter(c => c.status === 'viewed').length,
@@ -204,12 +241,15 @@ export async function GET(request) {
                     }
                 };
 
-                // ✅ NEW: Test data specific info
+                // Test data specific info - FIXED: Include message stats
                 const testContacts = contacts.filter(c => c.testData === true);
                 testDataInfo = {
                     totalTestContacts: testContacts.length,
                     testContactsWithLocation: testContacts.filter(c => c.location && c.location.latitude).length,
                     testContactsFromEvents: testContacts.filter(c => c.eventInfo).length,
+                    // FIXED: Add message and notes stats for test data
+                    testContactsWithMessages: testContacts.filter(c => c.message && c.message.length > 0).length,
+                    testContactsWithNotes: testContacts.filter(c => c.notes && c.notes.length > 0).length,
                     testContactsByStatus: {
                         new: testContacts.filter(c => c.status === 'new').length,
                         viewed: testContacts.filter(c => c.status === 'viewed').length,
@@ -245,7 +285,7 @@ export async function GET(request) {
         return NextResponse.json({
             success: true,
             currentStats: currentStats,
-            testDataInfo: testDataInfo, // ✅ NEW: Include test data information
+            testDataInfo: testDataInfo,
             generationOptions: {
                 defaultCount: 50,
                 maxCount: 200,
@@ -253,12 +293,15 @@ export async function GET(request) {
                 defaultLocationPercentage: 0.7,
                 availableEvents: availableEvents.length,
                 availableCompanies: sampleCompanies.length,
-                // ✅ NEW: Test data options
                 testDataFeatures: {
                     autoMarkAsTestData: true,
                     trackGenerationSource: true,
                     enableCleanup: true,
-                    supportsBulkDelete: true
+                    supportsBulkDelete: true,
+                    // FIXED: Add message generation features
+                    supportsMessageGeneration: true,
+                    supportsNoteGeneration: true,
+                    allowsCustomMessageProbability: true
                 }
             },
             examples: {
@@ -267,15 +310,20 @@ export async function GET(request) {
                     params: {
                         count: 75,
                         eventPercentage: 0.6,
-                        locationPercentage: 0.8
+                        locationPercentage: 0.8,
+                        includeMessages: true,
+                        includeNotes: true
                     }
                 },
                 eventFocused: {
-                    description: "Generate mostly event-based contacts",
+                    description: "Generate mostly event-based contacts with messages",
                     params: {
                         count: 50,
                         eventPercentage: 0.8,
-                        locationPercentage: 0.9
+                        locationPercentage: 0.9,
+                        includeMessages: true,
+                        messageProbability: 1.0,
+                        forceExchangeForm: true
                     }
                 },
                 locationSpread: {
@@ -283,16 +331,19 @@ export async function GET(request) {
                     params: {
                         count: 60,
                         eventPercentage: 0.2,
-                        locationPercentage: 0.9
+                        locationPercentage: 0.9,
+                        includeMessages: false,
+                        includeNotes: true
                     }
                 },
-                // ✅ NEW: Test data specific examples
                 cleanupTest: {
                     description: "Small batch for testing cleanup functionality",
                     params: {
                         count: 10,
                         eventPercentage: 0.5,
-                        locationPercentage: 0.5
+                        locationPercentage: 0.5,
+                        includeMessages: true,
+                        includeNotes: false
                     }
                 }
             },

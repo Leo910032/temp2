@@ -112,7 +112,10 @@ export default function ContactsPage() {
         if (!subscriptionStatus) return false;
         return hasContactFeature(subscriptionStatus.subscriptionLevel, feature);
     }, [subscriptionStatus]);
-
+// In your contacts page component
+useEffect(() => {
+    console.log('🔍 [CONTACTS PAGE] subscriptionStatus:', subscriptionStatus);
+}, [subscriptionStatus]);
     // Central handler for contact actions
     const handleContactAction = async (action, data) => {
         const toastId = toast.loading('Updating contact...');
@@ -404,6 +407,8 @@ export default function ContactsPage() {
                 }}
                 loading={loading}
                 hasFeature={hasFeature}
+                    subscriptionStatus={subscriptionStatus} // ← ADD THIS LINE
+
             />
 
             <ShareContactsModal 

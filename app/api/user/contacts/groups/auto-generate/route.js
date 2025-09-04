@@ -1,17 +1,16 @@
-//UPDATED
 // app/api/user/contacts/groups/auto-generate/route.js
+// UPDATED to use the new enhanced AutoGroupService that recreates old functionality
+
 import { NextResponse } from 'next/server';
-import { ContactGroupService } from '@/lib/services/serviceContact/server/contactService';
-import { adminAuth } from '@/lib/firebaseAdmin';
 import { AutoGroupService } from '@/lib/services/serviceContact/server/autoGroupService';
+import { adminAuth } from '@/lib/firebaseAdmin';
 
 export async function POST(request) {
-  // ✅ FIX: Declare startTime and userId at the top of the function's scope.
   const startTime = Date.now();
-  let userId = 'unknown'; // Use 'let' so it can be reassigned inside the try block.
+  let userId = 'unknown';
 
   try {
-    console.log('🤖 API: Auto-generating contact groups');
+    console.log('🤖 API: Auto-generating contact groups with ENHANCED logic');
 
     const authHeader = request.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
@@ -20,18 +19,23 @@ export async function POST(request) {
 
     const token = authHeader.split('Bearer ')[1];
     const decodedToken = await adminAuth.verifyIdToken(token);
-    userId = decodedToken.uid; // Assign the actual userId
+    userId = decodedToken.uid;
 
     const body = await request.json();
     const { options } = body;
     console.log(`🤖 [API Route] Received request to generate auto-groups for user: ${userId}`);
 
-    const result = await AutoGroupService.generateAutoGroups(userId, options);
+    // Use the ENHANCED AutoGroupService that recreates old functionality
+    const result = await AutoGroupService.generateAutoGroups(userId, {
+      ...options,
+      // Ensure time-based grouping is enabled by default (like old system)
+      groupByTime: options.groupByTime !== false,
+      groupByCompany: options.groupByCompany !== false
+    });
     
     const duration = Date.now() - startTime;
     console.log(`✅ [API Route] Successfully generated ${result.groups?.length || 0} groups in ${duration}ms.`);
 
-    // This console.log is a bit redundant with the one above, but it's fine to keep.
     console.log('✅ API: Auto groups generated successfully', {
       userId,
       groupsCreated: result.groups?.length || 0
@@ -39,13 +43,14 @@ export async function POST(request) {
 
     return NextResponse.json({
       success: true,
+      groupsCreated: result.groups?.length || 0,
+      newGroups: result.groups || [],
       ...result
     });
 
   } catch (error) {
     console.error('❌ API Error generating auto groups:', error);
     
-    // ✅ FIX: This now works because startTime is in scope.
     const duration = Date.now() - startTime;
     console.error(`❌ [API Route] Error after ${duration}ms for user ${userId}:`, error.message);
 
@@ -70,16 +75,17 @@ export async function POST(request) {
     }, { status: 500 });
   }
 }
+
 export async function GET(request) {
   return NextResponse.json({
-    message: 'Auto-Generate Contact Groups API',
-    version: '1.0',
-    description: 'Automatically creates contact groups based on various criteria',
+    message: 'Enhanced Auto-Generate Contact Groups API',
+    version: '2.0',
+    description: 'Automatically creates contact groups using advanced email domain analysis and time-based grouping like the original system',
     features: [
-      'Company-based grouping',
+      'Advanced company-based grouping with email domain analysis',
+      'Time-based grouping for event contacts',
       'Location-based grouping (Premium)',
-      'Time-based grouping',
-      'Event-based grouping (Premium)'
+      'Intelligent merging of company name and email domain groups'
     ],
     usage: {
       method: 'POST',
@@ -90,9 +96,9 @@ export async function GET(request) {
       },
       body: {
         options: {
-          groupByCompany: 'boolean (default: true)',
+          groupByCompany: 'boolean (default: true) - Uses advanced email domain analysis',
+          groupByTime: 'boolean (default: true) - Groups contacts added in same time window',
           groupByLocation: 'boolean (default: false)',
-          groupByTime: 'boolean (default: true)',
           groupByEvents: 'boolean (default: false)',
           minGroupSize: 'number (default: 2)',
           maxGroups: 'number (default: 10)'
@@ -102,6 +108,12 @@ export async function GET(request) {
     subscriptionRequirements: {
       basic: ['groupByCompany', 'groupByTime'],
       premium: ['groupByLocation', 'groupByEvents']
+    },
+    enhancements: {
+      emailDomainAnalysis: 'Groups contacts by business email domains (excludes gmail, yahoo, etc)',
+      intelligentMerging: 'Combines company name groups with email domain groups',
+      timeBased: 'Creates groups like "6/24/2025 Event" for contacts added in same time window',
+      subscriptionAware: 'Respects user subscription level and feature access'
     }
   });
 }

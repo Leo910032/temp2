@@ -1,4 +1,4 @@
-// components/admin/AdminContactTestPanel.jsx
+// components/admin/AdminContactTestPanel.jsx - Enhanced with Notes Testing
 "use client"
 import { useState, useEffect } from 'react';
 
@@ -8,68 +8,188 @@ export default function AdminContactTestPanel({ targetUser, onGenerate, onCleanu
     const [isLoadingInfo, setIsLoadingInfo] = useState(true);
     const [selectedScenario, setSelectedScenario] = useState('realisticMix');
     const [showAdvanced, setShowAdvanced] = useState(false);
-    const [customOptions, setCustomOptions] = useState({
-        count: 50,
-        eventPercentage: 0.4,
-        locationPercentage: 0.7,
-        forceEventLocation: false,
-        forceRandomLocation: false
-    });
-
-    // API-based generation scenarios
+  const [customOptions, setCustomOptions] = useState({
+    count: 50,
+    eventPercentage: 0.4,
+    locationPercentage: 0.7,
+    forceEventLocation: false,
+    forceRandomLocation: false,
+    // Note options
+    includeNotes: true,
+    noteScenario: 'mixed',
+    noteComplexity: 'medium',
+    noteProbability: 0.7,
+    // NEW: Message options
+    includeMessages: true,
+    messageProbability: 1.0,
+    forceExchangeForm: true
+});
+    // Enhanced generation scenarios with AI testing focus
     const GENERATION_SCENARIOS = {
+        // AI Tier Testing Scenarios
+        proTierTest: {
+            name: 'PRO Tier Test (Company Matching)',
+            description: 'Test gemini-1.5-flash company matching with optimized notes',
+            params: {
+                count: 50,
+                eventPercentage: 0.3,
+                locationPercentage: 0.6,
+                includeNotes: true,
+                noteScenario: 'companyMatching',
+                noteComplexity: 'pro',
+                noteProbability: 0.8
+            },
+            aiFeature: 'Smart Company Matching',
+            model: 'gemini-1.5-flash'
+        },
+        premiumTierTest: {
+            name: 'PREMIUM Tier Test (Industry Detection)',
+            description: 'Test industry detection AI with varied industry notes',
+            params: {
+                count: 75,
+                eventPercentage: 0.5,
+                locationPercentage: 0.7,
+                includeNotes: true,
+                noteScenario: 'industryDetection',
+                noteComplexity: 'premium',
+                noteProbability: 0.9
+            },
+            aiFeature: 'Industry Detection',
+            model: 'gemini-1.5-flash'
+        },
+        businessTierTest: {
+            name: 'BUSINESS Tier Test (Relationship Detection)',
+            description: 'Test relationship detection with gemini-2.5-flash-lite',
+            params: {
+                count: 60,
+                eventPercentage: 0.7,
+                locationPercentage: 0.8,
+                includeNotes: true,
+                noteScenario: 'relationshipDetection',
+                noteComplexity: 'business',
+                noteProbability: 0.95
+            },
+            aiFeature: 'Relationship Detection',
+            model: 'gemini-2.5-flash-lite'
+        },
+        enterpriseTierTest: {
+            name: 'ENTERPRISE Tier Test (Strategic Analysis)',
+            description: 'Test deep strategic analysis with gemini-2.5-pro',
+            params: {
+                count: 30,
+                eventPercentage: 0.8,
+                locationPercentage: 0.9,
+                includeNotes: true,
+                noteScenario: 'strategicAnalysis',
+                noteComplexity: 'strategic',
+                noteProbability: 1.0
+            },
+            aiFeature: 'Deep Strategic Analysis',
+            model: 'gemini-2.5-pro'
+        },
+        
+        // Original scenarios (enhanced with notes)
         autoGroupingTest: {
             name: 'Auto-Grouping Test',
-            description: 'Optimized for testing automatic group generation by company, location, and events',
+            description: 'Optimized for testing automatic group generation with varied notes',
             params: {
                 count: 75,
                 eventPercentage: 0.6,
-                locationPercentage: 0.8
+                locationPercentage: 0.8,
+                includeNotes: true,
+                noteScenario: 'mixed',
+                noteComplexity: 'medium',
+                noteProbability: 0.7
             }
         },
         eventNetworking: {
             name: 'Event Networking',
-            description: 'Simulates heavy event networking with most contacts from conferences',
+            description: 'Heavy event networking with relationship notes',
             params: {
                 count: 60,
                 eventPercentage: 0.8,
-                locationPercentage: 0.9
+                locationPercentage: 0.9,
+                includeNotes: true,
+                noteScenario: 'relationshipDetection',
+                noteComplexity: 'business',
+                noteProbability: 0.8
             }
         },
         techHubSpread: {
             name: 'Tech Hub Spread',
-            description: 'Contacts spread across different tech hubs for location testing',
+            description: 'Contacts across tech hubs with industry notes',
             params: {
                 count: 50,
                 eventPercentage: 0.2,
-                locationPercentage: 0.9
+                locationPercentage: 0.9,
+                includeNotes: true,
+                noteScenario: 'industryDetection',
+                noteComplexity: 'premium',
+                noteProbability: 0.75
             }
         },
         realisticMix: {
             name: 'Realistic Mix',
-            description: 'Balanced mix that simulates real-world contact collection',
+            description: 'Balanced mix with varied note complexity for general testing',
             params: {
-                count: 100,
-                eventPercentage: 0.4,
-                locationPercentage: 0.7
+                    count: 100,
+            eventPercentage: 0.4,
+            locationPercentage: 0.7,
+            includeNotes: true,
+            noteScenario: 'mixed',
+            noteComplexity: 'medium',
+            noteProbability: 0.7,
+            includeMessages: true,
+            messageProbability: 0.8,
+            forceExchangeForm: false // Mix of sources
             }
         },
         allEvents: {
             name: 'All Events',
-            description: 'All contacts from events (perfect for event grouping tests)',
+            description: 'All contacts from events with high-value relationship notes',
             params: {
-                count: 40,
-                forceEventLocation: true,
-                locationPercentage: 1.0
+                  count: 100,
+            eventPercentage: 0.4,
+            locationPercentage: 0.7,
+            includeNotes: true,
+            noteScenario: 'mixed',
+            noteComplexity: 'medium',
+            noteProbability: 0.7,
+            includeMessages: true,
+            messageProbability: 0.8,
+            forceExchangeForm: false // Mix of sources
             }
         },
         allRandom: {
             name: 'All Random',
-            description: 'All contacts from random locations (no events)',
+            description: 'Random locations with basic notes for baseline testing',
             params: {
-                count: 30,
-                forceRandomLocation: true,
-                eventPercentage: 0
+                count: 100,
+            eventPercentage: 0.4,
+            locationPercentage: 0.7,
+            includeNotes: true,
+            noteScenario: 'mixed',
+            noteComplexity: 'medium',
+            noteProbability: 0.7,
+            includeMessages: true,
+            messageProbability: 0.8,
+            forceExchangeForm: false // Mix of sources
+            }
+        },
+        noNotesBaseline: {
+            name: 'No Notes Baseline',
+            description: 'Contacts without notes for comparison testing',
+            params: {
+                  count: 100,
+            eventPercentage: 0.4,
+            locationPercentage: 0.7,
+            includeNotes: true,
+            noteScenario: 'mixed',
+            noteComplexity: 'medium',
+            noteProbability: 0.7,
+            includeMessages: true,
+            messageProbability: 0.8,
+            forceExchangeForm: false // Mix of sources
             }
         }
     };
@@ -106,7 +226,7 @@ export default function AdminContactTestPanel({ targetUser, onGenerate, onCleanu
                 : scenarioConfig.params;
 
             const result = await onGenerate(options);
-            await loadGenerationInfo(); // Refresh stats
+            await loadGenerationInfo();
 
         } catch (error) {
             console.error('Generation error:', error);
@@ -159,14 +279,14 @@ export default function AdminContactTestPanel({ targetUser, onGenerate, onCleanu
                 </div>
             </div>
 
-            {/* Current Stats */}
+            {/* Current Stats - Enhanced with Notes Info */}
             {generationInfo?.currentStats && (
                 <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4">
                     <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
                         <span className="mr-2">📊</span>
                         Current Contact Statistics
                     </h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
                         <div className="text-center">
                             <div className="text-2xl font-bold text-blue-600">
                                 {generationInfo.currentStats.totalContacts}
@@ -186,6 +306,12 @@ export default function AdminContactTestPanel({ targetUser, onGenerate, onCleanu
                             <div className="text-xs text-gray-600 font-medium">From Events</div>
                         </div>
                         <div className="text-center">
+                            <div className="text-2xl font-bold text-amber-600">
+                                {generationInfo.currentStats.withNotes || 0}
+                            </div>
+                            <div className="text-xs text-gray-600 font-medium">With Notes</div>
+                        </div>
+                        <div className="text-center">
                             <div className="text-2xl font-bold text-orange-600">
                                 {generationInfo.currentStats.bySource.admin_test || 0}
                             </div>
@@ -197,305 +323,268 @@ export default function AdminContactTestPanel({ targetUser, onGenerate, onCleanu
                     {generationInfo.testDataInfo?.totalTestContacts > 0 && (
                         <div className="mt-4 pt-4 border-t border-gray-200">
                             <div className="flex items-center justify-between">
-                                <div className="text-sm text-gray-700">
-                                    <span className="font-medium text-red-600">{generationInfo.testDataInfo.totalTestContacts}</span> test contacts found
-                                    {generationInfo.testDataInfo.lastTestGeneration && (
-                                        <span className="text-gray-500 ml-2">
-                                            (Last: {new Date(generationInfo.testDataInfo.lastTestGeneration).toLocaleDateString()})
-                                        </span>
-                                    )}
-                                </div>
-                                <button
-                                    onClick={onCleanup}
-                                    disabled={loading}
-                                    className="px-3 py-1 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
-                                >
-                                    {loading ? '🗑️ Cleaning...' : '🗑️ Delete Test Data'}
-                                </button>
-                            </div>
+                                <div className="text-smtext-gray-700">
+<p>
+<span className="font-semibold">{generationInfo.testDataInfo.totalTestContacts}</span> test contacts found.
+</p>
+<p className="text-xs text-gray-500">
+Generated by the admin panel for this user.
+</p>
+</div>
+<button
+onClick={onCleanup}
+disabled={loading || isGenerating}
+className="px-4 py-2 text-sm font-semibold text-red-700 bg-red-100 border border-red-200 rounded-md hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+>
+{loading ? 'Cleaning...' : 'Cleanup Test Data'}
+</button>
+</div>
+</div>
+)}
+</div>
+)}
+
+code
+Code
+download
+content_copy
+expand_less
+
+{/* Scenario-based Generation */}
+        <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+            <h4 className="text-base font-semibold text-gray-800 mb-3">
+                Scenario-based Generation
+            </h4>
+            <p className="text-sm text-gray-600 mb-4">
+                Select a pre-defined scenario to generate a specific type of test data. These are optimized for testing AI features and common use cases.
+            </p>
+
+            <div className="space-y-4">
+                <div>
+                    <label htmlFor="scenario-select" className="block text-sm font-medium text-gray-700 mb-1">
+                        Select Scenario
+                    </label>
+                    <select
+                        id="scenario-select"
+                        value={selectedScenario}
+                        onChange={(e) => setSelectedScenario(e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    >
+                        {Object.entries(GENERATION_SCENARIOS).map(([key, scenario]) => (
+                            <option key={key} value={key}>
+                                {scenario.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Scenario Details */}
+                <div className="bg-gray-50 rounded-md p-3 text-sm text-gray-700 border border-gray-200">
+                    <p className="font-semibold">{GENERATION_SCENARIOS[selectedScenario].name}</p>
+                    <p className="text-xs text-gray-600 mt-1">{GENERATION_SCENARIOS[selectedScenario].description}</p>
+                    {GENERATION_SCENARIOS[selectedScenario].aiFeature && (
+                        <div className="mt-2 text-xs flex items-center space-x-4">
+                            <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-medium">
+                                AI Feature: {GENERATION_SCENARIOS[selectedScenario].aiFeature}
+                            </span>
+                            <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-medium">
+                                Model: {GENERATION_SCENARIOS[selectedScenario].model}
+                            </span>
                         </div>
                     )}
                 </div>
-            )}
 
-            {!showAdvanced ? (
-                // Simple Mode - Quick Actions
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-gray-900 flex items-center">
-                            <span className="mr-2">⚡</span>
-                            Quick Actions
-                        </h4>
-                        <button
-                            onClick={() => setShowAdvanced(!showAdvanced)}
-                            className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
-                        >
-                            Advanced Mode
-                        </button>
-                    </div>
-                    
-                    {/* Quick Generation Buttons */}
-                    <div className="grid gap-3">
-                        <button
-                            onClick={() => handleQuickGenerate('autoGroupingTest')}
-                            disabled={isGenerating || loading}
-                            className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-xl hover:from-purple-100 hover:to-purple-150 disabled:opacity-50 transition-all duration-200 group"
-                        >
-                            <div className="text-left">
-                                <div className="font-semibold text-purple-900">🎯 Auto-Grouping Test</div>
-                                <div className="text-sm text-purple-700">75 contacts optimized for testing group features</div>
-                            </div>
-                            <div className="text-purple-600 group-hover:scale-110 transition-transform">▶️</div>
-                        </button>
-
-                        <button
-                            onClick={() => handleQuickGenerate('eventNetworking')}
-                            disabled={isGenerating || loading}
-                            className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl hover:from-blue-100 hover:to-blue-150 disabled:opacity-50 transition-all duration-200 group"
-                        >
-                            <div className="text-left">
-                                <div className="font-semibold text-blue-900">🏢 Event Networking</div>
-                                <div className="text-sm text-blue-700">60 contacts mostly from tech conferences</div>
-                            </div>
-                            <div className="text-blue-600 group-hover:scale-110 transition-transform">▶️</div>
-                        </button>
-
-                        <button
-                            onClick={() => handleQuickGenerate('realisticMix')}
-                            disabled={isGenerating || loading}
-                            className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl hover:from-green-100 hover:to-green-150 disabled:opacity-50 transition-all duration-200 group"
-                        >
-                            <div className="text-left">
-                                <div className="font-semibold text-green-900">⚖️ Realistic Mix</div>
-                                <div className="text-sm text-green-700">100 contacts with balanced distribution</div>
-                            </div>
-                            <div className="text-green-600 group-hover:scale-110 transition-transform">▶️</div>
-                        </button>
-
-                        {/* Quick Size Variants */}
-                        <div className="grid grid-cols-3 gap-2 pt-2">
-                            <button
-                                onClick={() => handleQuickGenerate('realisticMix', 25)}
-                                disabled={isGenerating || loading}
-                                className="p-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-50 text-sm font-medium text-gray-700 transition-colors"
-                            >
-                                Small (25)
-                            </button>
-                            <button
-                                onClick={() => handleQuickGenerate('realisticMix', 100)}
-                                disabled={isGenerating || loading}
-                                className="p-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-50 text-sm font-medium text-gray-700 transition-colors"
-                            >
-                                Medium (100)
-                            </button>
-                            <button
-                                onClick={() => handleQuickGenerate('realisticMix', 200)}
-                                disabled={isGenerating || loading}
-                                className="p-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-50 text-sm font-medium text-gray-700 transition-colors"
-                            >
-                                Large (200)
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            ) : (
-                // Advanced Mode - Full Control
-                <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-gray-900 flex items-center">
-                            <span className="mr-2">🛠️</span>
-                            Advanced Generation Options
-                        </h4>
-                        <button
-                            onClick={() => setShowAdvanced(!showAdvanced)}
-                            className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
-                        >
-                            Simple Mode
-                        </button>
-                    </div>
-
-                    {/* Scenario Selection */}
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            📋 Predefined Scenario
-                        </label>
-                        <select
-                            value={selectedScenario}
-                            onChange={(e) => setSelectedScenario(e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                        >
-                            {Object.entries(GENERATION_SCENARIOS).map(([key, scenario]) => (
-                                <option key={key} value={key}>
-                                    {scenario.name} - {scenario.description}
-                                </option>
-                            ))}
-                        </select>
-                        <button
-                            onClick={handleScenarioGenerate}
-                            disabled={isGenerating || loading}
-                            className="mt-3 w-full px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 font-medium transition-colors"
-                        >
-                            {isGenerating || loading ? '⏳ Generating...' : '🚀 Run Selected Scenario'}
-                        </button>
-                    </div>
-
-                    <div className="border-t pt-6">
-                        <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center">
-                            <span className="mr-2">🛠️</span>
-                            Custom Generation Options
-                        </h4>
-                        
-                        {/* Contact Count */}
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Number of Contacts: <span className="font-bold text-blue-600">{customOptions.count}</span>
-                            </label>
-                            <input
-                                type="range"
-                                min="5"
-                                max="300"
-                                step="5"
-                                value={customOptions.count}
-                                onChange={(e) => setCustomOptions(prev => ({ 
-                                    ...prev, 
-                                    count: parseInt(e.target.value) 
-                                }))}
-                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                            />
-                            <div className="flex justify-between text-xs text-gray-500 mt-1">
-                                <span>5</span>
-                                <span>300</span>
-                            </div>
-                        </div>
-
-                        {/* Event Percentage */}
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Event Contacts: <span className="font-bold text-purple-600">{Math.round(customOptions.eventPercentage * 100)}%</span>
-                            </label>
-                            <input
-                                type="range"
-                                min="0"
-                                max="1"
-                                step="0.05"
-                                value={customOptions.eventPercentage}
-                                onChange={(e) => setCustomOptions(prev => ({ 
-                                    ...prev, 
-                                    eventPercentage: parseFloat(e.target.value) 
-                                }))}
-                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                            />
-                            <div className="flex justify-between text-xs text-gray-500 mt-1">
-                                <span>0% (Random locations)</span>
-                                <span>100% (All from events)</span>
-                            </div>
-                        </div>
-
-                        {/* Location Percentage */}
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                With Location Data: <span className="font-bold text-green-600">{Math.round(customOptions.locationPercentage * 100)}%</span>
-                            </label>
-                            <input
-                                type="range"
-                                min="0"
-                                max="1"
-                                step="0.05"
-                                value={customOptions.locationPercentage}
-                                onChange={(e) => setCustomOptions(prev => ({ 
-                                    ...prev, 
-                                    locationPercentage: parseFloat(e.target.value) 
-                                }))}
-                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                            />
-                            <div className="flex justify-between text-xs text-gray-500 mt-1">
-                                <span>0% (No location)</span>
-                                <span>100% (All with location)</span>
-                            </div>
-                        </div>
-
-                        {/* Force Options */}
-                        <div className="mb-6 space-y-2">
-                            <label className="flex items-center space-x-2">
-                                <input
-                                    type="checkbox"
-                                    checked={customOptions.forceEventLocation}
-                                    onChange={(e) => setCustomOptions(prev => ({ 
-                                        ...prev, 
-                                        forceEventLocation: e.target.checked,
-                                        forceRandomLocation: false // Mutual exclusive
-                                    }))}
-                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                />
-                                <span className="text-sm text-gray-700">🏢 Force all contacts to be from events</span>
-                            </label>
-                            <label className="flex items-center space-x-2">
-                                <input
-                                    type="checkbox"
-                                    checked={customOptions.forceRandomLocation}
-                                    onChange={(e) => setCustomOptions(prev => ({ 
-                                        ...prev, 
-                                        forceRandomLocation: e.target.checked,
-                                        forceEventLocation: false // Mutual exclusive
-                                    }))}
-                                    className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                                />
-                                <span className="text-sm text-gray-700">📍 Force all contacts to have random locations</span>
-                            </label>
-                        </div>
-
-                        <button
-                            onClick={handleCustomGenerate}
-                            disabled={isGenerating || loading}
-                            className="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 disabled:opacity-50 font-medium transition-colors"
-                        >
-                            {isGenerating || loading ? '⏳ Generating Custom Contacts...' : '🎯 Generate Custom Contacts'}
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Available Data Info */}
-            {generationInfo && (
-                <div className="pt-4 border-t">
-                    <details className="text-sm">
-                        <summary className="cursor-pointer text-gray-600 hover:text-gray-800 font-medium flex items-center">
-                            <span className="mr-2">📊</span>
-                            Available Test Data 
-                            <span className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded-full">
-                                {generationInfo.generationOptions?.availableEvents} events, {generationInfo.generationOptions?.availableCompanies} companies
-                            </span>
-                        </summary>
-                        <div className="mt-3 space-y-3 text-xs text-gray-600 bg-gray-50 p-4 rounded-lg">
-                            <div>
-                                <strong className="text-gray-800">📅 Sample Events:</strong><br />
-                                {generationInfo.availableEvents?.slice(0, 6).join(', ')}
-                                {generationInfo.availableEvents?.length > 6 && ` and ${generationInfo.availableEvents.length - 6} more...`}
-                            </div>
-                            <div>
-                                <strong className="text-gray-800">🏢 Sample Companies:</strong><br />
-                                {generationInfo.sampleCompanies?.slice(0, 10).join(', ')}
-                                {generationInfo.sampleCompanies?.length > 10 && ` and ${generationInfo.sampleCompanies.length - 10} more...`}
-                            </div>
-                        </div>
-                    </details>
-                </div>
-            )}
-
-            {/* Usage Tips */}
-            <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl">
-                <h5 className="text-sm font-semibold text-amber-900 mb-2 flex items-center">
-                    <span className="mr-2">💡</span>
-                    Admin Testing Tips
-                </h5>
-                <ul className="text-xs text-amber-800 space-y-1">
-                    <li>• Generate test data for specific users to test their subscription features</li>
-                    <li>• Use different scenarios to test various contact management features</li>
-                    <li>• Monitor the test data counter and use cleanup when needed</li>
-                    <li>• Check user analytics after generation to see impact</li>
-                    <li>• Test both event and location-based grouping scenarios</li>
-                </ul>
+                <button
+                    onClick={handleScenarioGenerate}
+                    disabled={loading || isGenerating}
+                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {isGenerating ? 'Generating...' : `Generate ${GENERATION_SCENARIOS[selectedScenario].params.count} Contacts`}
+                </button>
             </div>
         </div>
-    );
+
+        {/* Advanced / Custom Generation */}
+        <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+            <button
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="w-full text-left text-base font-semibold text-gray-800 flex justify-between items-center"
+            >
+                Advanced / Custom Generation
+                <span className={`transform transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''}`}>
+                    ▼
+                </span>
+            </button>
+            
+            {showAdvanced && (
+                <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                    {/* Left Column */}
+                    <div className="space-y-4">
+                        <div>
+                            <label htmlFor="custom-count" className="block text-sm font-medium text-gray-700">Count</label>
+                            <input type="number" id="custom-count" value={customOptions.count} onChange={e => setCustomOptions({...customOptions, count: parseInt(e.target.value) || 0})} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
+                        </div>
+                        <div>
+                            <label htmlFor="event-percentage" className="block text-sm font-medium text-gray-700">Event % ({Math.round(customOptions.eventPercentage * 100)}%)</label>
+                            <input type="range" id="event-percentage" min="0" max="1" step="0.05" value={customOptions.eventPercentage} onChange={e => setCustomOptions({...customOptions, eventPercentage: parseFloat(e.target.value)})} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
+                        </div>
+                        <div>
+                            <label htmlFor="location-percentage" className="block text-sm font-medium text-gray-700">Location % ({Math.round(customOptions.locationPercentage * 100)}%)</label>
+                            <input type="range" id="location-percentage" min="0" max="1" step="0.05" value={customOptions.locationPercentage} onChange={e => setCustomOptions({...customOptions, locationPercentage: parseFloat(e.target.value)})} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
+                        </div>
+                         <div className="flex items-center space-x-6 pt-2">
+                            <div className="flex items-center">
+                                <input id="force-event" type="checkbox" checked={customOptions.forceEventLocation} onChange={e => setCustomOptions({...customOptions, forceEventLocation: e.target.checked})} className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                                <label htmlFor="force-event" className="ml-2 block text-sm text-gray-900">Force Event</label>
+                            </div>
+                            <div className="flex items-center">
+                                <input id="force-random" type="checkbox" checked={customOptions.forceRandomLocation} onChange={e => setCustomOptions({...customOptions, forceRandomLocation: e.target.checked})} className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                                <label htmlFor="force-random" className="ml-2 block text-sm text-gray-900">Force Random</label>
+                            </div>
+                        </div>
+                    </div>
+
+                 <div className="space-y-4">
+    {/* Notes Section */}
+    <div className="border-b border-gray-200 pb-4">
+        <div className="flex items-center pt-2 mb-3">
+            <input 
+                id="include-notes" 
+                type="checkbox" 
+                checked={customOptions.includeNotes} 
+                onChange={e => setCustomOptions({...customOptions, includeNotes: e.target.checked})} 
+                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" 
+            />
+            <label htmlFor="include-notes" className="ml-2 block text-sm font-medium text-gray-900">Include Notes (AI Testing)</label>
+        </div>
+        {customOptions.includeNotes && (
+            <>
+                <div>
+                    <label htmlFor="note-prob" className="block text-sm font-medium text-gray-700">Note Probability ({Math.round(customOptions.noteProbability * 100)}%)</label>
+                    <input 
+                        type="range" 
+                        id="note-prob" 
+                        min="0" 
+                        max="1" 
+                        step="0.05" 
+                        value={customOptions.noteProbability} 
+                        onChange={e => setCustomOptions({...customOptions, noteProbability: parseFloat(e.target.value)})} 
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" 
+                    />
+                </div>
+                <div>
+                    <label htmlFor="note-scenario" className="block text-sm font-medium text-gray-700">Note Scenario</label>
+                    <select 
+                        id="note-scenario" 
+                        value={customOptions.noteScenario} 
+                        onChange={e => setCustomOptions({...customOptions, noteScenario: e.target.value})} 
+                        className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"
+                    >
+                        <option value="mixed">Mixed</option>
+                        <option value="companyMatching">Company Matching</option>
+                        <option value="industryDetection">Industry Detection</option>
+                        <option value="relationshipDetection">Relationship Detection</option>
+                        <option value="strategicAnalysis">Strategic Analysis</option>
+                        <option value="general">General</option>
+                    </select>
+                </div>
+                <div>
+                    <label htmlFor="note-complexity" className="block text-sm font-medium text-gray-700">Note Complexity</label>
+                    <select 
+                        id="note-complexity" 
+                        value={customOptions.noteComplexity} 
+                        onChange={e => setCustomOptions({...customOptions, noteComplexity: e.target.value})} 
+                        className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"
+                    >
+                        <option value="medium">Medium</option>
+                        <option value="pro">Pro</option>
+                        <option value="premium">Premium</option>
+                        <option value="business">Business</option>
+                        <option value="strategic">Strategic</option>
+                    </select>
+                </div>
+            </>
+        )}
+    </div>
+
+    {/* Messages Section */}
+    <div>
+        <div className="flex items-center pt-2 mb-3">
+            <input 
+                id="include-messages" 
+                type="checkbox" 
+                checked={customOptions.includeMessages} 
+                onChange={e => setCustomOptions({...customOptions, includeMessages: e.target.checked})} 
+                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" 
+            />
+            <label htmlFor="include-messages" className="ml-2 block text-sm font-medium text-gray-900">Include Messages</label>
+        </div>
+        {customOptions.includeMessages && (
+            <>
+                <div>
+                    <label htmlFor="message-prob" className="block text-sm font-medium text-gray-700">Message Probability ({Math.round(customOptions.messageProbability * 100)}%)</label>
+                    <input 
+                        type="range" 
+                        id="message-prob" 
+                        min="0" 
+                        max="1" 
+                        step="0.05" 
+                        value={customOptions.messageProbability} 
+                        onChange={e => setCustomOptions({...customOptions, messageProbability: parseFloat(e.target.value)})} 
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" 
+                    />
+                </div>
+                
+                <div className="flex items-center mt-3">
+                    <input 
+                        id="force-exchange-form" 
+                        type="checkbox" 
+                        checked={customOptions.forceExchangeForm} 
+                        onChange={e => setCustomOptions({...customOptions, forceExchangeForm: e.target.checked})} 
+                        className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" 
+                    />
+                    <label htmlFor="force-exchange-form" className="ml-2 block text-sm text-gray-900">
+                        Force Exchange Form Source
+                    </label>
+                </div>
+                
+                <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mt-3">
+                    <p className="text-xs text-blue-800">
+                        <strong>Tip:</strong> Enable "Force Exchange Form Source" to ensure ALL contacts have messages. 
+                        Otherwise, only some contacts will have messages based on random source assignment.
+                    </p>
+                </div>
+
+                {/* Message Preview */}
+                <div className="bg-gray-50 border border-gray-200 rounded-md p-3 mt-3">
+                    <p className="text-xs font-medium text-gray-700 mb-2">Expected Results:</p>
+                    <p className="text-xs text-gray-600">
+                        With current settings: <strong>{Math.round(customOptions.count * customOptions.messageProbability)}</strong> out of {customOptions.count} contacts will have messages.
+                    </p>
+                    {customOptions.forceExchangeForm && (
+                        <p className="text-xs text-green-700 mt-1">
+                            ✅ All contacts will be forced to "exchange_form" source to guarantee messages.
+                        </p>
+                    )}
+                </div>
+            </>
+        )}
+    </div>
+</div>
+                     {/* Generate Button */}
+                    <div className="md:col-span-2 mt-4">
+                        <button
+                            onClick={handleCustomGenerate}
+                            disabled={loading || isGenerating}
+                            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isGenerating ? 'Generating...' : `Generate ${customOptions.count} Custom Contacts`}
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    </div>
+);
+
 }

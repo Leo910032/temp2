@@ -10,6 +10,7 @@ import { toast } from 'react-hot-toast';
 import { useAuth } from "@/contexts/AuthContext";
 import dynamic from 'next/dynamic';
 import ImportExportModal from './components/ImportExportModal';
+import { ContactServiceFactory } from '@/lib/services/serviceContact/client/factories/ContactServiceFactory';
 
 // Single import for all service logic
 import {
@@ -29,7 +30,6 @@ import {
     // Group Service Functions
     createContactGroup, 
     deleteContactGroup,
-    generateAutoGroups,
     updateContactGroup,
     addContactsToGroup,
     removeContactsFromGroup,
@@ -383,7 +383,14 @@ export default function ContactsPage() {
                             case 'create': result = await createContactGroup(data); break;
                             case 'delete': result = await deleteContactGroup(data); break;
                             case 'update': result = await updateContactGroup(data.id, data); break;
-                            case 'generate': result = await generateAutoGroups(); break;
+                           case 'generate': 
+                // ✅ CHANGE: Use the factory to get the new AutoGroupService
+                    console.log("🚀 [UI] Initiating auto-group generation with options:", data);
+
+                const autoGroupService = ContactServiceFactory.getAutoGroupService();
+                // ✅ CHANGE: Call the method on the service instance and PASS THE OPTIONS
+                result = await autoGroupService.generateAutoGroups(data); 
+                break;
                             default: throw new Error(`Unknown group action: ${action}`);
                         }
                         
@@ -391,7 +398,7 @@ export default function ContactsPage() {
                         await reloadData();
                         return result;
                     } catch (error) {
-                        toast.error(`Failed: ${ErrorHandler.extractErrorMessage(error)}`);
+            toast.error(`Failed: ${ErrorHandler.getUserFriendlyMessage(error)}`);
                         throw error;
                     }
                 }}
@@ -413,7 +420,7 @@ export default function ContactsPage() {
                         setSelectedContacts([]);
                         return result;
                     } catch (error) {
-                        toast.error(`Failed to share contacts: ${ErrorHandler.extractErrorMessage(error)}`);
+            toast.error(`Failed to share contacts: ${ErrorHandler.getUserFriendlyMessage(error)}`);
                         throw error;
                     }
                 }}
@@ -442,7 +449,7 @@ export default function ContactsPage() {
                         await reloadData();
                         return result;
                     } catch (error) {
-                        toast.error(`Failed to save contact: ${ErrorHandler.extractErrorMessage(error)}`);
+            toast.error(`Failed to save contact: ${ErrorHandler.getUserFriendlyMessage(error)}`);
                         throw error;
                     }
                 }}

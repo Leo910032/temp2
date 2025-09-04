@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from "@/lib/translation/useTranslation";
 import { toast } from 'react-hot-toast';
-import OptimizedEventLocationSearch from './OptimizedEventLocationSearch';
+import EventLocationSearch from './EventLocationSearch'; 
 
 // Helper functions
 function getGroupColor(groupId, groups) {

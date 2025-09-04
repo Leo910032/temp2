@@ -3,8 +3,13 @@
 import { NextResponse } from 'next/server';
 import { ContactGroupService } from '@/lib/services/serviceContact/server/contactService';
 import { adminAuth } from '@/lib/firebaseAdmin';
+import { AutoGroupService } from '@/lib/services/serviceContact/server/autoGroupService';
 
 export async function POST(request) {
+  // ✅ FIX: Declare startTime and userId at the top of the function's scope.
+  const startTime = Date.now();
+  let userId = 'unknown'; // Use 'let' so it can be reassigned inside the try block.
+
   try {
     console.log('🤖 API: Auto-generating contact groups');
 
@@ -15,15 +20,18 @@ export async function POST(request) {
 
     const token = authHeader.split('Bearer ')[1];
     const decodedToken = await adminAuth.verifyIdToken(token);
-    const userId = decodedToken.uid;
+    userId = decodedToken.uid; // Assign the actual userId
 
-    // Parse request body for options
     const body = await request.json();
-    const options = body.options || {};
+    const { options } = body;
+    console.log(`🤖 [API Route] Received request to generate auto-groups for user: ${userId}`);
 
-    // Generate auto groups using service
-    const result = await ContactGroupService.generateAutoGroups(userId, options);
+    const result = await AutoGroupService.generateAutoGroups(userId, options);
+    
+    const duration = Date.now() - startTime;
+    console.log(`✅ [API Route] Successfully generated ${result.groups?.length || 0} groups in ${duration}ms.`);
 
+    // This console.log is a bit redundant with the one above, but it's fine to keep.
     console.log('✅ API: Auto groups generated successfully', {
       userId,
       groupsCreated: result.groups?.length || 0
@@ -36,6 +44,10 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('❌ API Error generating auto groups:', error);
+    
+    // ✅ FIX: This now works because startTime is in scope.
+    const duration = Date.now() - startTime;
+    console.error(`❌ [API Route] Error after ${duration}ms for user ${userId}:`, error.message);
 
     if (error.message?.includes('subscription') || error.message?.includes('feature')) {
       return NextResponse.json({
@@ -58,7 +70,6 @@ export async function POST(request) {
     }, { status: 500 });
   }
 }
-
 export async function GET(request) {
   return NextResponse.json({
     message: 'Auto-Generate Contact Groups API',

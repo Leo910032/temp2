@@ -1,10 +1,10 @@
-// app/api/user/contacts/groups/auto-generate-async/route.js
-// FIXED VERSION - Proper timeout handling and progress updates
-
+//app/api/user/contacts/groups/auto-generate-async/route.js
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 
+// This is the main API route that the client calls to START the job.
+// It creates a job record in Firestore and returns a jobId immediately.
 export async function POST(request) {
   try {
     console.log('🚀 Starting async AI group generation...');
@@ -21,7 +21,7 @@ export async function POST(request) {
     const body = await request.json();
     const { options } = body;
 
-    // Create a job record immediately
+    // Create a job record immediately so the client can start polling.
     const jobId = `ai_grouping_${userId}_${Date.now()}`;
     const jobRef = adminDb.collection('BackgroundJobs').doc(jobId);
     
@@ -34,32 +34,32 @@ export async function POST(request) {
       options,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
-      estimatedDuration: 120000, // 2 minutes estimate (was 300 seconds, too long)
+      estimatedDuration: 120000, // 2 minutes estimate
       stages: [
-        { name: 'Fetching contacts', status: 'pending', progress: 0 },
-        { name: 'AI analysis', status: 'pending', progress: 0 },
-        { name: 'Group generation', status: 'pending', progress: 0 },
-        { name: 'Saving results', status: 'pending', progress: 0 }
+        { name: 'Fetching Contacts', status: 'pending', progress: 0 },
+        { name: 'AI Analysis', status: 'pending', progress: 0 },
+        { name: 'Deduplicating Groups', status: 'pending', progress: 0 },
+        { name: 'Saving Results', status: 'pending', progress: 0 }
       ]
     });
 
-    // Start background processing (don't await it)
+    // IMPORTANT: Start the long-running process but DO NOT await it.
+    // This allows the API to return a response to the client instantly.
     processAIGroupingAsync(userId, jobId, options).catch(error => {
-      console.error('Background job failed:', error);
-      // Update job status to failed
+      console.error(`🔴 Background job ${jobId} failed catastrophically:`, error);
       jobRef.update({
         status: 'failed',
-        error: error.message,
+        error: error.message || 'An unknown error occurred during background processing.',
         updatedAt: FieldValue.serverTimestamp()
       });
     });
 
-    // Return immediately with job ID
+    // Return immediately with the job ID.
     return NextResponse.json({
       success: true,
       jobId,
-      message: 'AI group generation started in background',
-      estimatedDuration: 120000 // 2 minutes
+      message: 'AI group generation started in the background.',
+      estimatedDuration: 120000
     });
 
   } catch (error) {
@@ -71,142 +71,81 @@ export async function POST(request) {
   }
 }
 
-// FIXED: Background processing function with proper timeout and progress handling
+
+// This is the actual background worker function. It runs on the server
+// after the API has already responded.
 async function processAIGroupingAsync(userId, jobId, options) {
   const jobRef = adminDb.collection('BackgroundJobs').doc(jobId);
   
   try {
-    // Update status to processing
+    // --- STAGE 1: Fetching Contacts ---
     await jobRef.update({
       status: 'processing',
-      progress: 10,
-      updatedAt: FieldValue.serverTimestamp(),
-      'stages.0.status': 'in_progress'
+      progress: 5,
+      'stages.0.status': 'in_progress',
+      updatedAt: FieldValue.serverTimestamp()
     });
 
-    // Stage 1: Fetch contacts using the correct method
+    const contactsDoc = await adminDb.collection('Contacts').doc(userId).get();
+    if (!contactsDoc.exists) throw new Error('No contacts document found for user.');
+    const contacts = contactsDoc.data().contacts || [];
+    console.log(`[${jobId}] Fetched ${contacts.length} contacts for user ${userId}`);
+
+    if (contacts.length < 5) {
+        await jobRef.update({
+            status: 'completed',
+            progress: 100,
+            result: { groups: [], message: 'Not enough contacts to process.' },
+            completedAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp()
+        });
+        return;
+    }
+
     await jobRef.update({
-      progress: 25,
+      progress: 15,
       'stages.0.status': 'completed',
       'stages.0.progress': 100,
       'stages.1.status': 'in_progress',
       updatedAt: FieldValue.serverTimestamp()
     });
 
-    // Get contacts directly from Firestore
-    const contactsDoc = await adminDb.collection('Contacts').doc(userId).get();
-    
-    if (!contactsDoc.exists) {
-      await jobRef.update({
-        status: 'completed',
-        progress: 100,
-        result: { groups: [], message: 'No contacts found' },
-        updatedAt: FieldValue.serverTimestamp()
-      });
-      return;
-    }
-
-    const contactsData = contactsDoc.data();
-    const contacts = contactsData.contacts || [];
-    console.log(`Fetched ${contacts.length} contacts for user ${userId}`);
-
-    if (contacts.length === 0) {
-      await jobRef.update({
-        status: 'completed',
-        progress: 100,
-        result: { groups: [], message: 'No contacts found' },
-        updatedAt: FieldValue.serverTimestamp()
-      });
-      return;
-    }
-
-    // Stage 2: AI Analysis (with progress updates)
-    await jobRef.update({
-      progress: 40,
-      'stages.1.progress': 30,
-      updatedAt: FieldValue.serverTimestamp()
-    });
-
-    // Import the AI services (dynamic import to avoid loading delays)
-    const { AutoGroupService } = await import('@/lib/services/serviceContact/server/autoGroupService');
+    // --- STAGE 2: AI Analysis (The Heavy Lifting) ---
     const { GeminiGroupingEnhancer } = await import('@/lib/services/serviceContact/server/geminiGroupingEnhancer');
+    let allGroups = [];
 
-    // FIXED: Process in smaller chunks with longer timeouts
-    const CHUNK_SIZE = 30; // Reduced from 50 to 30
-    const chunks = [];
-    for (let i = 0; i < contacts.length; i += CHUNK_SIZE) {
-      chunks.push(contacts.slice(i, i + CHUNK_SIZE));
-    }
+    try {
+        if (!GeminiGroupingEnhancer || typeof GeminiGroupingEnhancer.enhanceGrouping !== 'function') {
+            throw new Error('GeminiGroupingEnhancer service is not available.');
+        }
 
-    const allGroups = [];
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-      
-      // Update progress for each chunk
-      const chunkProgress = 40 + (40 * (i + 1) / chunks.length);
-      await jobRef.update({
-        progress: chunkProgress,
-        'stages.1.progress': (i + 1) / chunks.length * 100,
-        currentChunk: i + 1,
-        totalChunks: chunks.length,
-        updatedAt: FieldValue.serverTimestamp()
-      });
-
-      try {
-        if (GeminiGroupingEnhancer && typeof GeminiGroupingEnhancer.enhanceGrouping === 'function') {
-          // FIXED: Increased timeout to 60 seconds and added better error handling
-          const chunkResult = await Promise.race([
-            GeminiGroupingEnhancer.enhanceGrouping(chunk, 'enterprise', userId),
+        // Call the enhancer with ALL contacts at once. It will handle its own internal logic.
+        const result = await Promise.race([
+            GeminiGroupingEnhancer.enhanceGrouping(contacts, 'enterprise', userId), // Assuming enterprise for now
             new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('AI processing timeout for chunk')), 60000) // Increased from 15s to 60s
+                setTimeout(() => reject(new Error('AI processing took too long and timed out.')), 120000) // 2-minute timeout
             )
-          ]);
-
-          if (chunkResult && chunkResult.enhancedGroups && chunkResult.enhancedGroups.length > 0) {
-            allGroups.push(...chunkResult.enhancedGroups);
-            console.log(`✅ Chunk ${i + 1}/${chunks.length} processed: ${chunkResult.enhancedGroups.length} groups`);
-          } else {
-            console.log(`⚠️ Chunk ${i + 1}/${chunks.length} processed but no groups generated`);
-          }
+        ]);
+        
+        if (result && result.enhancedGroups) {
+            allGroups.push(...result.enhancedGroups);
+            console.log(`[${jobId}] ✅ AI processing complete: ${result.enhancedGroups.length} total groups generated.`);
         } else {
-          console.log('GeminiGroupingEnhancer not available, falling back to basic grouping...');
-          
-          // FALLBACK: Use basic rule-based grouping from AutoGroupService
-          if (options.groupByCompany) {
-            const companyGroups = AutoGroupService.groupContactsByCompany(chunk, options.minGroupSize || 2);
-            allGroups.push(...companyGroups);
-          }
-          
-          if (options.groupByTime) {
-            const timeGroups = AutoGroupService.generateTimeBasedGroups(chunk, options.minGroupSize || 2);
-            allGroups.push(...timeGroups);
-          }
+            console.log(`[${jobId}] ⚠️ AI processing complete but no groups were generated.`);
         }
-      } catch (chunkError) {
-        console.error(`Error processing chunk ${i + 1}:`, chunkError);
-        
-        // Update job with chunk error info but continue processing
+
+    } catch (aiError) {
+        console.error(`[${jobId}] Error during AI enhancement phase:`, aiError);
+        // Record the error but don't stop the job; we might still have groups from fallback logic.
         await jobRef.update({
-          [`chunkErrors.${i}`]: {
-            error: chunkError.message,
-            timestamp: FieldValue.serverTimestamp()
-          },
-          updatedAt: FieldValue.serverTimestamp()
+            'stageErrors.ai_enhancement': {
+                error: aiError.message,
+                timestamp: FieldValue.serverTimestamp()
+            }
         });
-        
-        // FALLBACK: Try basic grouping even if AI fails
-        try {
-          if (options.groupByCompany) {
-            const companyGroups = AutoGroupService.groupContactsByCompany(chunk, options.minGroupSize || 2);
-            allGroups.push(...companyGroups);
-          }
-        } catch (fallbackError) {
-          console.error(`Fallback grouping also failed for chunk ${i + 1}:`, fallbackError);
-        }
-      }
     }
 
-    // Stage 3: Group generation and deduplication
+    // --- STAGE 3: Deduplicating Groups ---
     await jobRef.update({
       progress: 85,
       'stages.1.status': 'completed',
@@ -215,13 +154,10 @@ async function processAIGroupingAsync(userId, jobId, options) {
       updatedAt: FieldValue.serverTimestamp()
     });
 
-    // Remove duplicates and limit results
-    const uniqueGroups = Array.from(
-      new Map(allGroups.map(group => [group.name, group])).values()
-    );
-    const limitedGroups = uniqueGroups.slice(0, options.maxGroups || 10);
-
-    // Stage 4: Save results
+    const uniqueGroups = Array.from(new Map(allGroups.map(group => [group.name.toLowerCase().trim(), group])).values());
+    const limitedGroups = uniqueGroups.slice(0, options.maxGroups || 15);
+    
+    // --- STAGE 4: Saving Results ---
     await jobRef.update({
       progress: 95,
       'stages.2.status': 'completed',
@@ -230,31 +166,33 @@ async function processAIGroupingAsync(userId, jobId, options) {
       updatedAt: FieldValue.serverTimestamp()
     });
 
+    let savedCount = 0;
     if (limitedGroups.length > 0) {
-      await AutoGroupService.saveGeneratedGroups(userId, limitedGroups);
+        const { AutoGroupService } = await import('@/lib/services/serviceContact/server/autoGroupService');
+        const saveResult = await AutoGroupService.saveGeneratedGroups(userId, limitedGroups);
+        savedCount = saveResult.savedCount;
     }
 
-    // Complete the job
+    // --- FINAL STAGE: Completing the Job ---
     await jobRef.update({
       status: 'completed',
       progress: 100,
       'stages.3.status': 'completed',
       'stages.3.progress': 100,
       result: {
-        groups: limitedGroups,
+        groups: limitedGroups, // Return the groups suggested, even if some were duplicates
         totalGenerated: allGroups.length,
         totalUnique: uniqueGroups.length,
-        totalSaved: limitedGroups.length
+        totalSaved: savedCount
       },
       completedAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp()
     });
 
-    console.log(`✅ AI group generation completed for user ${userId}: ${limitedGroups.length} groups`);
+    console.log(`[${jobId}] ✅ AI group generation job fully completed for user ${userId}. Saved ${savedCount} new groups.`);
 
   } catch (error) {
-    console.error(`❌ AI group generation failed for user ${userId}:`, error);
-    
+    console.error(`[${jobId}] ❌ AI group generation failed for user ${userId}:`, error);
     await jobRef.update({
       status: 'failed',
       error: error.message,

@@ -209,7 +209,6 @@ toast.error(error.message || 'Failed to access analytics', { id: toastId });
         await fetchTeamAnalytics();
       }
       
-      toast.success('Team data refreshed');
       
     } catch (error) {
       console.error('Failed to refresh team data:', error);

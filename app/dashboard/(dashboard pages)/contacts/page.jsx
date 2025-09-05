@@ -170,36 +170,36 @@ const handleJobComplete = useCallback(async (result) => {
         toast.error(`AI grouping failed: ${error.message}`);
     }, []);
 
- 
+// In ContactsPage.jsx
+
 // Enhanced handleViewResults with explicit data reload
 const handleViewResults = useCallback(async () => {
     console.log('[Page] View Generated Groups button clicked');
     
-    try {
-        // Force a complete data reload before opening the modal
-        console.log('[Page] Reloading data before opening group manager...');
-        await reloadData({ 
-            force: true, 
-            clearCache: true,
-            reason: 'view_ai_results'
-        });
-        
-        // Open the group manager modal and switch to AI Groups tab
-        setShowGroupManager(true);
-        
-        // The modal will handle switching to the correct tab via the ref
-        if (groupManagerRef.current && groupManagerRef.current.setActiveTab) {
-            setTimeout(() => {
-                groupManagerRef.current.setActiveTab('ai-create');
-            }, 100);
-        }
-        
-    } catch (error) {
-        console.error('[Page] Failed to reload data before viewing results:', error);
-        toast.error('Failed to load latest data. Please try again.');
+    // ✅ FIX: REMOVE THE REDUNDANT RELOAD.
+    // The data was already reloaded by handleJobComplete.
+    // try {
+    //     await reloadData({ 
+    //         force: true, 
+    //         clearCache: true,
+    //         reason: 'view_ai_results'
+    //     });
+    // } catch (error) {
+    //     console.error('[Page] Failed to reload data before viewing results:', error);
+    //     toast.error('Failed to load latest data. Please try again.');
+    //     return; // Don't open the modal if the reload failed
+    // }
+    
+    // Open the group manager modal and switch to AI Groups tab
+    setShowGroupManager(true);
+    
+    // The modal will handle switching to the correct tab via the ref
+    if (groupManagerRef.current && groupManagerRef.current.setActiveTab) {
+        setTimeout(() => {
+            groupManagerRef.current.setActiveTab('ai-create');
+        }, 100); // Small timeout to ensure modal is rendered
     }
-}, [reloadData]);
-
+}, [groupManagerRef]); // Removed reloadData from dependency array
 
     // Central handler for contact actions
     const handleContactAction = async (action, data) => {

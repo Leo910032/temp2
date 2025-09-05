@@ -148,14 +148,6 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
     const handleViewResults = async () => {
         console.log('[Modal] View results clicked, switching to AI groups tab');
         setActiveTab('ai-create');
-        
-        // Force a data reload to ensure we have the latest groups
-        try {
-            await onGroupAction('reload');
-            console.log('[Modal] Data reloaded successfully after view results');
-        } catch (error) {
-            console.error('[Modal] Failed to reload data after view results:', error);
-        }
     };
 
     // FIXED: Enhanced generate AI groups handler

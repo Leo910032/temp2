@@ -118,7 +118,6 @@ export default function EnhancedEnterprisePage() {
 
   // ✅ UNCHANGED: Team updated handler is correct
   const handleTeamUpdated = useCallback(async () => {
-    console.log('🔄 Team updated - refreshing data...');
     
     try {
       // Clear relevant caches for better performance

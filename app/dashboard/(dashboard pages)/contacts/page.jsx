@@ -1,10 +1,9 @@
-
 //UPDATED
 
 // app/dashboard/(dashboard pages)/contacts/page.jsx
 
 "use client"
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslation } from "@/lib/translation/useTranslation";
 import { toast } from 'react-hot-toast';
 import { useAuth } from "@/contexts/AuthContext";
@@ -53,6 +52,7 @@ import BusinessCardScanner from './components/BusinessCardScanner';
 import ContactReviewModal from './components/ContactReviewModal';
 import { ShareContactsModal } from './components/ShareContactsModal';
 import GroupManagerModal from './components/GroupManagerModal';
+import { BackgroundJobToast } from './components/BackgroundJobToast';
 
 // Dynamic import for ContactsMap to avoid SSR issues
 const ContactsMap = dynamic(() => import('./components/ContactsMap'), { 
@@ -100,22 +100,107 @@ export default function ContactsPage() {
     const [editingContact, setEditingContact] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showGroupManager, setShowGroupManager] = useState(false);
-        const [showImportExportModal, setShowImportExportModal] = useState(false);
+    const [showImportExportModal, setShowImportExportModal] = useState(false);
 
     // NEW: Map modal state
     const [showMap, setShowMap] = useState(false);
     const [selectedContactForMap, setSelectedContactForMap] = useState(null);
     const [mapSelectedGroupIds, setMapSelectedGroupIds] = useState([]); // Empty array means all groups are shown
 
+    // NEW: Background job state for AI generation
+    const [backgroundJobId, setBackgroundJobId] = useState(null);
+    const [showJobProgress, setShowJobProgress] = useState(false);
+    // ✅ FIX: ADD THIS FUNCTION DEFINITION RIGHT HERE
+    const handleBackgroundJobUpdate = useCallback((jobId) => {
+        setBackgroundJobId(jobId);
+        setShowJobProgress(!!jobId); // This will set it to true if there's a jobId, and false if jobId is null
+    }, []);
+        const groupManagerRef = useRef(null);
+
     // Enhanced feature checking
     const hasFeature = useCallback((feature) => {
         if (!subscriptionStatus) return false;
         return hasContactFeature(subscriptionStatus.subscriptionLevel, feature);
     }, [subscriptionStatus]);
-// In your contacts page component
-useEffect(() => {
-    console.log('🔍 [CONTACTS PAGE] subscriptionStatus:', subscriptionStatus);
-}, [subscriptionStatus]);
+
+   
+// In ContactsPage.jsx
+
+const handleJobComplete = useCallback(async (result) => {
+    console.log('[Page] Job completed, processing result:', result);
+    
+    // ✅ FIX: Clear the job state IMMEDIATELY.
+    // This tells the UI the job is no longer running.
+    setBackgroundJobId(null);
+    setShowJobProgress(false);
+
+    if (result && result.groups && result.groups.length > 0) {
+        try {
+            console.log('[Page] Forcing complete data reload after job completion...');
+            
+            // Reload data to get the new groups from the database
+            await reloadData({ 
+                force: true, 
+                clearCache: true,
+                reason: 'ai_job_completion'
+            });
+            
+            toast.success(
+                `AI generated ${result.groups.length} groups! You can see them in the Group Manager.`,
+                { duration: 8000 }
+            );
+            
+            return result.groups;
+        } catch (error) {
+            console.error('[Page] Failed to reload data after job completion:', error);
+            toast.error('Groups were created but failed to refresh. Please reload the page.');
+            return [];
+        }
+    } else {
+        toast.success('AI grouping completed but found no suitable groups for your contacts.');
+        return [];
+    }
+}, [reloadData]); // Dependency array is correct
+
+
+    const handleJobError = useCallback((error) => {
+        setShowJobProgress(false);
+        setBackgroundJobId(null);
+        console.error("Background AI job failed:", error);
+        toast.error(`AI grouping failed: ${error.message}`);
+    }, []);
+
+ 
+// Enhanced handleViewResults with explicit data reload
+const handleViewResults = useCallback(async () => {
+    console.log('[Page] View Generated Groups button clicked');
+    
+    try {
+        // Force a complete data reload before opening the modal
+        console.log('[Page] Reloading data before opening group manager...');
+        await reloadData({ 
+            force: true, 
+            clearCache: true,
+            reason: 'view_ai_results'
+        });
+        
+        // Open the group manager modal and switch to AI Groups tab
+        setShowGroupManager(true);
+        
+        // The modal will handle switching to the correct tab via the ref
+        if (groupManagerRef.current && groupManagerRef.current.setActiveTab) {
+            setTimeout(() => {
+                groupManagerRef.current.setActiveTab('ai-create');
+            }, 100);
+        }
+        
+    } catch (error) {
+        console.error('[Page] Failed to reload data before viewing results:', error);
+        toast.error('Failed to load latest data. Please try again.');
+    }
+}, [reloadData]);
+
+
     // Central handler for contact actions
     const handleContactAction = async (action, data) => {
         const toastId = toast.loading('Updating contact...');
@@ -143,7 +228,8 @@ useEffect(() => {
             throw handled;
         }
     };
-       const handleMapGroupToggle = (groupId) => {
+
+    const handleMapGroupToggle = (groupId) => {
         setMapSelectedGroupIds(prev => {
             // If the clicked group is already the only one selected, clear the filter to show all.
             if (prev.length === 1 && prev[0] === groupId) {
@@ -238,13 +324,14 @@ useEffect(() => {
                         </div>
                     </div>
                 )}
-                   <ImportExportModal
-                isOpen={showImportExportModal}
-                onClose={() => setShowImportExportModal(false)}
-                allContacts={allOriginalContacts}
-                currentFilters={{ status: filter, search: searchTerm }}
-                onActionComplete={reloadData}
-            />
+
+                <ImportExportModal
+                    isOpen={showImportExportModal}
+                    onClose={() => setShowImportExportModal(false)}
+                    allContacts={allOriginalContacts}
+                    currentFilters={{ status: filter, search: searchTerm }}
+                    onActionComplete={reloadData}
+                />
 
                 {/* Controls */}
                 <div className="bg-white p-4 rounded-lg shadow mb-6">
@@ -260,7 +347,6 @@ useEffect(() => {
                             />
                         </div>
                         
-
                         {/* Filter and Actions */}
                         <div className="flex gap-2">
                             <select
@@ -274,7 +360,7 @@ useEffect(() => {
                                 <option value="archived">Archived</option>
                             </select>
 
-                            {/* NEW: Map View Button */}
+                            {/* Map View Button */}
                             {hasFeature(CONTACT_FEATURES.MAP_VISUALIZATION) && (
                                 <button
                                     onClick={() => setShowMap(true)}
@@ -287,7 +373,8 @@ useEffect(() => {
                                     Map View
                                 </button>
                             )}
-                             {hasFeature(CONTACT_FEATURES.EXPORT_DATA) && (
+
+                            {hasFeature(CONTACT_FEATURES.EXPORT_DATA) && (
                                 <button
                                     onClick={() => setShowImportExportModal(true)}
                                     className="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 flex items-center gap-2"
@@ -372,45 +459,100 @@ useEffect(() => {
                 onSave={(updatedContact) => handleContactAction('update', updatedContact)} 
             />
 
-            <GroupManagerModal 
-                isOpen={showGroupManager} 
-                onClose={() => setShowGroupManager(false)} 
-                groups={groups} 
-                contacts={allOriginalContacts} 
-                onGroupAction={async (action, data) => {
-                    try {
-                        const toastId = toast.loading('Processing group action...');
-                        let result;
-                        
-                        switch (action) {
-                            case 'create': result = await createContactGroup(data); break;
-                            case 'delete': result = await deleteContactGroup(data); break;
-                            case 'update': result = await updateContactGroup(data.id, data); break;
-                           case 'generate': 
-                // ✅ CHANGE: Use the factory to get the new AutoGroupService
-                    console.log("🚀 [UI] Initiating auto-group generation with options:", data);
-
-                const autoGroupService = ContactServiceFactory.getAutoGroupService();
-                // ✅ CHANGE: Call the method on the service instance and PASS THE OPTIONS
-                result = await autoGroupService.generateAutoGroups(data); 
-                break;
-                            default: throw new Error(`Unknown group action: ${action}`);
-                        }
-                        
-                        toast.success('Group action successful!', { id: toastId });
-                        await reloadData();
-                        return result;
-                    } catch (error) {
-            toast.error(`Failed: ${ErrorHandler.getUserFriendlyMessage(error)}`);
-                        throw error;
+ // In the GroupManagerModal render, pass the job handlers properly:
+<GroupManagerModal 
+    ref={groupManagerRef}
+    isOpen={showGroupManager} 
+    onClose={() => setShowGroupManager(false)} 
+    groups={groups} 
+    contacts={allOriginalContacts} 
+    // FIXED: Pass the background job state and handlers
+    backgroundJobId={backgroundJobId}
+    showJobProgress={showJobProgress}
+    onBackgroundJobUpdate={handleBackgroundJobUpdate}
+    onGroupAction={async (action, data) => {
+        try {
+            const toastId = toast.loading('Processing group action...');
+            let result;
+            
+            switch (action) {
+                case 'create': 
+                    result = await createContactGroup(data); 
+                    break;
+                case 'delete': 
+                    result = await deleteContactGroup(data); 
+                    break;
+                case 'update': 
+                    result = await updateContactGroup(data.id, data); 
+                    break;
+                    
+                // Handle async AI generation
+                case 'generateAsync': 
+                    console.log("🚀 [UI] Starting async AI group generation with options:", data);
+                    const autoGroupService = ContactServiceFactory.getAutoGroupService();
+                    result = await autoGroupService.generateAutoGroupsAsync(data);
+                    
+                    if (result.success && result.jobId) {
+                        // Update background job state
+                        setBackgroundJobId(result.jobId);
+                        setShowJobProgress(true);
+                        toast.dismiss(toastId);
+                        toast.success('AI group generation started! This will run in the background.');
                     }
-                }}
-                loading={loading}
-                hasFeature={hasFeature}
-                    subscriptionStatus={subscriptionStatus} // ← ADD THIS LINE
-
-            />
-
+                    
+                    return result;
+                    
+                // LEGACY: Keep for backward compatibility but convert to async
+                case 'generate':
+                    console.log("🔄 [UI] Converting sync generate to async:", data);
+                    const legacyService = ContactServiceFactory.getAutoGroupService();
+                    result = await legacyService.generateAutoGroupsAsync(data);
+                    
+                    if (result.success && result.jobId) {
+                        setBackgroundJobId(result.jobId);
+                        setShowJobProgress(true);
+                        toast.dismiss(toastId);
+                        toast.success('AI group generation started! This will run in the background.');
+                    }
+                    
+                    return result;
+                    
+                // ENHANCED: Handle data reload requests with cache clearing
+                case 'reload':
+                    console.log('🔄 [UI] Group manager requested data reload');
+                    await reloadData({ 
+                        force: true, 
+                        clearCache: true,
+                        reason: 'group_manager_reload'
+                    });
+                    toast.dismiss(toastId);
+                    return { success: true };
+                    
+                default: 
+                    throw new Error(`Unknown group action: ${action}`);
+            }
+            
+            toast.success('Group action successful!', { id: toastId });
+            
+            // Force reload after any group operation
+            await reloadData({ 
+                force: true, 
+                clearCache: true,
+                reason: `after_${action}`
+            });
+            
+            return result;
+            
+        } catch (error) {
+            console.error('Group action failed:', error);
+            toast.error(`Failed: ${ErrorHandler.getUserFriendlyMessage(error)}`);
+            throw error;
+        }
+    }}
+    loading={loading}
+    hasFeature={hasFeature}
+    subscriptionStatus={subscriptionStatus}
+/>
             <ShareContactsModal 
                 isOpen={showShareModal} 
                 onClose={() => { setShowShareModal(false); setSelectionMode(false); setSelectedContacts([]); }} 
@@ -425,7 +567,7 @@ useEffect(() => {
                         setSelectedContacts([]);
                         return result;
                     } catch (error) {
-            toast.error(`Failed to share contacts: ${ErrorHandler.getUserFriendlyMessage(error)}`);
+                        toast.error(`Failed to share contacts: ${ErrorHandler.getUserFriendlyMessage(error)}`);
                         throw error;
                     }
                 }}
@@ -454,14 +596,14 @@ useEffect(() => {
                         await reloadData();
                         return result;
                     } catch (error) {
-            toast.error(`Failed to save contact: ${ErrorHandler.getUserFriendlyMessage(error)}`);
+                        toast.error(`Failed to save contact: ${ErrorHandler.getUserFriendlyMessage(error)}`);
                         throw error;
                     }
                 }}
             />
 
-            {/* NEW: ContactsMap Modal */}
-             <ContactsMap
+            {/* ContactsMap Modal */}
+            <ContactsMap
                 isOpen={showMap}
                 onClose={() => {
                     setShowMap(false);
@@ -481,6 +623,18 @@ useEffect(() => {
                 selectedGroupIds={mapSelectedGroupIds}
                 onGroupToggle={handleMapGroupToggle}
             />
+
+            {/* Background Job Toast - Show when there's an active job */}
+            {showJobProgress && backgroundJobId && (
+                <BackgroundJobToast
+                    jobId={backgroundJobId}
+                    onComplete={handleJobComplete}
+                    onError={handleJobError}
+                    onViewResults={handleViewResults}
+                    title="Generating AI Groups"
+                    position="top-right"
+                />
+            )}
         </div>
     );
 }
@@ -873,3 +1027,4 @@ function EditContactModal({ contact, isOpen, onClose, onSave }) {
         </div>
     );
 }
+                  

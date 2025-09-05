@@ -24,8 +24,50 @@ export default function AdminContactTestPanel({ targetUser, onGenerate, onCleanu
     messageProbability: 1.0,
     forceExchangeForm: true
 });
+   
     // Enhanced generation scenarios with AI testing focus
     const GENERATION_SCENARIOS = {
+        // ========================================================================
+        // ADDED: Devil's Advocate Scenarios
+        // ========================================================================
+        devilsAdvocateTest: {
+            name: "😈 Devil's Advocate Test (Hard Mode)",
+            description: "Generates contacts with ambiguous, conflicting, and subtle notes to stress-test AI reasoning.",
+            params: {
+                count: 50,
+                eventPercentage: 0.2,
+                locationPercentage: 0.5,
+                includeNotes: true,
+                noteScenario: 'devilsAdvocate', // Use the specific scenario
+                noteComplexity: 'strategic',
+                noteProbability: 1.0,
+                includeMessages: true,
+                messageProbability: 1.0,
+                forceExchangeForm: true
+            },
+            aiFeature: 'Advanced Reasoning',
+            model: 'gemini-2.5-pro (recommended)'
+        },
+        devilsAdvocateMix: {
+            name: "😈 Devil's Advocate (Realistic Mix)",
+            description: "A realistic mix of normal contacts with a high percentage of challenging 'Devil's Advocate' notes.",
+            params: {
+                count: 100,
+                eventPercentage: 0.4,
+                locationPercentage: 0.7,
+                includeNotes: true,
+                noteScenario: 'devilsAdvocate', // Use the specific scenario
+                noteComplexity: 'strategic',
+                noteProbability: 0.5, // 50% will have challenging notes
+                includeMessages: true,
+                messageProbability: 0.8,
+                forceExchangeForm: false
+            },
+            aiFeature: 'Mixed-Complexity Reasoning',
+            model: 'gemini-2.5-flash / pro'
+        },
+        // ========================================================================
+        
         // AI Tier Testing Scenarios
         proTierTest: {
             name: 'PRO Tier Test (Company Matching)',
@@ -89,45 +131,6 @@ export default function AdminContactTestPanel({ targetUser, onGenerate, onCleanu
         },
         
         // Original scenarios (enhanced with notes)
-        autoGroupingTest: {
-            name: 'Auto-Grouping Test',
-            description: 'Optimized for testing automatic group generation with varied notes',
-            params: {
-                count: 75,
-                eventPercentage: 0.6,
-                locationPercentage: 0.8,
-                includeNotes: true,
-                noteScenario: 'mixed',
-                noteComplexity: 'medium',
-                noteProbability: 0.7
-            }
-        },
-        eventNetworking: {
-            name: 'Event Networking',
-            description: 'Heavy event networking with relationship notes',
-            params: {
-                count: 60,
-                eventPercentage: 0.8,
-                locationPercentage: 0.9,
-                includeNotes: true,
-                noteScenario: 'relationshipDetection',
-                noteComplexity: 'business',
-                noteProbability: 0.8
-            }
-        },
-        techHubSpread: {
-            name: 'Tech Hub Spread',
-            description: 'Contacts across tech hubs with industry notes',
-            params: {
-                count: 50,
-                eventPercentage: 0.2,
-                locationPercentage: 0.9,
-                includeNotes: true,
-                noteScenario: 'industryDetection',
-                noteComplexity: 'premium',
-                noteProbability: 0.75
-            }
-        },
         realisticMix: {
             name: 'Realistic Mix',
             description: 'Balanced mix with varied note complexity for general testing',
@@ -200,7 +203,7 @@ export default function AdminContactTestPanel({ targetUser, onGenerate, onCleanu
         }
     }, [targetUser]);
 
-    const loadGenerationInfo = async () => {
+        const loadGenerationInfo = async () => {
         if (!targetUser) return;
 
         try {
@@ -215,8 +218,7 @@ export default function AdminContactTestPanel({ targetUser, onGenerate, onCleanu
             setIsLoadingInfo(false);
         }
     };
-
-    const handleQuickGenerate = async (scenario, customCount = null) => {
+const handleQuickGenerate = async (scenario, customCount = null) => {
         setIsGenerating(true);
 
         try {
@@ -235,7 +237,8 @@ export default function AdminContactTestPanel({ targetUser, onGenerate, onCleanu
         }
     };
 
-    const handleCustomGenerate = async () => {
+
+     const handleCustomGenerate = async () => {
         setIsGenerating(true);
 
         try {
@@ -247,6 +250,7 @@ export default function AdminContactTestPanel({ targetUser, onGenerate, onCleanu
             setIsGenerating(false);
         }
     };
+
 
     const handleScenarioGenerate = async () => {
         await handleQuickGenerate(selectedScenario);
@@ -428,6 +432,7 @@ expand_less
                             <label htmlFor="event-percentage" className="block text-sm font-medium text-gray-700">Event % ({Math.round(customOptions.eventPercentage * 100)}%)</label>
                             <input type="range" id="event-percentage" min="0" max="1" step="0.05" value={customOptions.eventPercentage} onChange={e => setCustomOptions({...customOptions, eventPercentage: parseFloat(e.target.value)})} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
                         </div>
+                        
                         <div>
                             <label htmlFor="location-percentage" className="block text-sm font-medium text-gray-700">Location % ({Math.round(customOptions.locationPercentage * 100)}%)</label>
                             <input type="range" id="location-percentage" min="0" max="1" step="0.05" value={customOptions.locationPercentage} onChange={e => setCustomOptions({...customOptions, locationPercentage: parseFloat(e.target.value)})} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
@@ -472,22 +477,29 @@ expand_less
                         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" 
                     />
                 </div>
-                <div>
-                    <label htmlFor="note-scenario" className="block text-sm font-medium text-gray-700">Note Scenario</label>
-                    <select 
-                        id="note-scenario" 
-                        value={customOptions.noteScenario} 
-                        onChange={e => setCustomOptions({...customOptions, noteScenario: e.target.value})} 
-                        className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"
-                    >
-                        <option value="mixed">Mixed</option>
-                        <option value="companyMatching">Company Matching</option>
-                        <option value="industryDetection">Industry Detection</option>
-                        <option value="relationshipDetection">Relationship Detection</option>
-                        <option value="strategicAnalysis">Strategic Analysis</option>
-                        <option value="general">General</option>
-                    </select>
-                </div>
+          
+                                        <div>
+                                            <label htmlFor="note-scenario" className="block text-sm font-medium text-gray-700">Note Scenario</label>
+                                            <select 
+                                                id="note-scenario" 
+                                                value={customOptions.noteScenario} 
+                                                onChange={e => setCustomOptions({...customOptions, noteScenario: e.target.value})} 
+                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"
+                                            >
+                                                <option value="mixed">Mixed (Original Notes)</option>
+                                                {/* ======================================================================== */}
+                                                {/* ADDED: Devil's Advocate option in the dropdown */}
+                                                {/* ======================================================================== */}
+                                                <option value="devilsAdvocate">😈 Devil's Advocate (Hard Mode)</option>
+                                                {/* ======================================================================== */}
+                                                <option value="companyMatching">Company Matching</option>
+                                                <option value="industryDetection">Industry Detection</option>
+                                                <option value="relationshipDetection">Relationship Detection</option>
+                                                <option value="strategicAnalysis">Strategic Analysis</option>
+                                                <option value="general">General</option>
+                                            </select>
+                                        </div>
+                                        <div></div>
                 <div>
                     <label htmlFor="note-complexity" className="block text-sm font-medium text-gray-700">Note Complexity</label>
                     <select 

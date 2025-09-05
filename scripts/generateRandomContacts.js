@@ -295,93 +295,72 @@ const EMAIL_DOMAINS = [
 ];
 
 // ✅ NEW: NOTE TEMPLATES FOR TESTING AI FEATURES
+// ✅ REWRITTEN: NOTE TEMPLATES with "Devil's Advocate" scenarios
 const NOTE_TEMPLATES = {
-    // Company matching scenarios - test gemini-1.5-flash on PRO tier
-    companyMatching: [
-        "Works at Microsoft Corp - seems senior in cloud division",
-        "Microsoft employee, mentioned Azure partnerships",
-        "From Microsoft Inc., works on enterprise solutions",
-        "MSFT - cloud architect, very knowledgeable",
-        "Microsoft Corporation - talked about Teams integration",
-        "Works at Apple Inc. - iOS development team",
-        "Apple employee, mentioned App Store policies",
-        "From Apple Corporation, works on privacy features",
-        "AAPL - hardware engineer, iPhone team",
-        "Apple Inc - discussed AR/VR roadmap",
-        "Google LLC employee, search algorithms",
-        "Works at Google Inc. - ads platform team",
-        "Googler - mentioned Bard and AI initiatives",
-        "Google Corporation, cloud sales",
-        "GOOGL - YouTube product manager"
-    ],
+    // These are the original, more direct notes for baseline testing
+    original: {
+        companyMatching: [
+            "Works at Microsoft Corp - seems senior in cloud division",
+            "Microsoft employee, mentioned Azure partnerships",
+            "Works at Apple Inc. - iOS development team",
+            "Google LLC employee, search algorithms",
+        ],
+        industryDetection: [
+            "Fintech startup founder, building payment solutions",
+            "Healthcare AI company, FDA approval process",
+            "Cybersecurity consultant, penetration testing",
+        ],
+        relationshipDetection: [
+            "Introduced me to Sarah Johnson at Salesforce",
+            "Worked with Mike Chen at previous company",
+            "Vendor relationship, provides API services",
+            "Client from Q3 project, very satisfied",
+        ],
+        strategicAnalysis: [
+            "Key decision maker for enterprise software procurement at Fortune 500 company. Budget cycle starts Q1. Previously implemented Salesforce, now evaluating alternatives. Strong relationship with CTO who attended MIT with our founder. Risk: considering competitor solution due to pricing concerns. Opportunity: their current system has integration issues we can solve. Follow-up: send case study from similar customer within 2 weeks.",
+            "Startup founder in stealth mode, AI-powered logistics. Raised $2M seed round led by Sequoia. Team of 12 engineers, mostly ex-Uber. Building solution that could integrate with our platform. Market opportunity: $50B logistics automation. Competitive landscape: competing with established players but has novel IP. Strategic value: potential acquisition target or partnership for market expansion. Next step: intro to our BD team.",
+        ]
+    },
 
-    // Industry detection scenarios - test on PREMIUM tier
-    industryDetection: [
-        "Fintech startup founder, building payment solutions",
-        "Healthcare AI company, FDA approval process",
-        "EdTech platform for K-12 schools",
-        "Cybersecurity consultant, penetration testing",
-        "Real estate PropTech, blockchain property records",
-        "Automotive software, autonomous driving",
-        "Retail e-commerce, supply chain optimization",
-        "Energy sector, smart grid technology",
-        "Agriculture tech, IoT sensors for farms",
-        "Gaming industry, mobile game monetization",
-        "Media streaming, content recommendation engines",
-        "Legal tech, contract analysis automation",
-        "Insurance claims processing AI",
-        "Manufacturing robotics, factory automation",
-        "Transportation logistics, route optimization"
-    ],
-
-    // Relationship detection scenarios - test on BUSINESS tier
-    relationshipDetection: [
-        "Introduced me to Sarah Johnson at Salesforce",
-        "Worked with Mike Chen at previous company",
-        "College roommate, now at startup",
-        "Met through Jennifer at networking event",
-        "Vendor relationship, provides API services",
-        "Client from Q3 project, very satisfied",
-        "Competitor but friendly, share market insights",
-        "Board advisor to our company",
-        "Potential hire, strong Python skills",
-        "Partnership opportunity, complementary products",
-        "Investor connection, Series A round",
-        "Mentor from accelerator program",
-        "Conference speaker, AI expert",
-        "Customer champion, great testimonial",
-        "Former colleague, left for Google"
-    ],
-
-    // Deep strategic analysis scenarios - test gemini-2.5-pro on ENTERPRISE
-    strategicAnalysis: [
-        "Key decision maker for enterprise software procurement at Fortune 500 company. Budget cycle starts Q1. Previously implemented Salesforce, now evaluating alternatives. Strong relationship with CTO who attended MIT with our founder. Risk: considering competitor solution due to pricing concerns. Opportunity: their current system has integration issues we can solve. Follow-up: send case study from similar customer within 2 weeks.",
-        "Startup founder in stealth mode, AI-powered logistics. Raised $2M seed round led by Sequoia. Team of 12 engineers, mostly ex-Uber. Building solution that could integrate with our platform. Market opportunity: $50B logistics automation. Competitive landscape: competing with established players but has novel IP. Strategic value: potential acquisition target or partnership for market expansion. Next step: intro to our BD team.",
-        "VP of Engineering at mid-stage SaaS company (200 employees). Technical debt issues, considering microservices migration. Budget: $500K for infrastructure overhaul. Decision timeline: next 6 months. Influences: CTO (technical), CEO (cost), CFO (ROI). Our solution addresses 3 of their 5 pain points. Competitive advantage: only vendor with specific compliance certification they need. Risk: internal team wants to build vs buy.",
-        "Government contractor, defense industry. Security clearance required. Procurement process: RFP in Q2, 18-month evaluation cycle. Value: $10M+ multi-year contract. Relationships: knows our advisory board member from previous project. Compliance requirements: FedRAMP, FISMA. Competitive moat: our encryption technology. Timeline: pre-RFP engagement critical. Action: arrange demo with technical evaluation team.",
-        "Healthcare system CIO, 15 hospitals, 50K employees. Digital transformation initiative, $25M budget over 3 years. Pain points: data silos, patient experience, cost reduction. Our platform ROI: 15% cost savings based on similar deployments. Decision committee: CIO, CMIO, CFO. Vendor evaluation: Q4 this year. Competitive position: strong in integration, weak in industry-specific features. Strategy: partner with healthcare software vendor."
-    ],
-
-    // Mixed complexity for general testing
-    general: [
-        "Great conversation about React vs Vue",
-        "Interested in our API documentation",
-        "Looking for JavaScript developers",
-        "Building a mobile app, needs backend help",
-        "Impressed by our company culture",
-        "Asked about remote work policies",
-        "Mentioned they're hiring senior engineers",
-        "Discussed the future of AI in their industry",
-        "Very knowledgeable about cloud architecture",
-        "Potential collaboration opportunity",
-        "Following up on project proposal",
-        "Recommended by mutual connection",
-        "Speaking at upcoming conference",
-        "Recently completed successful funding round",
-        "Expanding into European markets"
-    ]
+    // 😈 NEW: Devil's Advocate notes to test advanced AI reasoning
+    devilsAdvocate: {
+        // Test the AI's ability to infer industry from context, not keywords
+        subtleIndustryClues: [
+            "Their whole platform has to be HIPAA compliant. Sounds like a nightmare.", // --> Healthcare / HealthTech
+            "Complained about the slow pace of FedRAMP certification for their new product.", // --> Government Contractor / SaaS
+            "Their main client is Boeing; they build custom software for avionics.", // --> Aerospace / Defense
+            "He said their biggest challenge is SEC regulation and FINRA audits.", // --> Fintech / Finance
+            "Focuses on SOC 2 Type II compliance for their customers.", // --> Cybersecurity / SaaS
+            "Talked about optimizing last-mile delivery logistics for e-commerce clients.", // --> Logistics / E-commerce
+            "Deeply involved in the EV battery supply chain.", // --> Automotive / Manufacturing
+        ],
+        // Test the AI's ability to navigate complex, non-obvious relationships
+        ambiguousRelationships: [
+            "Her co-founder, Mark, used to work with my old boss, Jane at Google.", // --> Second-degree connection
+            "Seems to know everyone in the Bay Area venture capital scene. An influencer.", // --> Influencer, not a direct relationship
+            "His company and ours are 'frenemies' - we compete fiercely but also partner on some major deals.", // --> Complex competitor/partner relationship
+            "Was introduced by our lead investor, said to 'keep him in the loop'.", // --> Investor relationship
+            "He's the CTO at a company we're considering acquiring.", // --> M&A Target
+            "Met him at the AWS re:Invent afterparty. He works for Microsoft but was there 'gathering intel'.", // --> Competitor intelligence
+        ],
+        // Test the AI's ability to prioritize and resolve conflicting data
+        conflictingData: [
+            "Business card says Oracle, but his LinkedIn says he just started at Snowflake last week. Seems excited about the move.", // --> Prioritize the newer role at Snowflake
+            "CEO of a fintech startup, but mentioned they're struggling and might pivot to supply chain logistics.", // --> Company's future industry might differ from its current one
+            "Works at Google, but was very critical of their corporate culture and said he wants to join a fast-moving startup.", // --> Negative sentiment, potential recruitment lead
+            "Card says 'VP of Innovation', but he mostly talked about managing their legacy mainframe systems.", // --> Disconnect between title and actual role
+            "Listed as 'Advisor' on their site, but seems to be making key product decisions.", // --> Informal but powerful role
+        ],
+        // Test the AI's ability to identify sentiment and ignore irrelevant information
+        redHerringsAndSarcasm: [
+            "Spent the first 20 minutes talking about his marathon training. Turns out he's the VP of Sales for Salesforce.", // --> The main topic is a red herring
+            "He called himself a 'growth hacker'. From what I gathered, he just runs their Facebook ad campaigns.", // --> Sarcastic/negative sentiment about a job title
+            "Gave me a very long speech about how their company is 'the next paradigm shift in enterprise synergy'. We'll see.", // --> Skeptical tone, buzzword-heavy
+            "Said he's a 'thought leader' at IBM. Seemed more interested in the free coffee at the booth than networking.", // --> Negative sentiment, questions his influence
+            "Her title is 'Chief Futurist', but she couldn't answer basic questions about their Q3 roadmap.", // --> Skepticism about the substance of the role
+        ]
+    }
 };
-
 // ✅ UTILITY FUNCTIONS
 function randomChoice(array) {
     return array[Math.floor(Math.random() * array.length)];
@@ -481,55 +460,75 @@ function generateBusinessCardDetails() {
     };
 }
 
-// ✅ NEW: Generate notes based on testing scenario
+/**
+ * ✅ REWRITTEN: Generate notes based on testing scenario, including Devil's Advocate
+ * @param {string} scenario - The type of notes to generate ('mixed', 'devilsAdvocate', etc.)
+ * @param {string} complexity - The complexity level for 'mixed' scenarios
+ * @returns {string} A randomly selected note template.
+ */
 function generateContactNote(scenario = 'mixed', complexity = 'medium') {
     let notePool = [];
-    
+
+    // Check for the special Devil's Advocate scenario first
+    if (scenario === 'devilsAdvocate') {
+        notePool = [
+            ...NOTE_TEMPLATES.devilsAdvocate.subtleIndustryClues,
+            ...NOTE_TEMPLATES.devilsAdvocate.ambiguousRelationships,
+            ...NOTE_TEMPLATES.devilsAdvocate.conflictingData,
+            ...NOTE_TEMPLATES.devilsAdvocate.redHerringsAndSarcasm,
+        ];
+        // Use randomChoice directly and return, as there's no complexity logic here.
+        return randomChoice(notePool);
+    }
+
+    // If not Devil's Advocate, use the 'original' notes pool
+    const originalNotes = NOTE_TEMPLATES.original;
+
     switch (scenario) {
         case 'companyMatching':
-            notePool = NOTE_TEMPLATES.companyMatching;
+            notePool = originalNotes.companyMatching;
             break;
         case 'industryDetection':
-            notePool = NOTE_TEMPLATES.industryDetection;
+            notePool = originalNotes.industryDetection;
             break;
         case 'relationshipDetection':
-            notePool = NOTE_TEMPLATES.relationshipDetection;
+            notePool = originalNotes.relationshipDetection;
             break;
         case 'strategicAnalysis':
-            notePool = NOTE_TEMPLATES.strategicAnalysis;
+            notePool = originalNotes.strategicAnalysis;
             break;
         case 'general':
-            notePool = NOTE_TEMPLATES.general;
+            notePool = originalNotes.general;
             break;
         case 'mixed':
         default:
-            // Mix all types based on complexity
+            // Mix original types based on complexity
             if (complexity === 'strategic') {
                 notePool = [
-                    ...NOTE_TEMPLATES.strategicAnalysis,
-                    ...NOTE_TEMPLATES.relationshipDetection
+                    ...originalNotes.strategicAnalysis,
+                    ...originalNotes.relationshipDetection
                 ];
             } else if (complexity === 'business') {
                 notePool = [
-                    ...NOTE_TEMPLATES.relationshipDetection,
-                    ...NOTE_TEMPLATES.industryDetection,
-                    ...NOTE_TEMPLATES.companyMatching
+                    ...originalNotes.relationshipDetection,
+                    ...originalNotes.industryDetection,
+                    ...originalNotes.companyMatching
                 ];
             } else if (complexity === 'premium') {
                 notePool = [
-                    ...NOTE_TEMPLATES.industryDetection,
-                    ...NOTE_TEMPLATES.companyMatching,
-                    ...NOTE_TEMPLATES.general
+                    ...originalNotes.industryDetection,
+                    ...originalNotes.companyMatching,
+                    ...originalNotes.general
                 ];
             } else { // pro or basic
                 notePool = [
-                    ...NOTE_TEMPLATES.companyMatching,
-                    ...NOTE_TEMPLATES.general
+                    ...originalNotes.companyMatching,
+                    ...originalNotes.general
                 ];
             }
             break;
     }
-    
+
     return randomChoice(notePool);
 }
 
@@ -694,43 +693,32 @@ export function generateRandomContacts(count, options = {}) {
 }
 
 
-// ✅ NEW: Generate contacts optimized for specific AI tier testing
+
+/**
+ * ✅ UPDATED: Generate contacts optimized for specific AI tier testing
+ * @param {string} tier - The tier to generate contacts for ('pro', 'enterprise', 'devilsAdvocate', etc.)
+ * @param {number} count - The number of contacts to generate.
+ * @returns {Array<object>} An array of generated contact objects.
+ */
 export function generateContactsForTierTesting(tier, count = 50) {
     const tierConfigs = {
-        'base': {
-            includeNotes: false, // No AI features
-            noteComplexity: null
-        },
-        'pro': {
+        'base': { includeNotes: true, noteProbability: 0.1, noteComplexity: 'basic' },
+        'pro': { includeNotes: true, noteProbability: 0.3, noteComplexity: 'pro' },
+        'premium': { includeNotes: true, noteProbability: 0.5, noteComplexity: 'premium' },
+        'business': { includeNotes: true, noteProbability: 0.8, noteComplexity: 'business' },
+        'enterprise': { includeNotes: true, noteProbability: 1.0, noteComplexity: 'strategic' },
+        'devilsAdvocate': {
             includeNotes: true,
-            noteScenario: 'companyMatching',
-            noteComplexity: 'pro',
-            noteProbability: 0.8 // 80% have notes for testing
-        },
-        'premium': {
-            includeNotes: true,
-            noteScenario: 'mixed',
-            noteComplexity: 'premium',
-            noteProbability: 0.9 // 90% have notes
-        },
-        'business': {
-            includeNotes: true,
-            noteScenario: 'mixed',
-            noteComplexity: 'business',
-            noteProbability: 0.95 // 95% have notes
-        },
-        'enterprise': {
-            includeNotes: true,
-            noteScenario: 'mixed',
-            noteComplexity: 'strategic',
-            noteProbability: 1.0 // 100% have notes
+            noteScenario: 'devilsAdvocate', // Use the new scenario
+            noteComplexity: 'strategic', // Assign highest complexity
+            noteProbability: 1.0 // 100% have these challenging notes
         }
     };
     
     const config = tierConfigs[tier] || tierConfigs['pro'];
     
     return generateRandomContacts(count, {
-        eventPercentage: 0.6, // Good mix for testing
+        eventPercentage: 0.6,
         locationPercentage: 0.8,
         ...config
     });

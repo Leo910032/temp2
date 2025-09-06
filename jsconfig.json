@@ -1,0 +1,31 @@
+
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./"],
+      "@/components/*": ["./app/components/*"],
+      "@/important/*": ["./important/*"],
+      "@/forget-password-pages/*": ["./app/(forget password pages)/*"],
+      "@/forget-password/*": ["./app/forget-password/forgot-password/*"],
+      "@/dashboard/*": ["./app/dashboard/*"],
+      "@/elements/*": ["./app/elements/*"],
+      "@/hooks/*": ["./hooks/*"],
+      "@/LocalHooks/*": ["./LocalHooks/*"],
+      "@/lib/*": ["./lib/*"],
+      "@/contexts/*": ["./contexts/*"],
+      "@/utils/*": ["./utils/*"],
+      "@/login/*": ["./app/login/*"],
+      "@/signup/*": ["./app/signup/*"],
+      "@/styles/*": ["./styles/*"],
+      "@/user/*": ["./app/[userId]/*"],
+      "@/locales/*": ["./public/locales/*"],
+      "@/app/*": ["./app/*"],
+      "@serviceEnterprise": ["./lib/services/serviceEnterprise"],
+      "@serviceEnterprise/*": ["./lib/services/serviceEnterprise/*"],
+      "@serviceEnterprise/server": ["./lib/services/serviceEnterprise/server"],
+      "@serviceEnterprise/client": ["./lib/services/serviceEnterprise/client"]
+    }
+  },
+  "exclude": ["node_modules"]
+}

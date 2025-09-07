@@ -62,7 +62,38 @@ export async function GET(request, { params }) {
 
         console.log(`🎯 [${requestId}] ✅ User document found`);
         const userData = userDoc.data();
+   // ✅ --- START OF FIX ---
 
+        // Fetch contact-specific stats from the Contacts collection
+        let contactStats = {
+            totalContacts: 0,
+            withNotes: 0,
+            withLocation: 0,
+            bySource: {}
+        };
+
+        const contactsDocRef = adminDb.collection('Contacts').doc(userId);
+        const contactsDoc = await contactsDocRef.get();
+
+        if (contactsDoc.exists) {
+            const contacts = contactsDoc.data().contacts || [];
+            contactStats.totalContacts = contacts.length;
+            
+            // Perform the counts
+            contacts.forEach(contact => {
+        if ((contact.notes && contact.notes.trim() !== '') || (contact.message && contact.message.trim() !== '')) {
+        contactStats.withNotes++; // <-- FIX: Increment the correct variable
+                }
+                if (contact.location && contact.location.latitude) {
+                    contactStats.withLocation++;
+                }
+                const source = contact.source || 'manual';
+                contactStats.bySource[source] = (contactStats.bySource[source] || 0) + 1;
+            });
+        }
+        console.log(`🎯 [${requestId}] ✅ Contact stats calculated:`, contactStats);
+
+        // ✅ --- END OF FIX ---
         // Also fetch analytics data if available
         let analyticsData = null;
         try {
@@ -167,7 +198,9 @@ export async function GET(request, { params }) {
             emailVerified: userData.emailVerified || false,
             createdAt: userData.createdAt?.toDate?.()?.toISOString() || null,
             lastLogin: userData.lastLogin?.toDate?.()?.toISOString() || null,
-            analytics: processedAnalytics
+            analytics: processedAnalytics,
+                        contactStats: contactStats,
+
         };
 
         console.log(`🎯 [${requestId}] ✅ SUCCESS - Returning user data for: ${userData.username}`);

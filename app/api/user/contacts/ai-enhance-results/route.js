@@ -352,7 +352,6 @@ FORMAT YOUR RESPONSE AS JSON:
   "confidence": 8
 }
 
-Be specific, practical, and focus on actionable insights. If the match seems weak or unclear, be honest about it in your confidence score.
 `;
     
     contactLogger.logStep('prompt_prepared', {

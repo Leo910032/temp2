@@ -311,7 +311,7 @@ const handleQuickGenerate = async (scenario, customCount = null) => {
                         </div>
                         <div className="text-center">
                             <div className="text-2xl font-bold text-amber-600">
-                                {generationInfo.currentStats.withNotes || 0}
+        {generationInfo.currentStats.withNotes || 0}
                             </div>
                             <div className="text-xs text-gray-600 font-medium">With Notes</div>
                         </div>

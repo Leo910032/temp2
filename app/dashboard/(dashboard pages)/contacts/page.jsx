@@ -11,7 +11,8 @@ import dynamic from 'next/dynamic';
 import ImportExportModal from './components/ImportExportModal';
 import { ContactServiceFactory } from '@/lib/services/serviceContact/client/factories/ContactServiceFactory';
 import { useUsageInfo } from './components/GroupModalComponents/hooks/useUsageInfo.js'; // Add this import
-
+import SearchModeIndicator, { SearchProgressIndicator } from './components/SearchModeIndicator';
+import AiSearchResults from './components/AiSearchResults';
 // Single import for all service logic
 import {
     // Hooks
@@ -67,6 +68,8 @@ const ContactsMap = dynamic(() => import('./components/ContactsMap'), {
     ) 
 });
 
+   
+
 export default function ContactsPage() {
     const { t } = useTranslation();
     const { currentUser } = useAuth();
@@ -100,6 +103,8 @@ export default function ContactsPage() {
     const [selectionMode, setSelectionMode] = useState(false);
     const [editingContact, setEditingContact] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
+    
+    
     const [showGroupManager, setShowGroupManager] = useState(false);
     const [showImportExportModal, setShowImportExportModal] = useState(false);
     const { 
@@ -111,6 +116,13 @@ export default function ContactsPage() {
     const [showMap, setShowMap] = useState(false);
     const [selectedContactForMap, setSelectedContactForMap] = useState(null);
     const [mapSelectedGroupIds, setMapSelectedGroupIds] = useState([]); // Empty array means all groups are shown
+const [searchMode, setSearchMode] = useState('standard'); // 'standard' | 'semantic'
+const [aiSearchQuery, setAiSearchQuery] = useState('');
+const [aiSearchResults, setAiSearchResults] = useState(null);
+const [isAiSearching, setIsAiSearching] = useState(false);
+
+const [searchStage, setSearchStage] = useState('idle'); // 'embedding', 'vector_search', 'ai_analysis', 'complete'
+const [showSearchProgress, setShowSearchProgress] = useState(false);
 
     // NEW: Background job state for AI generation
     const [backgroundJobId, setBackgroundJobId] = useState(null);
@@ -122,11 +134,6 @@ export default function ContactsPage() {
     }, []);
         const groupManagerRef = useRef(null);
 
-   // Enhanced feature checking
-    const hasFeature = useCallback((feature) => {
-        if (!subscriptionStatus) return false;
-        return hasContactFeature(subscriptionStatus.subscriptionLevel, feature);
-    }, [subscriptionStatus]);
 
 
 // Update the existing useEffect that loads subscription status
@@ -139,7 +146,118 @@ useEffect(() => {
 
 // In ContactsPage.jsx
 
+// Enhanced feature checking
+    const hasFeature = useCallback((feature) => {
+        if (!subscriptionStatus) return false;
+        return hasContactFeature(subscriptionStatus.subscriptionLevel, feature);
+    }, [subscriptionStatus]);
 
+const canUseBasicAiSearch = hasFeature(CONTACT_FEATURES.PREMIUM_SEMANTIC_SEARCH);
+const canUseFullAiSearch = hasFeature(CONTACT_FEATURES.BUSINESS_AI_SEARCH);
+const canUseAnyAiSearch = canUseBasicAiSearch || canUseFullAiSearch;
+// Enhanced search handler that shows both AI jobs
+// Fixed handleEnhancedSearch function for ContactsPage.jsx
+
+const handleEnhancedSearch = async (query, useAI = false) => {
+    if (!query.trim()) {
+        setAiSearchResults(null);
+        setSearchTerm('');
+        setSearchStage('idle');
+        setShowSearchProgress(false);
+        return;
+    }
+
+    if (useAI && canUseAnyAiSearch) {
+        console.log('🚀 Starting Two-Job AI Search Process');
+        setIsAiSearching(true);
+        setAiSearchResults(null);
+        setShowSearchProgress(true);
+        
+        try {
+            // JOB #1: AI Librarian - Embedding + Vector Search
+            console.log('📚 Job #1: AI Librarian Starting...');
+            setSearchStage('embedding');
+            
+            // Small delay to show the embedding stage
+            await new Promise(resolve => setTimeout(resolve, 800));
+            
+            setSearchStage('vector_search');
+            console.log('🔍 Job #1: Searching vector database...');
+            
+            const { searchContacts } = await import('@/lib/services/serviceContact');
+            
+            // FIXED: Get the search response with the new structure
+            const searchResponse = await searchContacts(query, { 
+                maxResults: 10,
+                enhanceResults: canUseFullAiSearch, // Only enhance for Business+
+                userId: currentUser?.uid, // Add userId for cost tracking
+                subscriptionLevel: subscriptionStatus?.subscriptionLevel // Add subscription level
+            });
+            
+            console.log('Raw search response:', searchResponse);
+            
+            // FIXED: Extract the results array from the response
+            const vectorResults = searchResponse?.results || searchResponse || [];
+            
+            console.log(`✅ Job #1 Complete: Found ${vectorResults.length} vector matches`);
+            
+            // JOB #2: AI Researcher (only for Business+ tiers)
+            if (canUseFullAiSearch && vectorResults.length > 0) {
+                console.log('🧠 Job #2: AI Researcher Starting...');
+                setSearchStage('ai_analysis');
+                
+                // The enhancement happens inside searchContacts for Business+ users
+                // We just need to show the progress
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                console.log('✅ Job #2 Complete: AI insights generated');
+            }
+            
+            setSearchStage('complete');
+            
+            // FIXED: Store the extracted results array
+            setAiSearchResults(vectorResults);
+            
+            // Success message based on tier
+            if (canUseFullAiSearch) {
+                toast.success(
+                    `🧠 AI found ${vectorResults.length} relevant contacts with intelligent insights!`,
+                    { duration: 5000 }
+                );
+            } else {
+                toast.success(
+                    `📚 Semantic search found ${vectorResults.length} relevant contacts!`,
+                    { duration: 4000 }
+                );
+            }
+            
+        } catch (error) {
+            console.error('❌ AI Search failed:', error);
+            setSearchStage('idle');
+            
+            // Enhanced error messages
+            if (error.message.includes('Premium subscription')) {
+                toast.error('🔒 AI search requires Premium subscription or higher');
+            } else if (error.message.includes('quota exceeded')) {
+                toast.error('📊 Monthly search limit reached. Upgrade for unlimited searches.');
+            } else {
+                toast.error(`🤖 AI search failed: ${error.message}`);
+            }
+            
+            setAiSearchResults([]);
+        } finally {
+            setIsAiSearching(false);
+            setShowSearchProgress(false);
+            setTimeout(() => setSearchStage('idle'), 2000);
+        }
+    } else {
+        // Standard search
+        setSearchTerm(query);
+        setAiSearchResults(null);
+        setSearchStage('idle');
+        setShowSearchProgress(false);
+    }
+};
   // Update the handleJobComplete function to refresh usage info
     const handleJobComplete = useCallback(async (result) => {
         console.log('[Page] Job completed, processing result:', result);
@@ -413,16 +531,162 @@ const handleJobError = useCallback((error) => {
 
                 {/* Controls */}
                 <div className="bg-white p-4 rounded-lg shadow mb-6 space-y-4">
-                    {/* Search Bar */}
-                    <div className="w-full">
-                        <input
-                            type="text"
-                            placeholder="Search contacts..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full max-w-lg px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                     {/* Search Header with Mode Indicator */}
+                <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium text-gray-900">Search Contacts</h3>
+                    <SearchModeIndicator
+                        searchMode={searchMode}
+                        isSearching={isAiSearching}
+                        subscriptionLevel={subscriptionStatus?.subscriptionLevel}
+                        onModeChange={(mode) => {
+                            setSearchMode(mode);
+                            if (mode === 'standard') {
+                                setAiSearchQuery('');
+                                setAiSearchResults(null);
+                            } else {
+                                setSearchTerm('');
+                            }
+                        }}
+                    />
+                </div>
+
+                {/* Main Search Input */}
+                <div className="relative">
+                    <input
+                        type="text"
+                        placeholder={
+                            searchMode === 'semantic' 
+                                ? "Ask about your network: 'who knows React?' or 'marketing experts'"
+                                : "Search contacts by name, email, or company..."
+                        }
+                        value={searchMode === 'semantic' ? aiSearchQuery : searchTerm}
+                        onChange={(e) => {
+                            if (searchMode === 'semantic') {
+                                setAiSearchQuery(e.target.value);
+                            } else {
+                                setSearchTerm(e.target.value);
+                            }
+                        }}
+                        onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                                if (searchMode === 'semantic') {
+                                    handleEnhancedSearch(aiSearchQuery, true);
+                                } else {
+                                    handleEnhancedSearch(e.target.value, false);
+                                }
+                            }
+                        }}
+                        className="w-full px-4 py-3 pl-12 pr-24 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        disabled={isAiSearching}
+                    />
+                    
+                    {/* Search Icon */}
+                    <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
+                        {isAiSearching ? (
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                        ) : (
+                            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        )}
                     </div>
+
+                    {/* Search Button */}
+                    <button
+                        onClick={() => {
+                            if (searchMode === 'semantic') {
+                                handleEnhancedSearch(aiSearchQuery, true);
+                            } else {
+                                handleEnhancedSearch(searchTerm, false);
+                            }
+                        }}
+                        disabled={isAiSearching}
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2 px-4 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                    >
+                        {isAiSearching ? 'Searching...' : 'Search'}
+                    </button>
+                </div>
+
+                {/* AI Search Features Explanation */}
+                {searchMode === 'semantic' && (
+                    <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-4 rounded-lg border border-purple-200">
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                                <span className="text-lg">🤖</span>
+                                <h4 className="font-semibold text-purple-800">
+                                    {canUseFullAiSearch ? 'Two-Job AI Search System' : 'AI Semantic Search'}
+                                </h4>
+                            </div>
+                            
+                                <div className="grid md:grid-cols-2 gap-4 text-sm">
+                                {/* Job #1 Explanation */}
+                                <div className="flex gap-3">
+                                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <span className="text-blue-600 font-semibold">1</span>
+                                    </div>
+                                    <div>
+                                        <div className="font-medium text-blue-800">AI Librarian</div>
+                                        <div className="text-blue-700 text-xs">
+                                            Converts your question into vector embeddings and finds semantically similar contacts in your personal network
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Job #2 Explanation */}
+                                <div className="flex gap-3">
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                        canUseFullAiSearch ? 'bg-purple-100' : 'bg-gray-100'
+                                    }`}>
+                                        <span className={`font-semibold ${
+                                            canUseFullAiSearch ? 'text-purple-600' : 'text-gray-400'
+                                        }`}>2</span>
+                                    </div>
+                                    <div>
+                                        <div className={`font-medium ${
+                                            canUseFullAiSearch ? 'text-purple-800' : 'text-gray-600'
+                                        }`}>
+                                            AI Researcher {!canUseFullAiSearch && '(Business+)'}
+                                        </div>
+                                        <div className={`text-xs ${
+                                            canUseFullAiSearch ? 'text-purple-700' : 'text-gray-500'
+                                        }`}>
+                                            {canUseFullAiSearch 
+                                                ? 'Analyzes your contacts and explains why each one matches your query'
+                                                : 'Upgrade to Business for AI-powered insights and explanations'
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Quick Examples */}
+                            {aiSearchQuery.length === 0 && (
+                                <div className="pt-2 border-t border-purple-200">
+                                    <div className="text-xs text-purple-600 mb-2">Try these examples:</div>
+                                    <div className="flex flex-wrap gap-1">
+                                        {[
+                                            "serverless experts",
+                                            "startup founders", 
+                                            "marketing professionals",
+                                            "React developers"
+                                        ].map((example, index) => (
+                                            <button
+                                                key={index}
+                                                onClick={() => {
+                                                    setAiSearchQuery(example);
+                                                    handleEnhancedSearch(example, true);
+                                                }}
+                                                className="px-2 py-1 text-xs bg-white border border-purple-300 rounded-full hover:bg-purple-50 text-purple-700 transition-colors"
+                                            >
+                                                "{example}"
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
                     
                     {/* Filter and Action Buttons - Grouped Together */}
                     <div className="flex flex-wrap items-center justify-start sm:justify-end gap-2 w-full">
@@ -485,7 +749,22 @@ const handleJobError = useCallback((error) => {
                 {/* Contacts List */}
                 {/* ... rest of your code ... */}
                 {/* Contacts List */}
-                <ContactsList 
+                  {aiSearchResults !== null ? (
+                <AiSearchResults 
+                    results={aiSearchResults}
+                    query={aiSearchQuery}
+                    searchTier={canUseFullAiSearch ? 'business' : 'premium'}
+                    onClearSearch={() => {
+                        setAiSearchResults(null);
+                        setAiSearchQuery('');
+                        setSearchMode('standard');
+                        setSearchStage('idle');
+                    }}
+                    onContactAction={handleContactAction}
+                    groups={groups}
+                />
+            ) : (
+                <ContactsList
                     contacts={contacts} 
                     selectionMode={selectionMode}
                     selectedContacts={selectedContacts}
@@ -505,7 +784,12 @@ const handleJobError = useCallback((error) => {
                     onLoadMore={() => reloadData({ append: true })}
                     loading={loading}
                     groups={groups}
-                />
+                />)}
+                   <SearchProgressIndicator 
+                stage={searchStage}
+                isSearching={showSearchProgress}
+            />
+
 
                 {/* Groups Preview */}
                 {groups.length > 0 && (
@@ -1173,4 +1457,4 @@ function EditContactModal({ contact, isOpen, onClose, onSave }) {
         </div>
     );
 }
-                  
+     

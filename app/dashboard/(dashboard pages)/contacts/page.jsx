@@ -103,7 +103,8 @@ export default function ContactsPage() {
     const [selectionMode, setSelectionMode] = useState(false);
     const [editingContact, setEditingContact] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
-    
+    const [allVectorResults, setAllVectorResults] = useState([]);
+
     const [streamingProgress, setStreamingProgress] = useState(null);
 const [isStreamingActive, setIsStreamingActive] = useState(false);
     const [showGroupManager, setShowGroupManager] = useState(false);
@@ -160,54 +161,56 @@ const canUseAnyAiSearch = canUseBasicAiSearch || canUseFullAiSearch;
 // Fixed handleEnhancedSearch function for ContactsPage.jsx
 
 const handleEnhancedSearch = async (query, useAI = false) => {
-    if (!query.trim()) {
+ if (!query.trim()) {
         setAiSearchResults(null);
         setSearchTerm('');
         setSearchStage('idle');
         setShowSearchProgress(false);
+        setAllVectorResults([]); // Clear all vector results
         return;
     }
 
     if (useAI && canUseAnyAiSearch) {
-        console.log('🚀 Starting Streaming AI Search Process');
+        console.log('🚀 Starting Enhanced AI Search with Vector Optimization');
         setIsAiSearching(true);
         setAiSearchResults([]);
+        setAllVectorResults([]); // Reset all vector results
         setShowSearchProgress(true);
-        
         try {
-            // JOB #1: AI Librarian - Embedding + Vector Search
-            console.log('📚 Job #1: AI Librarian Starting...');
+            // JOB #1: AI Librarian - Enhanced Vector Search
+            console.log('📚 Job #1: AI Librarian with Vector Similarity Analysis...');
             setSearchStage('embedding');
             
             await new Promise(resolve => setTimeout(resolve, 800));
             
             setSearchStage('vector_search');
-            console.log('🔍 Job #1: Searching vector database...');
+            console.log('🔍 Job #1: Analyzing semantic similarity patterns...');
             
             const { searchContacts } = await import('@/lib/services/serviceContact');
             
-            // Use streaming mode for Business+ users
+            // Use enhanced streaming mode for Business+ users
             const streamingMode = canUseFullAiSearch;
             
-            console.log(`🔄 Using ${streamingMode ? 'streaming' : 'batch'} mode for AI enhancement`);
+            console.log(`🔄 Using ${streamingMode ? 'streaming' : 'batch'} mode with vector optimization`);
             
-            // Set up streaming callbacks
+            // Enhanced streaming callbacks with similarity context
             const streamingCallbacks = streamingMode ? {
                 onProgress: (progressData) => {
-                    console.log('📊 Progress:', progressData);
-                    handleStreamingProgress(progressData);
+                    console.log('📊 Enhanced Progress:', progressData);
+                    handleEnhancedStreamingProgress(progressData);
                 },
                 onResult: (resultData) => {
-                    console.log('✅ New result:', resultData.contact.name);
-                    handleStreamingResult(resultData);
+                    console.log('✅ Enhanced Result:', resultData.contact.name, 
+                        `(AI: ${resultData.insight?.confidence}/10, Vector: ${resultData.similarityContext?.tier})`);
+                    handleEnhancedStreamingResult(resultData);
                 },
                 onError: (errorData) => {
-                    console.error('❌ Streaming error:', errorData);
+                    console.error('❌ Enhanced Streaming error:', errorData);
                     handleStreamingError(errorData);
                 }
             } : {};
             
-            const searchResponse = await searchContacts(query, { 
+        const searchResponse = await searchContacts(query, { 
                 maxResults: 10,
                 enhanceResults: canUseFullAiSearch,
                 streamingMode: streamingMode,
@@ -216,41 +219,53 @@ const handleEnhancedSearch = async (query, useAI = false) => {
                 ...streamingCallbacks
             });
             
-            console.log('Raw search response:', searchResponse);
             
-            // Extract the results array from the response
-            const vectorResults = searchResponse?.results || searchResponse || [];
+            console.log('Enhanced search response:', searchResponse);
             
-            console.log(`✅ Search Complete: Found ${vectorResults.length} results`);
+            // Extract results and metadata
+             const vectorResults = searchResponse?.results || searchResponse || [];
+            const searchMetadata = searchResponse?.searchMetadata || {};
+            
+            console.log(`✅ Enhanced Search Complete: Found ${vectorResults.length} results`);
+            
+            // Display vector category information
+            if (searchMetadata.vectorCategories) {
+                console.log('📊 Vector Similarity Breakdown:', searchMetadata.vectorCategories);
+                displayVectorSimilarityInfo(searchMetadata.vectorCategories);
+            }
             
             setSearchStage('complete');
             
             if (streamingMode) {
-                // Results are already being populated via streaming callbacks
-                console.log('🔄 Streaming mode - results populated in real-time');
+                // Results are being populated via enhanced streaming callbacks
+                console.log('🔄 Enhanced streaming mode - results with similarity context');
                 toast.success(
-                    `🧠 AI found contacts with streaming insights!`,
+                    `🧠 AI found contacts with enhanced similarity analysis!`,
                     { duration: 5000 }
                 );
             } else {
                 // Batch mode - set all results at once
                 setAiSearchResults(vectorResults);
                 
+                const similarityInfo = searchMetadata.vectorCategories 
+                    ? ` (${searchMetadata.vectorCategories.high} high, ${searchMetadata.vectorCategories.medium} medium similarity)`
+                    : '';
+                
                 if (canUseFullAiSearch) {
                     toast.success(
-                        `🧠 AI found ${vectorResults.length} relevant contacts with intelligent insights!`,
+                        `🧠 AI found ${vectorResults.length} relevant contacts${similarityInfo}!`,
                         { duration: 5000 }
                     );
                 } else {
                     toast.success(
-                        `📚 Semantic search found ${vectorResults.length} relevant contacts!`,
+                        `📚 Semantic search found ${vectorResults.length} relevant contacts${similarityInfo}!`,
                         { duration: 4000 }
                     );
                 }
             }
             
         } catch (error) {
-            console.error('❌ AI Search failed:', error);
+            console.error('❌ Enhanced AI Search failed:', error);
             setSearchStage('idle');
             
             if (error.message.includes('Premium subscription')) {
@@ -258,7 +273,7 @@ const handleEnhancedSearch = async (query, useAI = false) => {
             } else if (error.message.includes('quota exceeded')) {
                 toast.error('📊 Monthly search limit reached. Upgrade for unlimited searches.');
             } else {
-                toast.error(`🤖 AI search failed: ${error.message}`);
+                toast.error(`🤖 Enhanced AI search failed: ${error.message}`);
             }
             
             setAiSearchResults([]);
@@ -269,8 +284,9 @@ const handleEnhancedSearch = async (query, useAI = false) => {
         }
     } else {
         // Standard search
-        setSearchTerm(query);
+      setSearchTerm(query);
         setAiSearchResults(null);
+        setAllVectorResults([]);
         setSearchStage('idle');
         setShowSearchProgress(false);
     }
@@ -304,13 +320,56 @@ const handleStreamingProgress = (progressData) => {
 };
 
 
-// NEW: Streaming result handler
-const handleStreamingResult = (resultData) => {
-    const { contact, insight, processed, total } = resultData;
+// ENHANCED: Streaming progress handler with similarity context
+const handleEnhancedStreamingProgress = (progressData) => {
+    setStreamingProgress(progressData);
     
-    console.log(`✅ New result: ${contact.name} (${processed}/${total})`);
+    switch (progressData.type) {
+        case 'start':
+            console.log(`🚀 Starting enhanced AI analysis for ${progressData.total} contacts`);
+            if (progressData.strategy) {
+                console.log(`📋 Processing strategy: ${progressData.strategy}`);
+            }
+            setSearchStage('ai_analysis');
+            setIsStreamingActive(true);
+            break;
+            
+        case 'processing':
+            const similarityInfo = progressData.similarityTier 
+                ? ` (${progressData.similarityTier} similarity: ${(progressData.vectorScore * 100).toFixed(1)}%)`
+                : '';
+            console.log(`⏳ Processing: ${progressData.contactName}${similarityInfo}`);
+            break;
+            
+        case 'filtered':
+            const filterInfo = progressData.similarityTier 
+                ? ` (${progressData.similarityTier} similarity, ${progressData.reason})`
+                : ` (${progressData.reason})`;
+            console.log(`⚠️ Filtered: ${progressData.contactName}${filterInfo}`);
+            break;
+            
+        case 'complete':
+            console.log('🎉 Enhanced AI analysis complete:', progressData.stats);
+            if (progressData.stats?.similarityBreakdown) {
+                console.log('📊 Final similarity breakdown:', progressData.stats.similarityBreakdown);
+            }
+            setSearchStage('complete');
+            setIsStreamingActive(false);
+            setStreamingProgress(null);
+            break;
+    }
+};
+// ENHANCED: Streaming result handler with similarity context
+const handleEnhancedStreamingResult = (resultData) => {
+    const { contact, insight, processed, total, similarityContext } = resultData;
     
-    // Add the new result to the existing results array
+    const similarityInfo = similarityContext 
+        ? ` (Vector: ${similarityContext.tier}, Hybrid: ${similarityContext.hybridScore?.toFixed(3)})`
+        : '';
+    
+    console.log(`✅ Enhanced result: ${contact.name} (AI: ${insight.confidence}/10${similarityInfo}) (${processed}/${total})`);
+    
+    // Add the new result to the existing results array with enhanced sorting
     setAiSearchResults(prevResults => {
         const newResults = [...(prevResults || [])];
         
@@ -321,27 +380,66 @@ const handleStreamingResult = (resultData) => {
             // Update existing contact with AI insights
             newResults[existingIndex] = contact;
         } else {
-            // Add new contact, maintaining sort order by confidence
+            // Add new contact
             newResults.push(contact);
-            newResults.sort((a, b) => {
-                const confidenceA = a.searchMetadata?.aiAnalysis?.confidenceScore || 0;
-                const confidenceB = b.searchMetadata?.aiAnalysis?.confidenceScore || 0;
-                return confidenceB - confidenceA;
-            });
         }
+        
+        // Enhanced sorting by hybrid score (combines vector similarity + AI confidence)
+        newResults.sort((a, b) => {
+            const scoreA = a.searchMetadata?.hybridScore || 
+                          a.searchMetadata?.aiAnalysis?.confidenceScore / 10 || 
+                          a._vectorScore || 0;
+            const scoreB = b.searchMetadata?.hybridScore || 
+                          b.searchMetadata?.aiAnalysis?.confidenceScore / 10 || 
+                          b._vectorScore || 0;
+            return scoreB - scoreA;
+        });
         
         return newResults;
     });
-    
-    // Show individual contact toast for high-confidence results
-    if (insight.confidence >= 9) {
+       // Enhanced toast notifications based on similarity and confidence
+    if (insight.confidence >= 9 && similarityContext?.tier === 'high') {
         toast.success(
-            `🎯 High confidence match: ${contact.name}`,
+            `🎯 Excellent match: ${contact.name} (High similarity + High AI confidence)`,
+            { duration: 4000 }
+        );
+    } else if (insight.confidence >= 8 && similarityContext?.tier === 'medium') {
+        toast.success(
+            `✨ Strong match: ${contact.name} (Medium similarity + Good AI confidence)`,
+            { duration: 3000 }
+        );
+    } else if (insight.confidence >= 8 && similarityContext?.tier === 'low') {
+        toast.success(
+            `💡 Surprising match: ${contact.name} (Low similarity but high AI confidence!)`,
             { duration: 3000 }
         );
     }
 };
+// NEW: Display vector similarity information
+const displayVectorSimilarityInfo = (vectorCategories) => {
+    const totalContacts = Object.values(vectorCategories).reduce((sum, count) => sum + count, 0);
+    
+    if (totalContacts > 0) {
+        const message = `Vector analysis: ${vectorCategories.high} high similarity, ${vectorCategories.medium} medium, ${vectorCategories.low} low (${totalContacts} total)`;
+        
+       toast(message, { 
+            duration: 4000,
+            icon: '📊'
+        });
+    }
+};
 
+// ENHANCED: Clear search function with similarity context cleanup
+const clearEnhancedSearch = () => {
+     setAiSearchResults(null);
+    setAiSearchQuery('');
+    setSearchMode('standard');
+    setSearchStage('idle');
+    setIsStreamingActive(false);
+    setStreamingProgress(null);
+    setAllVectorResults([]); // Clear all vector results
+    console.log('🧹 Cleared enhanced search state and similarity context');
+};
 // NEW: Streaming error handler
 const handleStreamingError = (errorData) => {
     console.error('❌ Streaming error:', errorData);
@@ -1563,4 +1661,3 @@ function EditContactModal({ contact, isOpen, onClose, onSave }) {
         </div>
     );
 }
-     

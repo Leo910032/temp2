@@ -1,6 +1,8 @@
-// app/dashboard/(dashboard pages)/contacts/components/AiSearchResults.jsx - WITH STREAMING SUPPORT
+// app/dashboard/(dashboard pages)/contacts/components/AiSearchResults.jsx - FIXED VERSION
 "use client"
-import { useState, useMemo, useEffect } from 'react';
+import React from 'react'; // ✅ THE FIX IS HERE
+
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from "@/lib/translation/useTranslation";
 
 export default function AiSearchResults({ 
@@ -11,116 +13,219 @@ export default function AiSearchResults({
     onContactAction, 
     groups = [],
     isStreaming = false,
-    streamingProgress = null
+    streamingProgress = null,
+    allVectorResults = [] // All results from vector search (not just the filtered ones)
 }) {
     const { t } = useTranslation();
     const [expandedCards, setExpandedCards] = useState(new Set());
     const [displayedResults, setDisplayedResults] = useState([]);
     const [loadingNewResults, setLoadingNewResults] = useState(false);
+    const [selectedSimilarityFilter, setSelectedSimilarityFilter] = useState('all');
+    
+    // Fixed: Use refs to prevent infinite loops
+    const lastQueryRef = useRef('');
+    const lastResultsHashRef = useRef('');
+    const filterInitializedRef = useRef(false);
+    
+    // Fixed: Stable hash function to detect real changes
+    const getResultsHash = useCallback((highCount, mediumCount, lowCount, query) => {
+        return `${query}-${highCount}-${mediumCount}-${lowCount}`;
+    }, []);
 
-    // Sort results by confidence score
+    // Fixed: Reset state when query changes (only when query actually changes)
+    useEffect(() => {
+        if (query !== lastQueryRef.current) {
+            console.log('Query changed, resetting state:', { from: lastQueryRef.current, to: query });
+            filterInitializedRef.current = false;
+            setSelectedSimilarityFilter('all');
+            setExpandedCards(new Set());
+            setDisplayedResults([]);
+            lastQueryRef.current = query;
+            lastResultsHashRef.current = '';
+        }
+    }, [query]);
+
+    // Fixed: Stable categorization with dependency optimization
+    const categorizedResults = useMemo(() => {
+        const allResults = allVectorResults.length > 0 ? allVectorResults : results;
+        
+        const categories = {
+            high: [],
+            medium: [],
+            low: []
+        };
+
+        if (!Array.isArray(allResults)) {
+            return categories;
+        }
+
+        allResults.forEach(contact => {
+            if (!contact) return;
+            
+            const vectorScore = contact._vectorScore || contact.searchMetadata?.vectorSimilarity || 0;
+            const tier = contact.searchMetadata?.similarityTier || contact.similarityTier;
+            
+            if (tier === 'high' || vectorScore >= 0.75) {
+                categories.high.push(contact);
+            } else if (tier === 'medium' || vectorScore >= 0.60) {
+                categories.medium.push(contact);
+            } else {
+                categories.low.push(contact);
+            }
+        });
+
+        return categories;
+    }, [results, allVectorResults]); // Fixed: Only depend on the actual data arrays
+
+    // Fixed: Stable filter initialization with proper guards
+    useEffect(() => {
+        const currentHash = getResultsHash(
+            categorizedResults.high.length,
+            categorizedResults.medium.length,
+            categorizedResults.low.length,
+            query
+        );
+        
+        // Only initialize filter if:
+        // 1. Not already initialized for this query
+        // 2. Hash has actually changed (indicating new data)
+        // 3. We have some results to work with
+        const hasResults = currentHash !== `${query}-0-0-0`;
+        const hashChanged = currentHash !== lastResultsHashRef.current;
+        
+        if (!filterInitializedRef.current && hashChanged && hasResults) {
+            console.log('Initializing filter for new results:', currentHash);
+            
+            const counts = {
+                high: categorizedResults.high.length,
+                medium: categorizedResults.medium.length,
+                low: categorizedResults.low.length
+            };
+            
+            // Find the category with the most results as default
+            const defaultCategory = Object.entries(counts).reduce((a, b) => 
+                counts[a[0]] > counts[b[0]] ? a : b
+            )[0];
+            
+            if (defaultCategory && counts[defaultCategory] > 0) {
+                setSelectedSimilarityFilter(defaultCategory);
+            }
+            
+            filterInitializedRef.current = true;
+            lastResultsHashRef.current = currentHash;
+        }
+    }, [categorizedResults, query, getResultsHash]); // Fixed: Include all actual dependencies
+
+    // Fixed: Optimized filtered results with stable dependencies
+    const filteredResults = useMemo(() => {
+        if (selectedSimilarityFilter === 'all') {
+            return [...categorizedResults.high, ...categorizedResults.medium, ...categorizedResults.low];
+        }
+        return categorizedResults[selectedSimilarityFilter] || [];
+    }, [categorizedResults, selectedSimilarityFilter]);
+
+    // Fixed: Optimized sorted results 
     const sortedResults = useMemo(() => {
-        if (!results) return [];
-        return [...results].sort((a, b) => {
+        return [...filteredResults].sort((a, b) => {
             const confidenceA = a.searchMetadata?.aiAnalysis?.confidenceScore || 0;
             const confidenceB = b.searchMetadata?.aiAnalysis?.confidenceScore || 0;
             return confidenceB - confidenceA;
         });
-    }, [results]);
+    }, [filteredResults]);
 
-    // Handle streaming updates
+    // Fixed: Streaming updates with proper guards
     useEffect(() => {
+        // Guard against unnecessary updates
+        if (!Array.isArray(sortedResults)) return;
+        
         if (isStreaming && sortedResults.length > displayedResults.length) {
-            // New results arrived via streaming
             setLoadingNewResults(true);
             
-            // Add animation delay for smooth appearance
             const timer = setTimeout(() => {
-                setDisplayedResults(sortedResults);
+                setDisplayedResults([...sortedResults]); // Fixed: Use spread to ensure new array
                 setLoadingNewResults(false);
                 
-                // Auto-expand first card if it has AI insights
-                if (sortedResults.length > 0 && sortedResults[0].searchMetadata?.aiAnalysis) {
+                // Auto-expand first result if it has AI analysis
+                if (sortedResults.length > 0 && sortedResults[0]?.searchMetadata?.aiAnalysis) {
                     setExpandedCards(new Set([sortedResults[0].id]));
                 }
             }, 300);
             
             return () => clearTimeout(timer);
-        } else if (!isStreaming) {
-            // Not streaming, show all results immediately
-            setDisplayedResults(sortedResults);
+        } else if (!isStreaming && sortedResults.length !== displayedResults.length) {
+            // Fixed: Only update if lengths actually differ
+            setDisplayedResults([...sortedResults]);
             
-            // Auto-expand first card if it has AI insights
-            if (sortedResults.length > 0 && sortedResults[0].searchMetadata?.aiAnalysis) {
+            if (sortedResults.length > 0 && sortedResults[0]?.searchMetadata?.aiAnalysis) {
                 setExpandedCards(new Set([sortedResults[0].id]));
             }
         }
-    }, [sortedResults, isStreaming, displayedResults.length]);
+    }, [sortedResults, isStreaming, displayedResults.length]); // Fixed: Only depend on length
 
-    const toggleExpanded = (contactId) => {
-        const newExpanded = new Set(expandedCards);
-        if (newExpanded.has(contactId)) {
-            newExpanded.delete(contactId);
-        } else {
-            newExpanded.add(contactId);
-        }
-        setExpandedCards(newExpanded);
-    };
+    const toggleExpanded = useCallback((contactId) => {
+        setExpandedCards(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(contactId)) {
+                newSet.delete(contactId);
+            } else {
+                newSet.add(contactId);
+            }
+            return newSet;
+        });
+    }, []);
 
-    const getRelevanceColor = (score) => {
+    // Fixed: Memoize utility functions to prevent recreations
+    const getRelevanceColor = useCallback((score) => {
         if (!score) return 'text-gray-500';
         if (score >= 0.9) return 'text-green-600';
         if (score >= 0.8) return 'text-blue-600';
         if (score >= 0.7) return 'text-yellow-600';
         return 'text-orange-600';
-    };
+    }, []);
     
-    const getRelevanceText = (score) => {
+    const getRelevanceText = useCallback((score) => {
         if (!score) return 'Relevant';
         if (score >= 0.85) return 'Highly Relevant';
         if (score >= 0.75) return 'Relevant';
         return 'Possibly Relevant';
-    };
+    }, []);
 
-    const formatDate = (dateString) => {
+    const formatDate = useCallback((dateString) => {
         if (!dateString) return '';
         return new Date(dateString).toLocaleDateString('en-US', { 
             day: '2-digit', 
             month: 'short', 
             year: 'numeric'
         });
-    };
+    }, []);
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-6">
             {/* Results Header */}
-            <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-4 rounded-lg border border-purple-200">
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4">
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
                             {isStreaming ? (
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
                             ) : (
-                                <span className="text-lg">🤖</span>
+                                <span className="text-2xl">🤖</span>
                             )}
                         </div>
-                        <div>
-                            <h3 className="text-lg font-semibold text-gray-800">
+                        
+                        <div className="flex flex-col">
+                            <h3 className="text-lg font-semibold text-gray-900">
                                 AI Search Results for "{query}"
                             </h3>
                             <p className="text-sm text-gray-600">
-                                {isStreaming ? (
-                                    `Processing contacts... Found ${displayedResults.length} so far`
-                                ) : (
-                                    `Found ${displayedResults.length} relevant contact${displayedResults.length !== 1 ? 's' : ''} using ${searchTier === 'business' ? 'AI-powered analysis' : 'semantic search'}`
-                                )}
+                                Found {categorizedResults.high.length + categorizedResults.medium.length + categorizedResults.low.length} relevant contacts using {searchTier === 'business' ? 'AI-powered analysis' : 'semantic search'}
                             </p>
                         </div>
                     </div>
-                    <button
+                    
+                    <button 
                         onClick={onClearSearch}
-                        className="px-3 py-1 bg-white border border-purple-300 text-purple-700 rounded-lg hover:bg-purple-50 transition-colors text-sm"
-                        disabled={isStreaming}
+                        className="px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                     >
                         Clear Search
                     </button>
@@ -128,20 +233,20 @@ export default function AiSearchResults({
                 
                 {/* Streaming Progress Indicator */}
                 {isStreaming && streamingProgress && (
-                    <div className="mt-3 p-3 bg-white rounded-lg border border-purple-200">
+                    <div className="mt-4 p-3 bg-white rounded-lg border border-purple-200">
                         <div className="flex items-center gap-2 mb-2">
-                            <div className="animate-pulse w-2 h-2 bg-purple-600 rounded-full"></div>
-                            <span className="text-sm font-medium text-purple-800">Live AI Analysis</span>
+                            <div className="animate-pulse w-2 h-2 bg-purple-500 rounded-full"></div>
+                            <span className="text-sm font-medium text-purple-700">Live AI Analysis</span>
                         </div>
                         {streamingProgress.type === 'processing' && (
-                            <div className="text-xs text-purple-600">
+                            <div className="text-sm text-gray-600">
                                 Analyzing: {streamingProgress.contactName} ({streamingProgress.processed}/{streamingProgress.total})
                             </div>
                         )}
                         {streamingProgress.percentage && (
-                            <div className="w-full bg-purple-100 rounded-full h-2 mt-2">
+                            <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
                                 <div 
-                                    className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                                    className="bg-purple-600 h-2 rounded-full transition-all duration-300" 
                                     style={{ width: `${streamingProgress.percentage}%` }}
                                 ></div>
                             </div>
@@ -150,24 +255,57 @@ export default function AiSearchResults({
                 )}
             </div>
 
+            {/* Similarity Filter Navigation */}
+            <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <span className="text-sm font-medium text-gray-700">Filter by similarity:</span>
+                    <div className="flex flex-wrap gap-2">
+                        <SimilarityFilterButton 
+                            type="high" 
+                            count={categorizedResults.high.length} 
+                            isSelected={selectedSimilarityFilter === 'high'} 
+                            onClick={() => setSelectedSimilarityFilter('high')}
+                        />
+                        <SimilarityFilterButton 
+                            type="medium" 
+                            count={categorizedResults.medium.length} 
+                            isSelected={selectedSimilarityFilter === 'medium'} 
+                            onClick={() => setSelectedSimilarityFilter('medium')}
+                        />
+                        <SimilarityFilterButton 
+                            type="low" 
+                            count={categorizedResults.low.length} 
+                            isSelected={selectedSimilarityFilter === 'low'} 
+                            onClick={() => setSelectedSimilarityFilter('low')}
+                        />
+                        <SimilarityFilterButton 
+                            type="all" 
+                            count={categorizedResults.high.length + categorizedResults.medium.length + categorizedResults.low.length} 
+                            isSelected={selectedSimilarityFilter === 'all'} 
+                            onClick={() => setSelectedSimilarityFilter('all')}
+                        />
+                    </div>
+                </div>
+            </div>
+
             {/* No Results */}
             {!isStreaming && displayedResults.length === 0 && (
-                <div className="text-center py-8 bg-white rounded-lg border">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <span className="text-3xl">🤷</span>
+                <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="text-4xl mb-2">
+                        🤷
                     </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No matching contacts found</h3>
-                    <p className="text-gray-500 mb-4">
-                        Try adjusting your search terms or asking a different question.
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No contacts found in this similarity level</h3>
+                    <p className="text-gray-600">
+                        Try selecting a different similarity filter or clearing the search.
                     </p>
                 </div>
             )}
 
             {/* Results List */}
-            <div className="space-y-3">
+            <div className="space-y-4">
                 {displayedResults.map((contact, index) => (
-                    <AiSearchResultCard
-                        key={contact.id}
+                    <AiSearchResultCard 
+                        key={`${contact.id}-${index}`} // Fixed: Stable key
                         contact={contact}
                         index={index}
                         searchTier={searchTier}
@@ -182,15 +320,11 @@ export default function AiSearchResults({
                     />
                 ))}
                 
-                {/* Loading indicator for new streaming results */}
                 {loadingNewResults && (
-                    <div className="bg-white rounded-lg border border-gray-200 p-4 animate-pulse">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
-                            <div className="flex-1">
-                                <div className="h-4 bg-gray-200 rounded w-1/3 mb-2"></div>
-                                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                            </div>
+                    <div className="flex justify-center py-4">
+                        <div className="flex items-center gap-2 text-gray-600">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                            <span className="text-sm">Loading new results...</span>
                         </div>
                     </div>
                 )}
@@ -199,8 +333,89 @@ export default function AiSearchResults({
     );
 }
 
-// Individual AI Search Result Card Component
-function AiSearchResultCard({ 
+// Fixed: Memoized filter button to prevent unnecessary re-renders
+const SimilarityFilterButton = React.memo(function SimilarityFilterButton({ type, count, isSelected, onClick }) {
+    const getButtonConfig = (type) => {
+        switch (type) {
+            case 'high':
+                return {
+                    label: 'High Similarity',
+                    color: 'green',
+                    icon: '🎯',
+                    bgClass: isSelected ? 'bg-green-500' : 'bg-green-100',
+                    textClass: isSelected ? 'text-white' : 'text-green-700',
+                    borderClass: 'border-green-300',
+                    hoverClass: 'hover:bg-green-200'
+                };
+            case 'medium':
+                return {
+                    label: 'Medium Similarity',
+                    color: 'yellow',
+                    icon: '⚡',
+                    bgClass: isSelected ? 'bg-yellow-500' : 'bg-yellow-100',
+                    textClass: isSelected ? 'text-white' : 'text-yellow-700',
+                    borderClass: 'border-yellow-300',
+                    hoverClass: 'hover:bg-yellow-200'
+                };
+            case 'low':
+                return {
+                    label: 'Low Similarity',
+                    color: 'orange',
+                    icon: '🔍',
+                    bgClass: isSelected ? 'bg-orange-500' : 'bg-orange-100',
+                    textClass: isSelected ? 'text-white' : 'text-orange-700',
+                    borderClass: 'border-orange-300',
+                    hoverClass: 'hover:bg-orange-200'
+                };
+            case 'all':
+                return {
+                    label: 'All Results',
+                    color: 'blue',
+                    icon: '📊',
+                    bgClass: isSelected ? 'bg-blue-500' : 'bg-blue-100',
+                    textClass: isSelected ? 'text-white' : 'text-blue-700',
+                    borderClass: 'border-blue-300',
+                    hoverClass: 'hover:bg-blue-200'
+                };
+        }
+    };
+
+    const config = getButtonConfig(type);
+
+    return (
+        <button
+            onClick={onClick}
+            disabled={count === 0}
+            className={`
+                relative px-4 py-2 rounded-lg border transition-all duration-300 transform
+                ${config.bgClass} ${config.textClass} ${config.borderClass}
+                ${!isSelected && count > 0 ? config.hoverClass : ''}
+                ${isSelected ? 'scale-105 shadow-lg' : 'hover:scale-102'}
+                ${count === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md'}
+                flex items-center gap-2 text-sm font-medium
+            `}
+        >
+            <span className="text-base">{config.icon}</span>
+            <span>{config.label}</span>
+            <span className={`
+                px-2 py-0.5 rounded-full text-xs font-bold
+                ${isSelected ? 'bg-white bg-opacity-30' : 'bg-white bg-opacity-60'}
+            `}>
+                {count}
+            </span>
+            
+            {/* Selection indicator */}
+            {isSelected && (
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-white rounded-full flex items-center justify-center">
+                    <div className="w-2 h-2 bg-current rounded-full"></div>
+                </div>
+            )}
+        </button>
+    );
+});
+
+// Fixed: Memoized card component to prevent unnecessary re-renders
+const AiSearchResultCard = React.memo(function AiSearchResultCard({ 
     contact, 
     index, 
     searchTier, 
@@ -217,12 +432,12 @@ function AiSearchResultCard({
     
     const hasAiInsights = searchTier === 'business' && contact.searchMetadata?.aiAnalysis;
     const aiAnalysis = contact.searchMetadata?.aiAnalysis;
+    const vectorScore = contact._vectorScore || contact.searchMetadata?.vectorSimilarity || 0;
     
     return (
         <div className={`bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 ${
             isNewResult ? 'animate-slide-in-from-top border-green-300 shadow-green-100' : ''
         }`}>
-            {/* New Result Badge */}
             {isNewResult && (
                 <div className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-t-lg text-center font-medium border-b border-green-200">
                     ✨ New Result
@@ -246,8 +461,8 @@ function AiSearchResultCard({
                                 {contact.company && <p className="text-xs text-blue-600 truncate mt-1">{contact.company}</p>}
                                 
                                 <div className="flex items-center gap-2 mt-2">
-                                    <span className={`text-xs font-medium ${getRelevanceColor(contact._vectorScore)}`}>
-                                        {getRelevanceText(contact._vectorScore)}
+                                    <span className={`text-xs font-medium ${getRelevanceColor(vectorScore)}`}>
+                                        {getRelevanceText(vectorScore)}
                                     </span>
                                     {hasAiInsights && (
                                         <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
@@ -288,14 +503,15 @@ function AiSearchResultCard({
                 <div className="border-t border-gray-100">
                     <div className="p-4 space-y-4">
                         
-                        {/* AI Insights (Business tier) */}
-                        {hasAiInsights && (
-                            <div className="space-y-3">
-                                {/* Confidence Score */}
-                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                    <span className="text-sm font-medium text-gray-700">AI Confidence Score:</span>
+                        {/* AI Analysis Results */}
+                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <span className="text-sm font-medium text-gray-700">AI Analysis Results:</span>
+                            <div className="flex items-center gap-4">
+                                {/* AI Confidence */}
+                                {hasAiInsights && (
                                     <div className="flex items-center gap-2">
-                                        <div className="w-20 bg-gray-200 rounded-full h-2">
+                                        <span className="text-xs text-gray-600">AI Confidence:</span>
+                                        <div className="w-16 bg-gray-200 rounded-full h-2">
                                             <div 
                                                 className={`h-2 rounded-full transition-all duration-300 ${
                                                     aiAnalysis.confidenceScore >= 8 ? 'bg-green-500' :
@@ -304,19 +520,36 @@ function AiSearchResultCard({
                                                 style={{ width: `${(aiAnalysis.confidenceScore / 10) * 100}%` }}
                                             ></div>
                                         </div>
-                                        <span className="text-sm font-bold text-gray-900">
+                                        <span className="text-xs font-bold text-gray-900">
                                             {aiAnalysis.confidenceScore}/10
                                         </span>
                                     </div>
+                                )}
+                                
+                                {/* Similarity Score */}
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-600">Similarity:</span>
+                                    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                                        vectorScore >= 0.75 ? 'bg-green-100 text-green-700' :
+                                        vectorScore >= 0.60 ? 'bg-yellow-100 text-yellow-700' :
+                                        'bg-orange-100 text-orange-700'
+                                    }`}>
+                                        {(vectorScore * 100).toFixed(0)}%
+                                    </span>
                                 </div>
+                            </div>
+                        </div>
 
+                        {/* AI Insights (Business tier) */}
+                        {hasAiInsights && (
+                            <div className="space-y-3">
                                 {/* Explanation */}
                                 <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
                                     <h4 className="text-sm font-semibold text-purple-800 mb-1">💡 Why this contact matches:</h4>
                                     <p className="text-sm text-purple-700">{aiAnalysis.matchExplanation}</p>
                                 </div>
 
-                                {/* Relevance Factors */}
+                                {/* Key Relevance Factors */}
                                 {aiAnalysis.relevanceFactors && (
                                     <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                                         <h4 className="text-sm font-semibold text-blue-800 mb-2">🔑 Key Relevance Factors:</h4>
@@ -326,7 +559,7 @@ function AiSearchResultCard({
                                     </div>
                                 )}
 
-                                {/* Action Suggestions */}
+                                {/* Actionable Suggestions */}
                                 {aiAnalysis.actionSuggestions && (
                                     <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                                         <h4 className="text-sm font-semibold text-green-800 mb-2">🚀 Actionable Suggestions:</h4>
@@ -379,9 +612,9 @@ function AiSearchResultCard({
             )}
         </div>
     );
-}
+});
 
-// Add CSS for slide-in animation
+// CSS for animations (unchanged)
 const styles = `
 @keyframes slide-in-from-top {
   from {
@@ -404,9 +637,13 @@ const styles = `
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+.hover\\:scale-102:hover {
+  transform: scale(1.02);
+}
 `;
 
-// Inject styles
+// Inject styles (unchanged)
 if (typeof document !== 'undefined' && !document.querySelector('#ai-search-results-styles')) {
   const styleElement = document.createElement('style');
   styleElement.id = 'ai-search-results-styles';

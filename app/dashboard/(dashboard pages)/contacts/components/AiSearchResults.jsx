@@ -1,20 +1,19 @@
 // app/dashboard/(dashboard pages)/contacts/components/AiSearchResults.jsx - FIXED VERSION
 "use client"
-import React from 'react'; // ✅ THE FIX IS HERE
+import React from 'react';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from "@/lib/translation/useTranslation";
 
 export default function AiSearchResults({ 
-    results, 
+    results, // This prop will now be the single source of truth
     query, 
     searchTier, 
     onClearSearch, 
     onContactAction, 
     groups = [],
     isStreaming = false,
-    streamingProgress = null,
-    allVectorResults = [] // All results from vector search (not just the filtered ones)
+    streamingProgress = null
 }) {
     const { t } = useTranslation();
     const [expandedCards, setExpandedCards] = useState(new Set());
@@ -22,17 +21,14 @@ export default function AiSearchResults({
     const [loadingNewResults, setLoadingNewResults] = useState(false);
     const [selectedSimilarityFilter, setSelectedSimilarityFilter] = useState('all');
     
-    // Fixed: Use refs to prevent infinite loops
     const lastQueryRef = useRef('');
     const lastResultsHashRef = useRef('');
     const filterInitializedRef = useRef(false);
     
-    // Fixed: Stable hash function to detect real changes
-    const getResultsHash = useCallback((highCount, mediumCount, lowCount, query) => {
-        return `${query}-${highCount}-${mediumCount}-${lowCount}`;
+    const getResultsHash = useCallback((resultsCount, query) => {
+        return `${query}-${resultsCount}`;
     }, []);
 
-    // Fixed: Reset state when query changes (only when query actually changes)
     useEffect(() => {
         if (query !== lastQueryRef.current) {
             console.log('Query changed, resetting state:', { from: lastQueryRef.current, to: query });
@@ -45,53 +41,45 @@ export default function AiSearchResults({
         }
     }, [query]);
 
-    // Fixed: Stable categorization with dependency optimization
+   // CORRECTED: Use the `results` prop as the single source of truth for categorization.
     const categorizedResults = useMemo(() => {
-        const allResults = allVectorResults.length > 0 ? allVectorResults : results;
-        
         const categories = {
             high: [],
             medium: [],
             low: []
         };
 
-        if (!Array.isArray(allResults)) {
+        if (!Array.isArray(results)) {
             return categories;
         }
-
-        allResults.forEach(contact => {
+        
+        // Logic now correctly depends on the `results` prop which gets streamed updates
+        results.forEach(contact => {
             if (!contact) return;
             
-            const vectorScore = contact._vectorScore || contact.searchMetadata?.vectorSimilarity || 0;
-            const tier = contact.searchMetadata?.similarityTier || contact.similarityTier;
+            const tier = contact.similarityTier || contact.searchMetadata?.similarityTier;
             
-            if (tier === 'high' || vectorScore >= 0.75) {
+            if (tier === 'high') {
                 categories.high.push(contact);
-            } else if (tier === 'medium' || vectorScore >= 0.60) {
+            } else if (tier === 'medium') {
                 categories.medium.push(contact);
-            } else {
+            } else if (tier === 'low' || tier === 'filtered') { // Group low and filtered together for display
                 categories.low.push(contact);
             }
         });
 
         return categories;
-    }, [results, allVectorResults]); // Fixed: Only depend on the actual data arrays
-
+    }, [results]); // Dependency is now correctly just `results`
     // Fixed: Stable filter initialization with proper guards
+  
     useEffect(() => {
         const currentHash = getResultsHash(
-            categorizedResults.high.length,
-            categorizedResults.medium.length,
-            categorizedResults.low.length,
+            (results || []).length,
             query
         );
         
-        // Only initialize filter if:
-        // 1. Not already initialized for this query
-        // 2. Hash has actually changed (indicating new data)
-        // 3. We have some results to work with
-        const hasResults = currentHash !== `${query}-0-0-0`;
         const hashChanged = currentHash !== lastResultsHashRef.current;
+        const hasResults = (results || []).length > 0;
         
         if (!filterInitializedRef.current && hashChanged && hasResults) {
             console.log('Initializing filter for new results:', currentHash);
@@ -102,66 +90,46 @@ export default function AiSearchResults({
                 low: categorizedResults.low.length
             };
             
-            // Find the category with the most results as default
-            const defaultCategory = Object.entries(counts).reduce((a, b) => 
-                counts[a[0]] > counts[b[0]] ? a : b
-            )[0];
+            const defaultCategory = ['high', 'medium', 'low'].find(cat => counts[cat] > 0) || 'all';
             
-            if (defaultCategory && counts[defaultCategory] > 0) {
-                setSelectedSimilarityFilter(defaultCategory);
-            }
+            setSelectedSimilarityFilter(defaultCategory);
             
             filterInitializedRef.current = true;
             lastResultsHashRef.current = currentHash;
         }
-    }, [categorizedResults, query, getResultsHash]); // Fixed: Include all actual dependencies
+    }, [categorizedResults, results, query, getResultsHash]);
 
     // Fixed: Optimized filtered results with stable dependencies
-    const filteredResults = useMemo(() => {
+   const filteredResults = useMemo(() => {
         if (selectedSimilarityFilter === 'all') {
             return [...categorizedResults.high, ...categorizedResults.medium, ...categorizedResults.low];
         }
         return categorizedResults[selectedSimilarityFilter] || [];
     }, [categorizedResults, selectedSimilarityFilter]);
-
     // Fixed: Optimized sorted results 
     const sortedResults = useMemo(() => {
         return [...filteredResults].sort((a, b) => {
-            const confidenceA = a.searchMetadata?.aiAnalysis?.confidenceScore || 0;
-            const confidenceB = b.searchMetadata?.aiAnalysis?.confidenceScore || 0;
-            return confidenceB - confidenceA;
+            const scoreA = a.searchMetadata?.hybridScore || a._vectorScore || 0;
+            const scoreB = b.searchMetadata?.hybridScore || b._vectorScore || 0;
+            return scoreB - scoreA;
         });
     }, [filteredResults]);
 
-    // Fixed: Streaming updates with proper guards
+    // This useEffect now correctly updates the displayed list as `sortedResults` changes
     useEffect(() => {
-        // Guard against unnecessary updates
         if (!Array.isArray(sortedResults)) return;
-        
-        if (isStreaming && sortedResults.length > displayedResults.length) {
-            setLoadingNewResults(true);
-            
-            const timer = setTimeout(() => {
-                setDisplayedResults([...sortedResults]); // Fixed: Use spread to ensure new array
-                setLoadingNewResults(false);
-                
-                // Auto-expand first result if it has AI analysis
-                if (sortedResults.length > 0 && sortedResults[0]?.searchMetadata?.aiAnalysis) {
-                    setExpandedCards(new Set([sortedResults[0].id]));
-                }
-            }, 300);
-            
-            return () => clearTimeout(timer);
-        } else if (!isStreaming && sortedResults.length !== displayedResults.length) {
-            // Fixed: Only update if lengths actually differ
-            setDisplayedResults([...sortedResults]);
-            
-            if (sortedResults.length > 0 && sortedResults[0]?.searchMetadata?.aiAnalysis) {
-                setExpandedCards(new Set([sortedResults[0].id]));
+
+        // Immediately update displayed results to reflect changes from streaming
+        setDisplayedResults([...sortedResults]);
+
+        // Auto-expand the first result when the list initially populates
+        if (sortedResults.length > 0 && expandedCards.size === 0) {
+            const firstWithInsights = sortedResults.find(r => r.searchMetadata?.aiAnalysis);
+            if (firstWithInsights) {
+                setExpandedCards(new Set([firstWithInsights.id]));
             }
         }
-    }, [sortedResults, isStreaming, displayedResults.length]); // Fixed: Only depend on length
-
+    }, [sortedResults]); // Correctly depends on the derived sorted list
     const toggleExpanded = useCallback((contactId) => {
         setExpandedCards(prev => {
             const newSet = new Set(prev);

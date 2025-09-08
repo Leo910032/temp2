@@ -104,7 +104,8 @@ export default function ContactsPage() {
     const [editingContact, setEditingContact] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
     
-    
+    const [streamingProgress, setStreamingProgress] = useState(null);
+const [isStreamingActive, setIsStreamingActive] = useState(false);
     const [showGroupManager, setShowGroupManager] = useState(false);
     const [showImportExportModal, setShowImportExportModal] = useState(false);
     const { 
@@ -168,9 +169,9 @@ const handleEnhancedSearch = async (query, useAI = false) => {
     }
 
     if (useAI && canUseAnyAiSearch) {
-        console.log('🚀 Starting Two-Job AI Search Process');
+        console.log('🚀 Starting Streaming AI Search Process');
         setIsAiSearching(true);
-        setAiSearchResults(null);
+        setAiSearchResults([]);
         setShowSearchProgress(true);
         
         try {
@@ -178,7 +179,6 @@ const handleEnhancedSearch = async (query, useAI = false) => {
             console.log('📚 Job #1: AI Librarian Starting...');
             setSearchStage('embedding');
             
-            // Small delay to show the embedding stage
             await new Promise(resolve => setTimeout(resolve, 800));
             
             setSearchStage('vector_search');
@@ -186,56 +186,73 @@ const handleEnhancedSearch = async (query, useAI = false) => {
             
             const { searchContacts } = await import('@/lib/services/serviceContact');
             
-            // FIXED: Get the search response with the new structure
+            // Use streaming mode for Business+ users
+            const streamingMode = canUseFullAiSearch;
+            
+            console.log(`🔄 Using ${streamingMode ? 'streaming' : 'batch'} mode for AI enhancement`);
+            
+            // Set up streaming callbacks
+            const streamingCallbacks = streamingMode ? {
+                onProgress: (progressData) => {
+                    console.log('📊 Progress:', progressData);
+                    handleStreamingProgress(progressData);
+                },
+                onResult: (resultData) => {
+                    console.log('✅ New result:', resultData.contact.name);
+                    handleStreamingResult(resultData);
+                },
+                onError: (errorData) => {
+                    console.error('❌ Streaming error:', errorData);
+                    handleStreamingError(errorData);
+                }
+            } : {};
+            
             const searchResponse = await searchContacts(query, { 
                 maxResults: 10,
-                enhanceResults: canUseFullAiSearch, // Only enhance for Business+
-                userId: currentUser?.uid, // Add userId for cost tracking
-                subscriptionLevel: subscriptionStatus?.subscriptionLevel // Add subscription level
+                enhanceResults: canUseFullAiSearch,
+                streamingMode: streamingMode,
+                userId: currentUser?.uid,
+                subscriptionLevel: subscriptionStatus?.subscriptionLevel,
+                ...streamingCallbacks
             });
             
             console.log('Raw search response:', searchResponse);
             
-            // FIXED: Extract the results array from the response
+            // Extract the results array from the response
             const vectorResults = searchResponse?.results || searchResponse || [];
             
-            console.log(`✅ Job #1 Complete: Found ${vectorResults.length} vector matches`);
-            
-            // JOB #2: AI Researcher (only for Business+ tiers)
-            if (canUseFullAiSearch && vectorResults.length > 0) {
-                console.log('🧠 Job #2: AI Researcher Starting...');
-                setSearchStage('ai_analysis');
-                
-                // The enhancement happens inside searchContacts for Business+ users
-                // We just need to show the progress
-                await new Promise(resolve => setTimeout(resolve, 1500));
-                
-                console.log('✅ Job #2 Complete: AI insights generated');
-            }
+            console.log(`✅ Search Complete: Found ${vectorResults.length} results`);
             
             setSearchStage('complete');
             
-            // FIXED: Store the extracted results array
-            setAiSearchResults(vectorResults);
-            
-            // Success message based on tier
-            if (canUseFullAiSearch) {
+            if (streamingMode) {
+                // Results are already being populated via streaming callbacks
+                console.log('🔄 Streaming mode - results populated in real-time');
                 toast.success(
-                    `🧠 AI found ${vectorResults.length} relevant contacts with intelligent insights!`,
+                    `🧠 AI found contacts with streaming insights!`,
                     { duration: 5000 }
                 );
             } else {
-                toast.success(
-                    `📚 Semantic search found ${vectorResults.length} relevant contacts!`,
-                    { duration: 4000 }
-                );
+                // Batch mode - set all results at once
+                setAiSearchResults(vectorResults);
+                
+                if (canUseFullAiSearch) {
+                    toast.success(
+                        `🧠 AI found ${vectorResults.length} relevant contacts with intelligent insights!`,
+                        { duration: 5000 }
+                    );
+                } else {
+                    toast.success(
+                        `📚 Semantic search found ${vectorResults.length} relevant contacts!`,
+                        { duration: 4000 }
+                    );
+                }
             }
             
         } catch (error) {
             console.error('❌ AI Search failed:', error);
             setSearchStage('idle');
             
-            // Enhanced error messages
             if (error.message.includes('Premium subscription')) {
                 toast.error('🔒 AI search requires Premium subscription or higher');
             } else if (error.message.includes('quota exceeded')) {
@@ -256,6 +273,91 @@ const handleEnhancedSearch = async (query, useAI = false) => {
         setAiSearchResults(null);
         setSearchStage('idle');
         setShowSearchProgress(false);
+    }
+};
+
+const handleStreamingProgress = (progressData) => {
+    setStreamingProgress(progressData);
+    
+    switch (progressData.type) {
+        case 'start':
+            console.log(`🚀 Starting AI analysis for ${progressData.total} contacts`);
+            setSearchStage('ai_analysis');
+            setIsStreamingActive(true);
+            break;
+            
+        case 'processing':
+            console.log(`⏳ Processing: ${progressData.contactName}`);
+            break;
+            
+        case 'filtered':
+            console.log(`⚠️ Filtered: ${progressData.contactName} (${progressData.reason})`);
+            break;
+            
+        case 'complete':
+            console.log('🎉 AI enhancement complete:', progressData.stats);
+            setSearchStage('complete');
+            setIsStreamingActive(false);
+            setStreamingProgress(null);
+            break;
+    }
+};
+
+
+// NEW: Streaming result handler
+const handleStreamingResult = (resultData) => {
+    const { contact, insight, processed, total } = resultData;
+    
+    console.log(`✅ New result: ${contact.name} (${processed}/${total})`);
+    
+    // Add the new result to the existing results array
+    setAiSearchResults(prevResults => {
+        const newResults = [...(prevResults || [])];
+        
+        // Check if contact already exists (avoid duplicates)
+        const existingIndex = newResults.findIndex(r => r.id === contact.id);
+        
+        if (existingIndex >= 0) {
+            // Update existing contact with AI insights
+            newResults[existingIndex] = contact;
+        } else {
+            // Add new contact, maintaining sort order by confidence
+            newResults.push(contact);
+            newResults.sort((a, b) => {
+                const confidenceA = a.searchMetadata?.aiAnalysis?.confidenceScore || 0;
+                const confidenceB = b.searchMetadata?.aiAnalysis?.confidenceScore || 0;
+                return confidenceB - confidenceA;
+            });
+        }
+        
+        return newResults;
+    });
+    
+    // Show individual contact toast for high-confidence results
+    if (insight.confidence >= 9) {
+        toast.success(
+            `🎯 High confidence match: ${contact.name}`,
+            { duration: 3000 }
+        );
+    }
+};
+
+// NEW: Streaming error handler
+const handleStreamingError = (errorData) => {
+    console.error('❌ Streaming error:', errorData);
+    
+    switch (errorData.type) {
+        case 'contact_error':
+            // Individual contact processing failed - not critical
+            console.warn(`⚠️ Failed to process ${errorData.contactName}: ${errorData.error}`);
+            break;
+            
+        case 'stream_error':
+            // Stream itself failed - more serious
+            toast.error(`🔄 Streaming failed: ${errorData.error}`);
+            setSearchStage('idle');
+            setIsAiSearching(false);
+            break;
     }
 };
   // Update the handleJobComplete function to refresh usage info
@@ -750,19 +852,23 @@ const handleJobError = useCallback((error) => {
                 {/* ... rest of your code ... */}
                 {/* Contacts List */}
                   {aiSearchResults !== null ? (
-                <AiSearchResults 
-                    results={aiSearchResults}
-                    query={aiSearchQuery}
-                    searchTier={canUseFullAiSearch ? 'business' : 'premium'}
-                    onClearSearch={() => {
-                        setAiSearchResults(null);
-                        setAiSearchQuery('');
-                        setSearchMode('standard');
-                        setSearchStage('idle');
-                    }}
-                    onContactAction={handleContactAction}
-                    groups={groups}
-                />
+                    <AiSearchResults 
+        results={aiSearchResults}
+        query={aiSearchQuery}
+        searchTier={canUseFullAiSearch ? 'business' : 'premium'}
+        onClearSearch={() => {
+            setAiSearchResults(null);
+            setAiSearchQuery('');
+            setSearchMode('standard');
+            setSearchStage('idle');
+            setIsStreamingActive(false);
+            setStreamingProgress(null);
+        }}
+        onContactAction={handleContactAction}
+        groups={groups}
+        isStreaming={isStreamingActive}
+        streamingProgress={streamingProgress}
+    />
             ) : (
                 <ContactsList
                     contacts={contacts} 

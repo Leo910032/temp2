@@ -1,9 +1,9 @@
-// app/api/user/contacts/semantic-search/route.js - WITH ADVANCED LOGGING
+// app/api/user/contacts/semantic-search/route.js - UPDATED WITH SEPARATED COST TRACKING
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Pinecone } from '@pinecone-database/pinecone';
-import { AdvancedLogger, PineconeLogger, GeminiLogger, FlowLogger } from '../../../../../lib/services/logging/advancedLogger.js';
+import { CostTrackingService } from '@/lib/services/serviceContact/server/costTrackingService';
 
 // Initialize services
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -17,25 +17,19 @@ const EMBEDDING_MODEL = 'text-embedding-004';
 
 // Pricing for cost tracking
 const COSTS = {
-  EMBEDDING_PER_MILLION_TOKENS: 0.15, // $0.15 per 1M tokens
-  PINECONE_QUERY_PER_REQUEST: 0.0000675, // ~$0.0675 per 1K queries
+  EMBEDDING_PER_MILLION_TOKENS: 0.10, // Gemini embedding cost
+  PINECONE_QUERY_BASE: 0.0001, // Base Pinecone query cost
 };
 
 export async function POST(request) {
-  const flowLogger = new FlowLogger('semantic_search_api');
+  const searchId = `search_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+  console.log(`🔍 [SemanticSearch] [${searchId}] Starting search request`);
   
   try {
-    AdvancedLogger.info('API', 'semantic_search_start', {
-      endpoint: '/api/user/contacts/semantic-search',
-      method: 'POST'
-    });
-
-    flowLogger.logStep('auth_start', { message: 'Starting authentication' });
-
     // 1. Authentication
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      flowLogger.logError('auth_missing', new Error('Missing authorization header'));
+      console.log(`❌ [SemanticSearch] [${searchId}] No authorization header`);
       return NextResponse.json({ error: 'Authorization required' }, { status: 401 });
     }
 
@@ -43,217 +37,177 @@ export async function POST(request) {
     const decodedToken = await adminAuth.verifyIdToken(token);
     const userId = decodedToken.uid;
 
-    flowLogger.logStep('auth_success', {
-      userId,
-      userEmail: decodedToken.email
-    });
+    console.log(`👤 [SemanticSearch] [${searchId}] User authenticated: ${userId}`);
 
     // 2. Parse request body
-    flowLogger.logStep('parse_request', { message: 'Parsing request body' });
-    
     const { 
       query, 
       maxResults = 10, 
       includeMetadata = true, 
-      trackCosts = false 
+      trackCosts = true
     } = await request.json();
 
-    flowLogger.logStep('request_parsed', {
-      query: query?.substring(0, 100) + (query?.length > 100 ? '...' : ''),
+    console.log(`📝 [SemanticSearch] [${searchId}] Request params:`, {
       queryLength: query?.length,
       maxResults,
-      includeMetadata,
       trackCosts
     });
 
     if (!query || typeof query !== 'string' || query.trim().length === 0) {
-      const error = new Error('Query is required and must be a non-empty string');
-      flowLogger.logError('invalid_query', error);
+      console.log(`❌ [SemanticSearch] [${searchId}] Invalid query`);
       return NextResponse.json({ error: 'Query is required' }, { status: 400 });
     }
 
     // 3. Get user subscription
-    flowLogger.logStep('fetch_subscription', { message: 'Fetching user subscription' });
-    
+    console.log(`👤 [SemanticSearch] [${searchId}] Fetching user subscription...`);
     const userDoc = await adminDb.collection('AccountData').doc(userId).get();
     if (!userDoc.exists) {
-      const error = new Error('User not found');
-      flowLogger.logError('user_not_found', error);
+      console.log(`❌ [SemanticSearch] [${searchId}] User not found`);
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     const userData = userDoc.data();
     const subscriptionLevel = userData.accountType?.toLowerCase() || 'base';
-
-    flowLogger.logStep('subscription_fetched', {
-      subscriptionLevel,
-      hasAccountType: !!userData.accountType
-    });
+    console.log(`👤 [SemanticSearch] [${searchId}] Subscription level: ${subscriptionLevel}`);
 
     // 4. Check subscription access
     const hasSemanticSearch = ['premium', 'business', 'enterprise'].includes(subscriptionLevel);
     if (!hasSemanticSearch) {
-      const error = new Error('Semantic search requires Premium subscription or higher');
-      flowLogger.logError('insufficient_subscription', error, { 
-        required: ['premium', 'business', 'enterprise'],
-        actual: subscriptionLevel 
-      });
+      console.log(`❌ [SemanticSearch] [${searchId}] Insufficient subscription level`);
       return NextResponse.json({
         error: 'Semantic search requires Premium subscription or higher',
         requiredFeature: 'PREMIUM_SEMANTIC_SEARCH'
       }, { status: 403 });
     }
 
-    // 5. Initialize cost tracking
-    const costs = {
-      embedding: 0,
-      vectorSearch: 0,
-      total: 0
-    };
+    // 5. Cost tracking - Check if user can afford operation
+    let estimatedCost = 0;
+    if (trackCosts) {
+      console.log(`💰 [SemanticSearch] [${searchId}] Checking affordability...`);
+      
+      // Estimate cost based on query length
+      const estimatedTokens = Math.ceil(query.length / 4);
+      const embeddingCost = (estimatedTokens / 1000000) * COSTS.EMBEDDING_PER_MILLION_TOKENS;
+      const searchCost = COSTS.PINECONE_QUERY_BASE;
+      estimatedCost = embeddingCost + searchCost;
+      
+      console.log(`💰 [SemanticSearch] [${searchId}] Estimated cost: $${estimatedCost.toFixed(6)}`);
+      
+      const affordabilityCheck = await CostTrackingService.canAffordOperation(
+        userId, 
+        estimatedCost,
+        1 // Semantic search counts as 1 successful run if it returns results
+      );
+      
+      console.log(`💰 [SemanticSearch] [${searchId}] Affordability check:`, {
+        canAfford: affordabilityCheck.canAfford,
+        reason: affordabilityCheck.reason
+      });
 
-    flowLogger.logStep('cost_tracking_init', {
-      trackCosts,
-      subscriptionLevel
-    });
+      if (!affordabilityCheck.canAfford) {
+        console.log(`❌ [SemanticSearch] [${searchId}] User cannot afford operation`);
+        return NextResponse.json({
+          error: `Search not available: ${affordabilityCheck.reason}`,
+          details: {
+            estimatedCost,
+            reason: affordabilityCheck.reason,
+            currentUsage: affordabilityCheck.currentUsage
+          }
+        }, { status: 403 });
+      }
+    }
 
-    // 6. Generate embedding using Gemini
-    flowLogger.logStep('embedding_start', {
-      message: 'Generating query embedding',
-      model: EMBEDDING_MODEL
-    });
-
-    AdvancedLogger.info('Gemini', 'embedding_request_start', {
-      query: query.substring(0, 100),
-      queryLength: query.length,
-      model: EMBEDDING_MODEL
-    });
-
+    // 6. Generate embedding
+    console.log(`🧠 [SemanticSearch] [${searchId}] Generating embedding...`);
+    const embeddingStartTime = Date.now();
+    
     const embeddingModel = genAI.getGenerativeModel({ model: EMBEDDING_MODEL });
     const embeddingResult = await embeddingModel.embedContent(query);
     const queryEmbedding = embeddingResult.embedding.values;
-
-    // Log embedding generation
-    const embeddingRequestId = await GeminiLogger.logEmbedding(
-      query,
-      queryEmbedding,
-      { userId, subscriptionLevel }
-    );
-
-    flowLogger.logStep('embedding_complete', {
-      embeddingDimension: queryEmbedding.length,
-      embeddingRequestId,
-      embeddingPreview: queryEmbedding.slice(0, 5)
+    
+    const embeddingTime = Date.now() - embeddingStartTime;
+    console.log(`🧠 [SemanticSearch] [${searchId}] Embedding generated:`, {
+      dimension: queryEmbedding.length,
+      time: `${embeddingTime}ms`
     });
 
-    // Calculate embedding cost
-    const estimatedTokens = Math.ceil(query.length / 4); // Rough estimation
-    if (trackCosts) {
-      costs.embedding = (estimatedTokens / 1000000) * COSTS.EMBEDDING_PER_MILLION_TOKENS;
-      
-      flowLogger.logStep('embedding_cost_calculated', {
-        estimatedTokens,
-        cost: costs.embedding
-      });
-    }
-
     // 7. Connect to Pinecone and search
-    flowLogger.logStep('pinecone_connection', { message: 'Connecting to Pinecone index' });
-
+    console.log(`📊 [SemanticSearch] [${searchId}] Connecting to Pinecone...`);
     const namespace = `user_${userId}`;
     const index = pinecone.index(INDEX_NAME).namespace(namespace);
 
-    AdvancedLogger.info('Pinecone', 'search_request_start', {
-      indexName: INDEX_NAME,
-      namespace,
-      queryDimension: queryEmbedding.length,
-      maxResults,
-      userId
-    });
-
-    // Prepare Pinecone query - FIXED: Remove namespace from query object
     const pineconeQuery = {
       vector: queryEmbedding,
       topK: maxResults,
       includeMetadata,
       includeValues: false
-      // namespace is now handled by .namespace() method above
     };
 
-    flowLogger.logStep('pinecone_query_prepared', {
-      topK: maxResults,
+    console.log(`📊 [SemanticSearch] [${searchId}] Executing Pinecone search:`, {
       namespace,
-      includeMetadata,
-      vectorDimension: queryEmbedding.length
+      topK: maxResults
     });
 
-    // Log the Pinecone query input
-    const pineconeRequestId = await PineconeLogger.logQuery('SEARCH', pineconeQuery, { pending: true }, {
-      userId,
-      subscriptionLevel,
-      namespace
-    });
-
-    // Execute search
     const searchStartTime = Date.now();
     const searchResults = await index.query(pineconeQuery);
     const searchDuration = Date.now() - searchStartTime;
 
-    // Log the Pinecone query output
-    await PineconeLogger.logQuery('SEARCH', pineconeQuery, searchResults, {
-      userId,
-      subscriptionLevel,
-      namespace,
-      duration: searchDuration,
-      requestId: pineconeRequestId
+    console.log(`📊 [SemanticSearch] [${searchId}] Pinecone search complete:`, {
+      matches: searchResults.matches?.length || 0,
+      duration: `${searchDuration}ms`
     });
 
-    flowLogger.logStep('pinecone_search_complete', {
-      searchDuration,
-      matchesCount: searchResults.matches?.length || 0,
-      pineconeRequestId,
-      searchResults: {
-        matchesFound: searchResults.matches?.length || 0,
-        averageScore: searchResults.matches?.length > 0 
-          ? searchResults.matches.reduce((sum, match) => sum + match.score, 0) / searchResults.matches.length 
-          : 0,
-        topScore: searchResults.matches?.[0]?.score || 0
-      }
-    });
-
-    // Calculate Pinecone search cost
+    // 8. Calculate actual costs
+    let actualCost = 0;
     if (trackCosts) {
-      costs.vectorSearch = COSTS.PINECONE_QUERY_PER_REQUEST;
-      costs.total = costs.embedding + costs.vectorSearch;
-
-      flowLogger.logStep('search_cost_calculated', {
-        vectorSearchCost: costs.vectorSearch,
-        totalCost: costs.total
+      // Calculate actual cost based on real token usage if available
+      const actualTokens = embeddingResult.usageMetadata?.promptTokenCount || Math.ceil(query.length / 4);
+      const actualEmbeddingCost = (actualTokens / 1000000) * COSTS.EMBEDDING_PER_MILLION_TOKENS;
+      const actualSearchCost = COSTS.PINECONE_QUERY_BASE;
+      actualCost = actualEmbeddingCost + actualSearchCost;
+      
+      console.log(`💾 [SemanticSearch] [${searchId}] Actual cost calculation:`, {
+        tokens: actualTokens,
+        embeddingCost: actualEmbeddingCost.toFixed(6),
+        searchCost: actualSearchCost.toFixed(6),
+        totalCost: actualCost.toFixed(6)
       });
+
+      // Record the API operation cost (always billable)
+      try {
+        await CostTrackingService.recordSeparatedUsage(
+          userId,
+          actualCost,
+          EMBEDDING_MODEL,
+          'semantic_search_operation',
+          {
+            queryLength: query.length,
+            embeddingTime,
+            searchDuration,
+            tokens: actualTokens,
+            searchId,
+            namespace
+          },
+          'api_call' // This is an API operation cost
+        );
+        console.log(`✅ [SemanticSearch] [${searchId}] API operation cost recorded: $${actualCost.toFixed(6)}`);
+      } catch (recordError) {
+        console.error(`❌ [SemanticSearch] [${searchId}] Failed to record API cost:`, recordError);
+        // Don't fail the search if cost recording fails
+      }
     }
 
-   // =========================================================================
-    // --- START OF FIXED SECTION ---
-    // 8. Fetch contact details from database
-    flowLogger.logStep('contact_fetch_start', {
-      message: 'Fetching all user contacts from single document',
-      contactIdsToFind: searchResults.matches?.map(m => m.id) || []
-    });
-
+    // 9. Fetch contact details from database
+    console.log(`📋 [SemanticSearch] [${searchId}] Fetching contact details...`);
     let validContacts = [];
 
-    // Only fetch from Firestore if Pinecone returned any matches
     if (searchResults.matches && searchResults.matches.length > 0) {
-      // Get the single document that holds all contacts for this user
       const userContactsDoc = await adminDb.collection('Contacts').doc(userId).get();
 
       if (userContactsDoc.exists) {
-        // Get the array of contacts from the document
         const allUserContacts = userContactsDoc.data().contacts || [];
-        
-        // Create a quick lookup map for efficiency
         const contactsMap = new Map(allUserContacts.map(contact => [contact.id, contact]));
         
-        // Filter and enrich the contacts based on Pinecone's results
         validContacts = searchResults.matches.map(match => {
           const contactData = contactsMap.get(match.id);
           if (contactData) {
@@ -265,73 +219,82 @@ export async function POST(request) {
                 score: match.score,
                 namespace,
                 retrievedAt: new Date().toISOString(),
-                tier: subscriptionLevel
+                tier: subscriptionLevel,
+                searchId
               }
             };
           }
-          AdvancedLogger.warn('Database', 'contact_not_found_in_array', {
-            contactId: match.id,
-            score: match.score
-          });
-          return null; // This contact was in Pinecone but not in the user's array
-        }).filter(contact => contact !== null); // Remove any nulls
-      } else {
-        AdvancedLogger.warn('Database', 'user_contacts_document_not_found', { userId });
+          return null;
+        }).filter(contact => contact !== null);
       }
     }
 
-    flowLogger.logStep('contact_fetch_complete', {
-      totalMatches: searchResults.matches?.length || 0,
-      contactsRetrieved: validContacts.length,
-      contactsNotFound: (searchResults.matches?.length || 0) - validContacts.length
-    });
+    console.log(`📋 [SemanticSearch] [${searchId}] Contacts retrieved: ${validContacts.length}`);
 
-    AdvancedLogger.info('Database', 'contacts_fetched', {
-      totalRequested: searchResults.matches?.length || 0,
-      successfullyRetrieved: validContacts.length,
-      userId
-    });
-    // --- END OF FIXED SECTION ---
-    // =========================================================================
+    // 10. Record successful run if results were found
+    if (trackCosts && validContacts.length > 0) {
+      try {
+        await CostTrackingService.recordSeparatedUsage(
+          userId,
+          0, // No additional cost for successful run tracking
+          EMBEDDING_MODEL,
+          'semantic_search_success',
+          {
+            queryLength: query.length,
+            resultsFound: validContacts.length,
+            subscriptionLevel,
+            embeddingTime,
+            searchDuration,
+            searchId
+          },
+          'successful_run' // This counts toward run limits
+        );
+        console.log(`✅ [SemanticSearch] [${searchId}] Successful run recorded (${validContacts.length} results)`);
+      } catch (recordError) {
+        console.error(`❌ [SemanticSearch] [${searchId}] Failed to record successful run:`, recordError);
+      }
+    } else if (trackCosts && validContacts.length === 0) {
+      console.log(`🚫 [SemanticSearch] [${searchId}] No results found - API cost paid but no successful run recorded`);
+    }
 
-
-    // 9. Prepare response
+    // 11. Prepare response
     const responseData = {
       results: validContacts,
       searchMetadata: {
-        query: query.substring(0, 100), // Truncate for privacy
+        query: query.substring(0, 100),
         totalResults: validContacts.length,
         namespace,
-        costs: trackCosts ? costs : undefined,
-        searchDuration: searchDuration,
+        costs: trackCosts ? {
+          estimated: estimatedCost,
+          actual: actualCost,
+          embedding: (embeddingResult.usageMetadata?.promptTokenCount || Math.ceil(query.length / 4) / 1000000) * COSTS.EMBEDDING_PER_MILLION_TOKENS,
+          search: COSTS.PINECONE_QUERY_BASE
+        } : undefined,
+        billing: trackCosts ? {
+          apiOperationCost: actualCost,
+          countsAsRun: validContacts.length > 0,
+          resultsFound: validContacts.length
+        } : undefined,
+        searchDuration,
+        embeddingTime,
         subscriptionLevel,
         timestamp: new Date().toISOString(),
-        pineconeRequestId,
-        embeddingRequestId
+        searchId
       }
     };
 
-    flowLogger.complete({
-      success: true,
-      resultsCount: validContacts.length,
-      totalCost: costs.total,
-      searchDuration
-    });
-
-    AdvancedLogger.info('API', 'semantic_search_success', {
-      resultsCount: validContacts.length,
-      totalCost: costs.total,
-      searchDuration,
-      userId
+    console.log(`✅ [SemanticSearch] [${searchId}] Search complete:`, {
+      results: validContacts.length,
+      cost: actualCost.toFixed(6),
+      countsAsRun: validContacts.length > 0,
+      totalTime: `${embeddingTime + searchDuration}ms`
     });
 
     return NextResponse.json(responseData);
 
   } catch (error) {
-    flowLogger.logError('api_error', error);
-    
-    AdvancedLogger.error('API', 'semantic_search_error', {
-      error: error.message,
+    console.error(`❌ [SemanticSearch] [${searchId}] Search failed:`, {
+      message: error.message,
       stack: error.stack
     });
 
@@ -355,7 +318,8 @@ export async function POST(request) {
     }
 
     return NextResponse.json({ 
-      error: 'Internal server error' 
+      error: 'Internal server error',
+      searchId
     }, { status: 500 });
   }
 }

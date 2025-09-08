@@ -1,8 +1,8 @@
-// app/api/user/contacts/ai-enhance-results/route.js - ENHANCED WITH VECTOR SIMILARITY OPTIMIZATION
+// app/api/user/contacts/ai-enhance-results/route.js - FIXED WITH SEPARATED COST TRACKING
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { AdvancedLogger, GeminiLogger, FlowLogger } from '@/lib/services/logging/advancedLogger';
+import { CostTrackingService } from '@/lib/services/serviceContact/server/costTrackingService';
 
 // Initialize Gemini for the "Researcher" job
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -92,494 +92,6 @@ FORMAT YOUR RESPONSE AS JSON:
 }`;
 }
 
-export async function POST(request) {
-  const flowLogger = new FlowLogger('ai_enhance_streaming');
-  
-  try {
-    flowLogger.logStep('auth_start', { message: 'Starting authentication' });
-
-    // 1. Authenticate the user
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      flowLogger.logError('auth_failed', new Error('Missing authorization header'));
-      return NextResponse.json({ error: 'Authorization required' }, { status: 401 });
-    }
-
-    const token = authHeader.substring(7);
-    const decodedToken = await adminAuth.verifyIdToken(token);
-    const userId = decodedToken.uid;
-    
-    flowLogger.logStep('auth_success', { userId });
-
-    // 2. Parse request body
-    const { 
-      originalQuery, 
-      contacts, 
-      trackCosts = false, 
-      mode = 'batch',
-      processingStrategy = 'standard',
-      vectorOptimized = false
-    } = await request.json();
-    
-    flowLogger.logStep('request_parsed', {
-      originalQuery: originalQuery?.substring(0, 100) + '...',
-      contactsCount: contacts?.length,
-      trackCosts,
-      mode,
-      processingStrategy,
-      vectorOptimized
-    });
-
-    if (!originalQuery || !contacts || !Array.isArray(contacts)) {
-      const error = new Error('Original query and contacts array are required');
-      flowLogger.logError('validation_failed', error);
-      return NextResponse.json({ 
-        error: 'Original query and contacts array are required' 
-      }, { status: 400 });
-    }
-
-    if (contacts.length === 0) {
-      return NextResponse.json({ insights: [] });
-    }
-
-    // 3. Get user's subscription
-    const userDoc = await adminDb.collection('AccountData').doc(userId).get();
-    if (!userDoc.exists) {
-      const error = new Error('User not found in database');
-      flowLogger.logError('user_not_found', error);
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    const userData = userDoc.data();
-    const subscriptionLevel = userData.accountType?.toLowerCase() || 'base';
-
-    // 4. Check subscription level
-    if (!['business', 'enterprise'].includes(subscriptionLevel)) {
-      const error = new Error('Insufficient subscription level for AI enhancement');
-      flowLogger.logError('insufficient_subscription', error);
-      return NextResponse.json({ 
-        error: 'AI result enhancement requires Business subscription or higher',
-        requiredFeature: 'BUSINESS_AI_SEARCH'
-      }, { status: 403 });
-    }
-
-    const modelName = subscriptionLevel === 'enterprise' ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
-    const model = genAI.getGenerativeModel({ model: modelName });
-
-    flowLogger.logStep('model_selected', {
-      modelName,
-      subscriptionLevel,
-      vectorOptimized,
-      processingStrategy
-    });
-
-    // 5. Handle streaming mode with vector optimization
-    if (mode === 'streaming') {
-      return handleEnhancedStreamingMode(
-        model, 
-        originalQuery, 
-        contacts, 
-        modelName, 
-        userId, 
-        trackCosts, 
-        flowLogger,
-        { processingStrategy, vectorOptimized }
-      );
-    }
-
-    // 6. Handle batch mode
-    return handleBatchMode(model, originalQuery, contacts, modelName, userId, trackCosts, flowLogger);
-
-  } catch (error) {
-    flowLogger.logError('api_error', error);
-    
-    if (error.code === 'auth/id-token-expired') {
-      return NextResponse.json({ error: 'Authentication expired. Please sign in again.' }, { status: 401 });
-    }
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
-
-/**
- * Enhanced streaming mode with vector similarity processing
- */
-async function handleEnhancedStreamingMode(model, originalQuery, contacts, modelName, userId, trackCosts, flowLogger, options = {}) {
-  const { processingStrategy = 'standard', vectorOptimized = false } = options;
-  
-  try {
-    console.log('Starting enhanced streaming mode:', {
-      contactsCount: contacts.length,
-      processingStrategy,
-      vectorOptimized
-    });
-    
-    // Create a readable stream
-    const stream = new ReadableStream({
-      async start(controller) {
-        let totalCosts = {
-          aiEnhancement: 0,
-          totalTokensInput: 0,
-          totalTokensOutput: 0
-        };
-
-        const processedInsights = [];
-        let processedCount = 0;
-
-        try {
-          // Send initial message with strategy info
-          controller.enqueue(new TextEncoder().encode(JSON.stringify({
-            type: 'start',
-            total: contacts.length,
-            query: originalQuery,
-            processingStrategy,
-            vectorOptimized
-          }) + '\n'));
-
-          // Sort contacts by vector similarity if optimized
-          const contactsToProcess = vectorOptimized 
-            ? [...contacts].sort((a, b) => {
-                const scoreA = a.vectorScore || a._vectorScore || 0;
-                const scoreB = b.vectorScore || b._vectorScore || 0;
-                return scoreB - scoreA; // Process highest similarity first
-              })
-            : contacts;
-
-          console.log('Contact processing order:', contactsToProcess.map(c => ({
-            name: c.name,
-            tier: c.similarityTier,
-            score: (c.vectorScore || c._vectorScore || 0).toFixed(3)
-          })));
-
-          // Process each contact individually with enhanced prompting
-          for (let i = 0; i < contactsToProcess.length; i++) {
-            const contact = contactsToProcess[i];
-            
-            try {
-              console.log(`Processing contact ${i + 1}/${contactsToProcess.length}: ${contact.name} (${contact.similarityTier || 'unknown'} similarity)`);
-              
-              // Send progress update with similarity info
-              controller.enqueue(new TextEncoder().encode(JSON.stringify({
-                type: 'progress',
-                contactIndex: i,
-                contactId: contact.id,
-                contactName: contact.name,
-                processed: processedCount,
-                total: contactsToProcess.length,
-                similarityTier: contact.similarityTier,
-                vectorScore: contact.vectorScore || contact._vectorScore
-              }) + '\n'));
-
-              const insight = await analyzeContactMatchWithSimilarity(
-                model, 
-                originalQuery, 
-                contact, 
-                totalCosts, 
-                modelName, 
-                flowLogger, 
-                i
-              );
-
-              processedCount++;
-
-              if (insight && insight.confidence >= getConfidenceThreshold(contact.similarityTier)) {
-                processedInsights.push(insight);
-                
-                // Send individual result with similarity context
-                controller.enqueue(new TextEncoder().encode(JSON.stringify({
-                  type: 'result',
-                  insight,
-                  contactIndex: i,
-                  contactId: contact.id,
-                  processed: processedCount,
-                  total: contactsToProcess.length,
-                  confidence: insight.confidence,
-                  similarityTier: contact.similarityTier,
-                  vectorScore: contact.vectorScore || contact._vectorScore,
-                  hybridScore: calculateHybridScore(contact.vectorScore || contact._vectorScore, insight.confidence)
-                }) + '\n'));
-              } else {
-                // Send filtered result with reason
-                const filterReason = insight ? 
-                  `Low confidence (${insight.confidence}/${getConfidenceThreshold(contact.similarityTier)} required for ${contact.similarityTier || 'unknown'} similarity)` : 
-                  'Analysis failed';
-                
-                controller.enqueue(new TextEncoder().encode(JSON.stringify({
-                  type: 'filtered',
-                  contactIndex: i,
-                  contactId: contact.id,
-                  contactName: contact.name,
-                  reason: filterReason,
-                  confidence: insight?.confidence || 0,
-                  processed: processedCount,
-                  total: contactsToProcess.length,
-                  similarityTier: contact.similarityTier,
-                  vectorScore: contact.vectorScore || contact._vectorScore
-                }) + '\n'));
-              }
-
-              // Small delay to prevent overwhelming the client
-              await new Promise(resolve => setTimeout(resolve, 100));
-
-            } catch (contactError) {
-              console.error(`Error processing contact ${contact.name}:`, contactError);
-              
-              controller.enqueue(new TextEncoder().encode(JSON.stringify({
-                type: 'error',
-                contactIndex: i,
-                contactId: contact.id,
-                contactName: contact.name,
-                error: contactError.message,
-                processed: processedCount,
-                total: contactsToProcess.length,
-                similarityTier: contact.similarityTier
-              }) + '\n'));
-            }
-          }
-
-          // Calculate final costs
-          if (trackCosts && totalCosts.totalTokensInput > 0) {
-            const modelPrices = GEMINI_PRICING[modelName];
-            if (modelPrices) {
-              const inputCost = (totalCosts.totalTokensInput / 1000000) * modelPrices.inputPricePerMillionTokens;
-              const outputCost = (totalCosts.totalTokensOutput / 1000000) * modelPrices.outputPricePerMillionTokens;
-              totalCosts.aiEnhancement = inputCost + outputCost;
-            }
-          }
-
-          // Send final completion message with enhanced stats
-          controller.enqueue(new TextEncoder().encode(JSON.stringify({
-            type: 'complete',
-            insights: processedInsights,
-            stats: {
-              totalProcessed: processedCount,
-              totalContacts: contactsToProcess.length,
-              insightsGenerated: processedInsights.length,
-              filteredOut: processedCount - processedInsights.length,
-              costs: trackCosts ? totalCosts : undefined,
-              processingStrategy,
-              vectorOptimized,
-              similarityBreakdown: getSimilarityBreakdown(contactsToProcess, processedInsights)
-            },
-            metadata: {
-              originalQuery,
-              model: modelName,
-              timestamp: new Date().toISOString()
-            }
-          }) + '\n'));
-
-        } catch (streamError) {
-          controller.enqueue(new TextEncoder().encode(JSON.stringify({
-            type: 'stream_error',
-            error: streamError.message
-          }) + '\n'));
-        } finally {
-          controller.close();
-        }
-      }
-    });
-
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Transfer-Encoding': 'chunked',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive'
-      }
-    });
-
-  } catch (error) {
-    console.error('Enhanced streaming mode error:', error);
-    return NextResponse.json({ error: 'Streaming failed' }, { status: 500 });
-  }
-}
-
-/**
- * Handle batch mode (existing functionality)
- */
-async function handleBatchMode(model, originalQuery, contacts, modelName, userId, trackCosts, flowLogger) {
-  const startTime = Date.now();
-  let totalCosts = {
-    aiEnhancement: 0,
-    totalTokensInput: 0,
-    totalTokensOutput: 0
-  };
-
-  try {
-    // Process all contacts in parallel (existing behavior)
-    const insights = await Promise.all(
-      contacts.map((contact, index) => 
-        analyzeContactMatchWithSimilarity(model, originalQuery, contact, totalCosts, modelName, flowLogger, index)
-      )
-    );
-
-    const validInsights = insights.filter(insight => {
-      return insight !== null && insight.confidence >= 7;
-    });
-
-    // Calculate costs
-    if (trackCosts && totalCosts.totalTokensInput > 0) {
-      const modelPrices = GEMINI_PRICING[modelName];
-      if (modelPrices) {
-        const inputCost = (totalCosts.totalTokensInput / 1000000) * modelPrices.inputPricePerMillionTokens;
-        const outputCost = (totalCosts.totalTokensOutput / 1000000) * modelPrices.outputPricePerMillionTokens;
-        totalCosts.aiEnhancement = inputCost + outputCost;
-      }
-    }
-
-    const responseData = {
-      insights: validInsights,
-      costs: trackCosts ? { aiEnhancement: totalCosts.aiEnhancement } : undefined,
-      metadata: {
-        originalQuery,
-        contactsAnalyzed: contacts.length,
-        insightsGenerated: validInsights.length,
-        filteredLowConfidence: insights.length - validInsights.length,
-        model: modelName,
-        duration: Date.now() - startTime,
-        timestamp: new Date().toISOString()
-      }
-    };
-
-    return NextResponse.json(responseData);
-
-  } catch (error) {
-    console.error('Batch mode error:', error);
-    return NextResponse.json({
-      insights: [],
-      costs: trackCosts ? { aiEnhancement: 0 } : undefined,
-      error: 'AI analysis temporarily unavailable',
-      metadata: {
-        originalQuery,
-        contactsAnalyzed: contacts.length,
-        insightsGenerated: 0,
-        error: error.message,
-        timestamp: new Date().toISOString()
-      }
-    });
-  }
-}
-
-/**
- * Enhanced contact analysis with similarity-aware prompting
- */
-async function analyzeContactMatchWithSimilarity(model, query, contact, costTracker, modelName, flowLogger, contactIndex) {
-  const contactLogger = new FlowLogger(`analyze_contact_${contactIndex}`, contact.id);
-  
-  try {
-    contactLogger.logStep('analysis_start', {
-      contactName: contact.name,
-      contactId: contact.id,
-      similarityTier: contact.similarityTier,
-      vectorScore: contact.vectorScore || contact._vectorScore,
-      modelName
-    });
-
-    // Use similarity-aware prompt
-    const prompt = generateSimilarityAwarePrompt(query, contact);
-    
-    contactLogger.logStep('prompt_prepared', {
-      promptLength: prompt.length,
-      similarityContext: contact.similarityTier,
-      vectorScore: contact.vectorScore || contact._vectorScore
-    });
-
-    const geminiRequestId = await GeminiLogger.logRequest(
-      modelName, 
-      prompt, 
-      { pending: true }, 
-      { 
-        contactId: contact.id, 
-        contactIndex,
-        similarityTier: contact.similarityTier,
-        vectorScore: contact.vectorScore || contact._vectorScore
-      }
-    );
-
-    const result = await model.generateContent(prompt);
-    
-    // Log token usage
-    if (result.response.usageMetadata && costTracker) {
-      const usage = result.response.usageMetadata;
-      costTracker.totalTokensInput += usage.promptTokenCount || 0;
-      costTracker.totalTokensOutput += usage.candidatesTokenCount || 0;
-      
-      contactLogger.logStep('token_usage_tracked', {
-        promptTokens: usage.promptTokenCount,
-        outputTokens: usage.candidatesTokenCount
-      });
-    }
-    
-    const response = await result.response;
-    const rawText = response.text();
-    
-    // Log the complete interaction
-    await GeminiLogger.logRequest(
-      modelName, 
-      prompt, 
-      result, 
-      { 
-        contactId: contact.id, 
-        contactIndex, 
-        stage: 'complete',
-        similarityTier: contact.similarityTier
-      }
-    );
-
-    const jsonString = cleanJsonString(rawText);
-    
-    let analysis;
-    try {
-      analysis = JSON.parse(jsonString);
-      
-      contactLogger.logStep('json_parsed', {
-        hasExplanation: !!analysis.explanation,
-        hasFactors: !!analysis.factors,
-        hasSuggestions: !!analysis.suggestions,
-        hasConfidence: !!analysis.confidence,
-        confidence: analysis.confidence,
-        similarityTier: contact.similarityTier
-      });
-    } catch (parseError) {
-      contactLogger.logError('json_parse_failed', parseError);
-      throw parseError;
-    }
-
-    if (!analysis.explanation || !analysis.factors || !analysis.suggestions || !analysis.confidence) {
-      const error = new Error('Invalid AI response structure');
-      contactLogger.logError('invalid_response_structure', error);
-      return null;
-    }
-
-    const finalResult = {
-      contactId: contact.id,
-      explanation: analysis.explanation,
-      factors: analysis.factors,
-      suggestions: analysis.suggestions,
-      confidence: analysis.confidence,
-      analysisTimestamp: new Date().toISOString(),
-      modelUsed: modelName,
-      similarityContext: {
-        tier: contact.similarityTier,
-        vectorScore: contact.vectorScore || contact._vectorScore,
-        hybridScore: calculateHybridScore(contact.vectorScore || contact._vectorScore, analysis.confidence)
-      }
-    };
-
-    contactLogger.complete({
-      success: true,
-      confidence: analysis.confidence,
-      similarityTier: contact.similarityTier,
-      hybridScore: finalResult.similarityContext.hybridScore
-    });
-
-    return finalResult;
-
-  } catch (error) {
-    contactLogger.logError('analysis_failed', error);
-    return null;
-  }
-}
-
 /**
  * Get confidence threshold based on similarity tier
  */
@@ -630,4 +142,606 @@ function getSimilarityBreakdown(contactsProcessed, insights) {
   });
 
   return breakdown;
+}
+
+export async function POST(request) {
+  const enhanceId = `enhance_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+  console.log(`🤖 [AIEnhance] [${enhanceId}] Starting AI enhancement request`);
+  
+  try {
+    // 1. Authenticate the user
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log(`❌ [AIEnhance] [${enhanceId}] Missing authorization header`);
+      return NextResponse.json({ error: 'Authorization required' }, { status: 401 });
+    }
+
+    const token = authHeader.substring(7);
+    const decodedToken = await adminAuth.verifyIdToken(token);
+    const userId = decodedToken.uid;
+    
+    console.log(`👤 [AIEnhance] [${enhanceId}] User authenticated: ${userId}`);
+
+    // 2. Parse request body
+    const { 
+      originalQuery, 
+      contacts, 
+      trackCosts = true, 
+      mode = 'batch',
+      processingStrategy = 'standard',
+      vectorOptimized = false
+    } = await request.json();
+    
+    console.log(`📝 [AIEnhance] [${enhanceId}] Request params:`, {
+      queryLength: originalQuery?.length,
+      contactsCount: contacts?.length,
+      trackCosts,
+      mode,
+      processingStrategy,
+      vectorOptimized
+    });
+
+    if (!originalQuery || !contacts || !Array.isArray(contacts)) {
+      console.log(`❌ [AIEnhance] [${enhanceId}] Invalid request parameters`);
+      return NextResponse.json({ 
+        error: 'Original query and contacts array are required' 
+      }, { status: 400 });
+    }
+
+    if (contacts.length === 0) {
+      return NextResponse.json({ insights: [] });
+    }
+
+    // 3. Get user's subscription
+    console.log(`👤 [AIEnhance] [${enhanceId}] Fetching user subscription...`);
+    const userDoc = await adminDb.collection('AccountData').doc(userId).get();
+    if (!userDoc.exists) {
+      console.log(`❌ [AIEnhance] [${enhanceId}] User not found in database`);
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const userData = userDoc.data();
+    const subscriptionLevel = userData.accountType?.toLowerCase() || 'base';
+    console.log(`👤 [AIEnhance] [${enhanceId}] Subscription level: ${subscriptionLevel}`);
+
+    // 4. Check subscription level
+    if (!['business', 'enterprise'].includes(subscriptionLevel)) {
+      console.log(`❌ [AIEnhance] [${enhanceId}] Insufficient subscription level`);
+      return NextResponse.json({ 
+        error: 'AI result enhancement requires Business subscription or higher',
+        requiredFeature: 'BUSINESS_AI_SEARCH'
+      }, { status: 403 });
+    }
+
+    const modelName = subscriptionLevel === 'enterprise' ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
+    const model = genAI.getGenerativeModel({ model: modelName });
+
+    console.log(`🧠 [AIEnhance] [${enhanceId}] Model selected: ${modelName}`);
+
+    // 5. Cost tracking check
+    if (trackCosts) {
+      console.log(`💰 [AIEnhance] [${enhanceId}] Checking cost affordability...`);
+      
+      // Estimate cost based on contacts and model
+      const avgPromptLength = 1500; // Estimated average prompt length
+      const avgResponseLength = 300; // Estimated average response length
+      const estimatedInputTokens = contacts.length * avgPromptLength;
+      const estimatedOutputTokens = contacts.length * avgResponseLength;
+      
+      const modelPrices = GEMINI_PRICING[modelName];
+      const estimatedCost = (estimatedInputTokens / 1000000) * modelPrices.inputPricePerMillionTokens +
+                           (estimatedOutputTokens / 1000000) * modelPrices.outputPricePerMillionTokens;
+      
+      console.log(`💰 [AIEnhance] [${enhanceId}] Estimated cost: $${estimatedCost.toFixed(6)}`);
+      
+      const affordabilityCheck = await CostTrackingService.canAffordOperation(
+        userId, 
+        estimatedCost,
+        1
+      );
+      
+      console.log(`💰 [AIEnhance] [${enhanceId}] Affordability check:`, {
+        canAfford: affordabilityCheck.canAfford,
+        reason: affordabilityCheck.reason
+      });
+
+      if (!affordabilityCheck.canAfford) {
+        console.log(`❌ [AIEnhance] [${enhanceId}] User cannot afford operation`);
+        return NextResponse.json({
+          error: `AI enhancement not available: ${affordabilityCheck.reason}`,
+          details: {
+            estimatedCost,
+            reason: affordabilityCheck.reason
+          }
+        }, { status: 403 });
+      }
+    }
+
+    // 6. Handle streaming mode with separated cost tracking
+    if (mode === 'streaming') {
+      return handleEnhancedStreamingModeWithSeparatedTracking(
+        model, 
+        originalQuery, 
+        contacts, 
+        modelName, 
+        userId, 
+        trackCosts, 
+        enhanceId,
+        { processingStrategy, vectorOptimized }
+      );
+    }
+
+    // 7. Handle batch mode with separated cost tracking
+    return handleBatchModeWithSeparatedTracking(model, originalQuery, contacts, modelName, userId, trackCosts, enhanceId);
+
+  } catch (error) {
+    console.error(`❌ [AIEnhance] [${enhanceId}] API error:`, {
+      message: error.message,
+      stack: error.stack
+    });
+    
+    if (error.code === 'auth/id-token-expired') {
+      return NextResponse.json({ error: 'Authentication expired. Please sign in again.' }, { status: 401 });
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+/**
+ * Enhanced streaming mode with separated cost tracking
+ */
+async function handleEnhancedStreamingModeWithSeparatedTracking(model, originalQuery, contacts, modelName, userId, trackCosts, enhanceId, options = {}) {
+  const { processingStrategy = 'standard', vectorOptimized = false } = options;
+  
+  try {
+    console.log(`🔄 [AIEnhance] [${enhanceId}] Starting enhanced streaming mode with separated tracking`);
+    
+    // Create a readable stream
+    const stream = new ReadableStream({
+      async start(controller) {
+        let totalCosts = 0;
+        let totalApiCalls = 0;
+        let successfulRuns = 0;
+        let filteredContacts = 0;
+        const processedInsights = [];
+        let processedCount = 0;
+
+        try {
+          // Send initial message
+          controller.enqueue(new TextEncoder().encode(JSON.stringify({
+            type: 'start',
+            total: contacts.length,
+            query: originalQuery,
+            processingStrategy,
+            vectorOptimized
+          }) + '\n'));
+
+          // Sort contacts by vector similarity if optimized
+          const contactsToProcess = vectorOptimized 
+            ? [...contacts].sort((a, b) => {
+                const scoreA = a.vectorScore || a._vectorScore || 0;
+                const scoreB = b.vectorScore || b._vectorScore || 0;
+                return scoreB - scoreA;
+              })
+            : contacts;
+
+          // Process each contact individually
+          for (let i = 0; i < contactsToProcess.length; i++) {
+            const contact = contactsToProcess[i];
+            
+            try {
+              console.log(`🔄 [AIEnhance] [${enhanceId}] Processing contact ${i + 1}/${contactsToProcess.length}: ${contact.name}`);
+              
+              // Send progress update
+              controller.enqueue(new TextEncoder().encode(JSON.stringify({
+                type: 'progress',
+                contactIndex: i,
+                contactId: contact.id,
+                contactName: contact.name,
+                processed: processedCount,
+                total: contactsToProcess.length,
+                similarityTier: contact.similarityTier,
+                vectorScore: contact.vectorScore || contact._vectorScore
+              }) + '\n'));
+
+              // Generate prompt and call Gemini
+              const prompt = generateSimilarityAwarePrompt(originalQuery, contact);
+              const result = await model.generateContent(prompt);
+              
+              // Calculate cost for this API call
+              const usage = result.response.usageMetadata;
+              const inputTokens = usage?.promptTokenCount || 0;
+              const outputTokens = usage?.candidatesTokenCount || 0;
+              
+              const modelPrices = GEMINI_PRICING[modelName];
+              const apiCallCost = (inputTokens / 1000000) * modelPrices.inputPricePerMillionTokens +
+                                 (outputTokens / 1000000) * modelPrices.outputPricePerMillionTokens;
+              
+              totalCosts += apiCallCost;
+              totalApiCalls++;
+              
+              // Record the API call cost (always billable)
+              if (trackCosts) {
+                await CostTrackingService.recordSeparatedUsage(
+                  userId,
+                  apiCallCost,
+                  modelName,
+                  'ai_contact_analysis',
+                  {
+                    contactId: contact.id,
+                    contactName: contact.name,
+                    inputTokens,
+                    outputTokens,
+                    enhanceId,
+                    contactIndex: i
+                  },
+                  'api_call' // This is an API call cost
+                );
+              }
+              
+              processedCount++;
+              
+              // Parse and analyze the response
+              const response = await result.response;
+              const rawText = response.text();
+              const jsonString = cleanJsonString(rawText);
+              
+              let analysis;
+              try {
+                analysis = JSON.parse(jsonString);
+              } catch (parseError) {
+                console.error(`❌ [AIEnhance] [${enhanceId}] JSON parse failed for ${contact.name}:`, parseError);
+                filteredContacts++;
+                continue;
+              }
+
+              if (!analysis.explanation || !analysis.factors || !analysis.suggestions || !analysis.confidence) {
+                console.error(`❌ [AIEnhance] [${enhanceId}] Invalid response structure for ${contact.name}`);
+                filteredContacts++;
+                continue;
+              }
+
+              const confidenceThreshold = getConfidenceThreshold(contact.similarityTier);
+              
+              if (analysis.confidence >= confidenceThreshold) {
+                // This is a successful run - counts toward AI run limits
+                successfulRuns++;
+                
+                if (trackCosts) {
+                  await CostTrackingService.recordSeparatedUsage(
+                    userId,
+                    0, // No additional cost for successful run tracking
+                    modelName,
+                    'ai_enhancement_success',
+                    {
+                      contactId: contact.id,
+                      contactName: contact.name,
+                      confidence: analysis.confidence,
+                      threshold: confidenceThreshold,
+                      enhanceId,
+                      contactIndex: i
+                    },
+                    'successful_run' // This counts toward run limits
+                  );
+                }
+
+                const insight = {
+                  contactId: contact.id,
+                  explanation: analysis.explanation,
+                  factors: analysis.factors,
+                  suggestions: analysis.suggestions,
+                  confidence: analysis.confidence,
+                  analysisTimestamp: new Date().toISOString(),
+                  modelUsed: modelName,
+                  similarityContext: {
+                    tier: contact.similarityTier,
+                    vectorScore: contact.vectorScore || contact._vectorScore,
+                    hybridScore: calculateHybridScore(contact.vectorScore || contact._vectorScore, analysis.confidence)
+                  },
+                  billing: {
+                    apiCallCost,
+                    countsAsRun: true,
+                    contactIndex: i
+                  }
+                };
+
+                processedInsights.push(insight);
+                
+                // Send individual result
+                controller.enqueue(new TextEncoder().encode(JSON.stringify({
+                  type: 'result',
+                  insight,
+                  contactIndex: i,
+                  contactId: contact.id,
+                  processed: processedCount,
+                  total: contactsToProcess.length,
+                  confidence: analysis.confidence,
+                  similarityTier: contact.similarityTier,
+                  vectorScore: contact.vectorScore || contact._vectorScore,
+                  hybridScore: calculateHybridScore(contact.vectorScore || contact._vectorScore, analysis.confidence)
+                }) + '\n'));
+                
+                console.log(`✅ [AIEnhance] [${enhanceId}] Successful run recorded for ${contact.name}: confidence ${analysis.confidence}/${confidenceThreshold}`);
+                
+              } else {
+                // Low confidence - API call was paid for but doesn't count as successful run
+                filteredContacts++;
+                console.log(`🚫 [AIEnhance] [${enhanceId}] Contact filtered (paid but not counted): ${contact.name} - confidence ${analysis.confidence}/${confidenceThreshold}`);
+                
+                // Send filtered result
+                controller.enqueue(new TextEncoder().encode(JSON.stringify({
+                  type: 'filtered',
+                  contactIndex: i,
+                  contactId: contact.id,
+                  contactName: contact.name,
+                  reason: `Low confidence (${analysis.confidence}/${confidenceThreshold} required for ${contact.similarityTier || 'unknown'} similarity)`,
+                  confidence: analysis.confidence,
+                  processed: processedCount,
+                  total: contactsToProcess.length,
+                  similarityTier: contact.similarityTier,
+                  vectorScore: contact.vectorScore || contact._vectorScore
+                }) + '\n'));
+              }
+
+              // Small delay to prevent overwhelming the client
+              await new Promise(resolve => setTimeout(resolve, 100));
+
+            } catch (contactError) {
+              console.error(`❌ [AIEnhance] [${enhanceId}] Error processing contact ${contact.name}:`, contactError);
+              
+              controller.enqueue(new TextEncoder().encode(JSON.stringify({
+                type: 'error',
+                contactIndex: i,
+                contactId: contact.id,
+                contactName: contact.name,
+                error: contactError.message,
+                processed: processedCount,
+                total: contactsToProcess.length,
+                similarityTier: contact.similarityTier
+              }) + '\n'));
+            }
+          }
+
+          // Send final completion message with enhanced stats
+          const summary = {
+            totalContactsProcessed: contacts.length,
+            totalApiCalls,
+            successfulRuns,
+            filteredContacts,
+            totalCosts,
+            apiCallEfficiency: totalApiCalls > 0 ? (successfulRuns / totalApiCalls * 100).toFixed(1) + '%' : '0%',
+            averageCostPerApiCall: totalApiCalls > 0 ? (totalCosts / totalApiCalls).toFixed(6) : '0',
+            averageCostPerSuccessfulRun: successfulRuns > 0 ? (totalCosts / successfulRuns).toFixed(6) : '0'
+          };
+
+          controller.enqueue(new TextEncoder().encode(JSON.stringify({
+            type: 'complete',
+            insights: processedInsights,
+            billing: summary,
+            stats: {
+              totalProcessed: processedCount,
+              totalContacts: contactsToProcess.length,
+              insightsGenerated: processedInsights.length,
+              filteredOut: filteredContacts,
+              costs: trackCosts ? { aiEnhancement: totalCosts } : undefined,
+              processingStrategy,
+              vectorOptimized,
+              similarityBreakdown: getSimilarityBreakdown(contactsToProcess, processedInsights)
+            },
+            metadata: {
+              originalQuery,
+              model: modelName,
+              timestamp: new Date().toISOString(),
+              enhanceId
+            }
+          }) + '\n'));
+
+          console.log(`📊 [AIEnhance] [${enhanceId}] Enhancement complete:`, summary);
+
+        } catch (streamError) {
+          console.error(`❌ [AIEnhance] [${enhanceId}] Stream error:`, streamError);
+          controller.enqueue(new TextEncoder().encode(JSON.stringify({
+            type: 'stream_error',
+            error: streamError.message
+          }) + '\n'));
+        } finally {
+          controller.close();
+        }
+      }
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Transfer-Encoding': 'chunked',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+      }
+    });
+
+  } catch (error) {
+    console.error(`❌ [AIEnhance] [${enhanceId}] Enhanced streaming mode error:`, error);
+    return NextResponse.json({ error: 'Streaming failed' }, { status: 500 });
+  }
+}
+
+/**
+ * Handle batch mode with separated cost tracking
+ */
+async function handleBatchModeWithSeparatedTracking(model, originalQuery, contacts, modelName, userId, trackCosts, enhanceId) {
+  console.log(`📦 [AIEnhance] [${enhanceId}] Starting batch mode with separated tracking`);
+  
+  let totalCosts = 0;
+  let totalApiCalls = 0;
+  let successfulRuns = 0;
+  let filteredContacts = 0;
+  const results = [];
+  
+  try {
+    // Process each contact individually (not in parallel to maintain cost tracking accuracy)
+    for (let i = 0; i < contacts.length; i++) {
+      const contact = contacts[i];
+      
+      try {
+        console.log(`🔍 [AIEnhance] [${enhanceId}] Processing contact ${i + 1}/${contacts.length}: ${contact.name}`);
+        
+        // Generate prompt and call Gemini
+        const prompt = generateSimilarityAwarePrompt(originalQuery, contact);
+        const result = await model.generateContent(prompt);
+        
+        // Calculate cost for this API call
+        const usage = result.response.usageMetadata;
+        const inputTokens = usage?.promptTokenCount || 0;
+        const outputTokens = usage?.candidatesTokenCount || 0;
+        
+        const modelPrices = GEMINI_PRICING[modelName];
+        const apiCallCost = (inputTokens / 1000000) * modelPrices.inputPricePerMillionTokens +
+                           (outputTokens / 1000000) * modelPrices.outputPricePerMillionTokens;
+        
+        totalCosts += apiCallCost;
+        totalApiCalls++;
+        
+        // Record the API call cost (always billable)
+        if (trackCosts) {
+          await CostTrackingService.recordSeparatedUsage(
+            userId,
+            apiCallCost,
+            modelName,
+            'ai_contact_analysis',
+            {
+              contactId: contact.id,
+              contactName: contact.name,
+              inputTokens,
+              outputTokens,
+              enhanceId,
+              contactIndex: i
+            },
+            'api_call'
+          );
+        }
+        
+        // Parse and analyze the response
+        const response = await result.response;
+        const rawText = response.text();
+        const jsonString = cleanJsonString(rawText);
+        
+        let analysis;
+        try {
+          analysis = JSON.parse(jsonString);
+        } catch (parseError) {
+          console.error(`❌ [AIEnhance] [${enhanceId}] JSON parse failed for ${contact.name}:`, parseError);
+          filteredContacts++;
+          continue;
+        }
+
+        if (!analysis.explanation || !analysis.factors || !analysis.suggestions || !analysis.confidence) {
+          console.error(`❌ [AIEnhance] [${enhanceId}] Invalid response structure for ${contact.name}`);
+          filteredContacts++;
+          continue;
+        }
+
+        const confidenceThreshold = getConfidenceThreshold(contact.similarityTier);
+        
+        if (analysis.confidence >= confidenceThreshold) {
+          // This is a successful run - counts toward AI run limits
+          successfulRuns++;
+          
+          if (trackCosts) {
+            await CostTrackingService.recordSeparatedUsage(
+              userId,
+              0, // No additional cost for successful run tracking
+              modelName,
+              'ai_enhancement_success',
+              {
+                contactId: contact.id,
+                contactName: contact.name,
+                confidence: analysis.confidence,
+                threshold: confidenceThreshold,
+                enhanceId,
+                contactIndex: i
+              },
+              'successful_run'
+            );
+          }
+          
+          results.push({
+            contactId: contact.id,
+            explanation: analysis.explanation,
+            factors: analysis.factors,
+            suggestions: analysis.suggestions,
+            confidence: analysis.confidence,
+            analysisTimestamp: new Date().toISOString(),
+            modelUsed: modelName,
+            similarityContext: {
+              tier: contact.similarityTier,
+              vectorScore: contact.vectorScore || contact._vectorScore,
+              hybridScore: calculateHybridScore(contact.vectorScore || contact._vectorScore, analysis.confidence)
+            },
+            billing: {
+              apiCallCost,
+              countsAsRun: true,
+              contactIndex: i
+            }
+          });
+          
+          console.log(`✅ [AIEnhance] [${enhanceId}] Successful run for ${contact.name}: confidence ${analysis.confidence}/${confidenceThreshold}`);
+          
+        } else {
+          // Low confidence - API call was paid for but doesn't count as successful run
+          filteredContacts++;
+          console.log(`🚫 [AIEnhance] [${enhanceId}] Contact filtered (paid but not counted): ${contact.name} - confidence ${analysis.confidence}/${confidenceThreshold}`);
+        }
+        
+      } catch (error) {
+        console.error(`❌ [AIEnhance] [${enhanceId}] Error processing ${contact.name}:`, error);
+        // API call might have failed, so we don't increment costs
+      }
+    }
+
+    const summary = {
+      totalContactsProcessed: contacts.length,
+      totalApiCalls,
+      successfulRuns,
+      filteredContacts,
+      totalCosts,
+      apiCallEfficiency: totalApiCalls > 0 ? (successfulRuns / totalApiCalls * 100).toFixed(1) + '%' : '0%',
+      averageCostPerApiCall: totalApiCalls > 0 ? (totalCosts / totalApiCalls).toFixed(6) : '0',
+      averageCostPerSuccessfulRun: successfulRuns > 0 ? (totalCosts / successfulRuns).toFixed(6) : '0'
+    };
+
+    console.log(`📊 [AIEnhance] [${enhanceId}] Batch enhancement complete:`, summary);
+
+    const responseData = {
+      insights: results,
+      billing: summary,
+      costs: trackCosts ? { aiEnhancement: totalCosts } : undefined,
+      metadata: {
+        originalQuery,
+        contactsAnalyzed: contacts.length,
+        insightsGenerated: results.length,
+        filteredLowConfidence: filteredContacts,
+        model: modelName,
+        timestamp: new Date().toISOString(),
+        enhanceId
+      }
+    };
+
+    return NextResponse.json(responseData);
+
+  } catch (error) {
+    console.error(`❌ [AIEnhance] [${enhanceId}] Batch mode error:`, error);
+    return NextResponse.json({
+      insights: [],
+      costs: trackCosts ? { aiEnhancement: 0 } : undefined,
+      error: 'AI analysis temporarily unavailable',
+      metadata: {
+        originalQuery,
+        contactsAnalyzed: contacts.length,
+        insightsGenerated: 0,
+        error: error.message,
+        timestamp: new Date().toISOString(),
+        enhanceId
+      }
+    });
+  }
 }

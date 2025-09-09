@@ -3,9 +3,22 @@
 import React from 'react';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from "@/lib/translation/useTranslation";
-
+// NEW: A small component for the "pending" state
+const PendingAILoader = () => (
+    <div className="mt-2 p-2 bg-gray-50 rounded text-xs animate-pulse">
+        <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
+                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-400"></div>
+            </div>
+            <div className="flex-1 space-y-1.5">
+                <div className="h-2 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-2 bg-gray-200 rounded w-1/2"></div>
+            </div>
+        </div>
+    </div>
+);
 export default function AiSearchResults({ 
-    results,
+       results,
     query, 
     searchTier, 
     onClearSearch, 
@@ -44,60 +57,66 @@ export default function AiSearchResults({
         }
     }, [query]);
 
-    const categorizedResults = useMemo(() => {
-        const categories = {
-            high: [],
-            medium: [],
-            low: []
-        };
-
-        if (!Array.isArray(results)) {
-            return categories;
-        }
+ const categorizedResults = useMemo(() => {
+        const categories = { high: [], medium: [], low: [] };
+        if (!Array.isArray(results)) return categories;
         
         results.forEach(contact => {
             if (!contact) return;
-            
-            const tier = contact.similarityTier || contact.searchMetadata?.similarityTier;
-            
-            if (tier === 'high') {
-                categories.high.push(contact);
-            } else if (tier === 'medium') {
-                categories.medium.push(contact);
-            } else if (tier === 'low' || tier === 'filtered') {
+            const tier = contact.similarityTier || contact.searchMetadata?.similarityTier || 'low';
+            if (categories[tier]) {
+                categories[tier].push(contact);
+            } else if (tier === 'filtered') {
                 categories.low.push(contact);
             }
         });
 
+        // Ensure each category is sorted internally
+        Object.keys(categories).forEach(key => {
+            categories[key].sort((a, b) => {
+                const scoreA = a.searchMetadata?.hybridScore || a.searchMetadata?.rerankScore || a._vectorScore || 0;
+                const scoreB = b.searchMetadata?.hybridScore || b.searchMetadata?.rerankScore || b._vectorScore || 0;
+                return scoreB - scoreA;
+            });
+        });
         return categories;
     }, [results]);
-
-    useEffect(() => {
-        const currentHash = getResultsHash(
-            (results || []).length,
-            query
-        );
-        
-        const hashChanged = currentHash !== lastResultsHashRef.current;
+    
+  useEffect(() => {
+        const currentHash = getResultsHash((results || []).length, query);
         const hasResults = (results || []).length > 0;
         
-        if (!filterInitializedRef.current && hashChanged && hasResults) {
+        if (!filterInitializedRef.current && hasResults) {
             console.log('Initializing filter for new results:', currentHash);
-            
             const counts = {
                 high: categorizedResults.high.length,
                 medium: categorizedResults.medium.length,
                 low: categorizedResults.low.length
             };
-            
             const defaultCategory = ['high', 'medium', 'low'].find(cat => counts[cat] > 0) || 'all';
-            
             setSelectedSimilarityFilter(defaultCategory);
-            
             filterInitializedRef.current = true;
-            lastResultsHashRef.current = currentHash;
         }
+        lastResultsHashRef.current = currentHash;
     }, [categorizedResults, results, query, getResultsHash]);
+    
+ const filteredAndSortedResults = useMemo(() => {
+        let combinedResults = [];
+        if (selectedSimilarityFilter === 'all') {
+            combinedResults = [...categorizedResults.high, ...categorizedResults.medium, ...categorizedResults.low];
+        } else {
+            combinedResults = categorizedResults[selectedSimilarityFilter] || [];
+        }
+        // The final results are already pre-sorted by hybrid/rerank score from the service,
+        // but an extra sort here ensures consistency if the state updates out of order.
+        return combinedResults.sort((a, b) => {
+            const scoreA = a.searchMetadata?.hybridScore || a.searchMetadata?.rerankScore || a._vectorScore || 0;
+            const scoreB = b.searchMetadata?.hybridScore || b.searchMetadata?.rerankScore || b._vectorScore || 0;
+            return scoreB - scoreA;
+        });
+    }, [categorizedResults, selectedSimilarityFilter]);
+
+
 
     const filteredResults = useMemo(() => {
         if (selectedSimilarityFilter === 'all') {
@@ -128,14 +147,10 @@ export default function AiSearchResults({
         }
     }, [sortedResults]);
 
-    const toggleExpanded = useCallback((contactId) => {
+     const toggleExpanded = useCallback((contactId) => {
         setExpandedCards(prev => {
             const newSet = new Set(prev);
-            if (newSet.has(contactId)) {
-                newSet.delete(contactId);
-            } else {
-                newSet.add(contactId);
-            }
+            newSet.has(contactId) ? newSet.delete(contactId) : newSet.add(contactId);
             return newSet;
         });
     }, []);
@@ -166,11 +181,11 @@ export default function AiSearchResults({
 
     return (
         <div className="space-y-6">
-            {/* Results Header */}
+            {/* ... (Header and Progress Indicator are fine) ... */}
             <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-3">
+                         <div className="flex items-center gap-3">
                             {isStreaming ? (
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
                             ) : (
@@ -180,14 +195,13 @@ export default function AiSearchResults({
                                 </div>
                             )}
                         </div>
-                        
                         <div className="flex flex-col">
                             <h3 className="text-lg font-semibold text-gray-900">
                                 AI Search Results for "{query}"
                             </h3>
                             <div className="flex items-center gap-2">
                                 <p className="text-sm text-gray-600">
-                                    Found {categorizedResults.high.length + categorizedResults.medium.length + categorizedResults.low.length} relevant contacts using {searchTier === 'business' ? 'AI-powered analysis' : 'semantic search'}
+                                    Found {results.length} relevant contacts using {searchTier === 'business' ? 'AI-powered analysis' : 'semantic search'}
                                 </p>
                                 {hasReranking && (
                                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
@@ -197,7 +211,6 @@ export default function AiSearchResults({
                             </div>
                         </div>
                     </div>
-                    
                     <button 
                         onClick={onClearSearch}
                         className="px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
@@ -205,8 +218,6 @@ export default function AiSearchResults({
                         Clear Search
                     </button>
                 </div>
-                
-                {/* Streaming Progress Indicator */}
                 {isStreaming && streamingProgress && (
                     <div className="mt-4 p-3 bg-white rounded-lg border border-purple-200">
                         <div className="flex items-center gap-2 mb-2">
@@ -237,32 +248,36 @@ export default function AiSearchResults({
                 )}
             </div>
 
-            {/* Similarity Filter Navigation */}
+             {/* Similarity Filter Navigation */}
             <div className="bg-white border border-gray-200 rounded-lg p-4">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                    <span className="text-sm font-medium text-gray-700">Filter by similarity:</span>
+                   <span className="text-sm font-medium text-gray-700">Filter by relevance:</span>
                     <div className="flex flex-wrap gap-2">
                         <SimilarityFilterButton 
                             type="high" 
+                            label="High Relevance" // MODIFICATION
                             count={categorizedResults.high.length} 
                             isSelected={selectedSimilarityFilter === 'high'} 
                             onClick={() => setSelectedSimilarityFilter('high')}
                         />
                         <SimilarityFilterButton 
                             type="medium" 
+                            label="Medium Relevance" // MODIFICATION
                             count={categorizedResults.medium.length} 
                             isSelected={selectedSimilarityFilter === 'medium'} 
                             onClick={() => setSelectedSimilarityFilter('medium')}
                         />
                         <SimilarityFilterButton 
                             type="low" 
+                            label="Lower Relevance" // MODIFICATION
                             count={categorizedResults.low.length} 
                             isSelected={selectedSimilarityFilter === 'low'} 
                             onClick={() => setSelectedSimilarityFilter('low')}
                         />
                         <SimilarityFilterButton 
                             type="all" 
-                            count={categorizedResults.high.length + categorizedResults.medium.length + categorizedResults.low.length} 
+                            label="All Results" // This one is fine
+                            count={results.length}
                             isSelected={selectedSimilarityFilter === 'all'} 
                             onClick={() => setSelectedSimilarityFilter('all')}
                         />
@@ -270,8 +285,9 @@ export default function AiSearchResults({
                 </div>
             </div>
 
-            {/* No Results */}
-            {!isStreaming && displayedResults.length === 0 && (
+           
+            {/* No Results Message */}
+            {results.length > 0 && filteredAndSortedResults.length === 0 && (
                 <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
                     <div className="text-4xl mb-2">🤷</div>
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No contacts found in this similarity level</h3>
@@ -280,32 +296,41 @@ export default function AiSearchResults({
                     </p>
                 </div>
             )}
+          {/* Results List */}
+               <div className="space-y-4">
+                {filteredAndSortedResults.map((contact) => {
+                    // ====================================================================
+                    // FIX #2: Determine original rank correctly to decide eligibility.
+                    // ====================================================================
+                    const originalIndex = results.findIndex(r => r.id === contact.id);
+                    const isEligible = searchTier === 'business' && originalIndex !== -1 && originalIndex < 10;
 
-            {/* Results List */}
-            <div className="space-y-4">
-                {displayedResults.map((contact, index) => (
-                    <AiSearchResultCard 
-                        key={`${contact.id}-${index}`}
-                        contact={contact}
-                        index={index}
-                        searchTier={searchTier}
-                        isExpanded={expandedCards.has(contact.id)}
-                        onToggleExpanded={() => toggleExpanded(contact.id)}
-                        onContactAction={onContactAction}
-                        getRelevanceColor={getRelevanceColor}
-                        getRelevanceText={getRelevanceText}
-                        formatDate={formatDate}
-                        groups={groups}
-                        hasReranking={hasReranking}
-                        isNewResult={isStreaming && index === displayedResults.length - 1}
-                    />
-                ))}
+                    return (
+                        <AiSearchResultCard 
+                            key={contact.id}
+                            contact={contact}
+                            index={originalIndex}
+                            searchTier={searchTier}
+                            isExpanded={expandedCards.has(contact.id)}
+                            onToggleExpanded={() => toggleExpanded(contact.id)}
+                            onContactAction={onContactAction}
+                            getRelevanceColor={getRelevanceColor}
+                            getRelevanceText={getRelevanceText}
+                            formatDate={formatDate}
+                            groups={groups}
+                            hasReranking={hasReranking}
+                            isNewResult={isStreaming && contact.searchMetadata?.aiAnalysis && !expandedCards.has(contact.id)}
+                            isEnhancementEligible={isEligible}
+                        />
+                    )
+                })}
             </div>
         </div>
     );
 }
 
-const SimilarityFilterButton = React.memo(function SimilarityFilterButton({ type, count, isSelected, onClick }) {
+
+const SimilarityFilterButton = React.memo(function SimilarityFilterButton({ type, label, count, isSelected, onClick }) {
     const getButtonConfig = (type) => {
         switch (type) {
             case 'high':
@@ -353,6 +378,7 @@ const SimilarityFilterButton = React.memo(function SimilarityFilterButton({ type
 
     const config = getButtonConfig(type);
 
+
     return (
         <button
             onClick={onClick}
@@ -384,6 +410,7 @@ const SimilarityFilterButton = React.memo(function SimilarityFilterButton({ type
     );
 });
 
+// MODIFIED AiSearchResultCard to handle the pending state
 const AiSearchResultCard = React.memo(function AiSearchResultCard({ 
     contact, 
     index, 
@@ -396,27 +423,28 @@ const AiSearchResultCard = React.memo(function AiSearchResultCard({
     formatDate,
     groups,
     hasReranking = false,
-    isNewResult = false
+    isNewResult = false,
+    isEnhancementEligible = false // Prop to check if it's one of the top 10
 }) {
-    const contactGroups = groups.filter(group => group.contactIds && group.contactIds.includes(contact.id));
-    
     const hasAiInsights = searchTier === 'business' && contact.searchMetadata?.aiAnalysis;
     const aiAnalysis = contact.searchMetadata?.aiAnalysis;
     const vectorScore = contact._vectorScore || contact.searchMetadata?.vectorSimilarity || 0;
     const rerankScore = contact.searchMetadata?.rerankScore;
     const hybridScore = contact.searchMetadata?.hybridScore;
     
+    // This is the key logic: is it eligible for enhancement but doesn't have the data yet?
+    const isPendingAI = isEnhancementEligible && !hasAiInsights;
+
     return (
         <div className={`bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 ${
             isNewResult ? 'animate-slide-in-from-top border-green-300 shadow-green-100' : ''
-        }`}>
+        } ${isPendingAI ? 'border-dashed border-purple-300' : ''}`}>
             {isNewResult && (
                 <div className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-t-lg text-center font-medium border-b border-green-200">
                     ✨ New Result
                 </div>
             )}
             
-            {/* Card Header */}
             <div className="p-4 cursor-pointer" onClick={onToggleExpanded}>
                 <div className="flex items-start gap-3">
                     <div className="flex-shrink-0 mt-1">
@@ -441,6 +469,11 @@ const AiSearchResultCard = React.memo(function AiSearchResultCard({
                                             AI Enhanced
                                         </span>
                                     )}
+                                    {isPendingAI && (
+                                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                                            AI Analyzing...
+                                        </span>
+                                    )}
                                     {hasReranking && rerankScore !== undefined && (
                                         <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">
                                             Reranked
@@ -456,7 +489,6 @@ const AiSearchResultCard = React.memo(function AiSearchResultCard({
                             </div>
                         </div>
 
-                        {/* AI Insights Preview */}
                         {hasAiInsights && !isExpanded && (
                             <div className="mt-2 p-2 bg-purple-50 rounded text-xs">
                                 <div className="flex items-center gap-1 mb-1">
@@ -471,6 +503,8 @@ const AiSearchResultCard = React.memo(function AiSearchResultCard({
                                 </p>
                             </div>
                         )}
+                        {/* Show the pending loader if applicable */}
+                        {isPendingAI && !isExpanded && <PendingAILoader />}
                     </div>
                 </div>
             </div>

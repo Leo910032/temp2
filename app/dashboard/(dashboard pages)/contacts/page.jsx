@@ -177,8 +177,7 @@ export default function ContactsPage() {
     setSearchMetadata(null);
     setCurrentQuery('');
   };
-    // NEW: Enhanced search handler with caching
-    const handleEnhancedSearch = async (query, useAI = false) => {
+ const handleEnhancedSearch = async (query, useAI = false) => {
         if (!query.trim()) {
             setAiSearchResults(null);
             setSearchTerm('');
@@ -188,16 +187,15 @@ export default function ContactsPage() {
         }
 
         if (useAI && canUseAnyAiSearch) {
-            console.log('🚀 Starting Enhanced AI Search with caching...');
+            console.log('🚀 Starting Enhanced AI Search with progressive enhancement...');
             setIsAiSearching(true);
-            setAiSearchResults([]);
+            setAiSearchResults([]); // Clear previous results
             setShowSearchProgress(true);
             setSearchStage('vector_search');
 
             try {
                 const streamingMode = canUseFullAiSearch;
-
-                console.log(`🔄 Using ${streamingMode ? 'streaming' : 'batch'} mode with caching.`);
+                console.log(`🔄 Using ${streamingMode ? 'streaming' : 'batch'} mode.`);
 
                 const streamingCallbacks = streamingMode ? {
                     onProgress: handleEnhancedStreamingProgress,
@@ -205,15 +203,15 @@ export default function ContactsPage() {
                     onError: handleStreamingError,
                 } : {};
                 
-                // Use the enhanced semantic search service with caching
+                // This call now returns IMMEDIATELY with the initial reranked results
                 const searchResponse = await SemanticSearchService.search(query, {
-                    maxResults: 10,
+                    maxResults: 20, // Ask for up to 20 initial results
                     enhanceResults: canUseFullAiSearch,
                     streamingMode: streamingMode,
                     userId: currentUser?.uid,
                     subscriptionLevel: subscriptionStatus?.subscriptionLevel,
-                    useCache: true, // Enable caching
-                    queryLanguage: locale, // <-- ADD THIS LINE
+                    useCache: true,
+                    queryLanguage: locale,
                     ...streamingCallbacks
                 });
 
@@ -222,22 +220,24 @@ export default function ContactsPage() {
                 const initialResults = searchResponse?.results || [];
                 const searchMetadata = searchResponse?.searchMetadata || {};
 
-                // Display the initial vector results right away
+                // ====================================================================
+                // THIS IS THE KEY FIX: Immediately set the state with initial results.
+                // ====================================================================
                 setAiSearchResults(initialResults);
                 
-                console.log(`✅ Displaying ${initialResults.length} initial results.`);
+                console.log(`✅ Displaying ${initialResults.length} initial results immediately.`);
 
                 if (searchMetadata.vectorCategories) {
                     displayVectorSimilarityInfo(searchMetadata.vectorCategories);
                 }
                 
-                // Show appropriate completion message
-                if (streamingMode && canUseFullAiSearch) {
+                if (streamingMode && searchMetadata.aiEnhancementPending) {
                     setSearchStage('ai_analysis');
                     toast.success(
-                        `Found ${initialResults.length} potential matches. AI is now analyzing...`,
+                        `Found ${initialResults.length} potential matches. AI is now analyzing the top 10...`,
                         { duration: 5000 }
                     );
+                    // isAiSearching remains true while the background stream runs
                 } else {
                     setSearchStage('complete');
                     const cacheStatus = searchMetadata.fromCache ? ' (cached)' : '';
@@ -245,6 +245,8 @@ export default function ContactsPage() {
                         `🧠 Found ${initialResults.length} relevant contacts!${cacheStatus}`,
                         { duration: 4000 }
                     );
+                    setIsAiSearching(false); // Batch mode is complete
+                    setShowSearchProgress(false);
                 }
                 
             } catch (error) {
@@ -252,21 +254,18 @@ export default function ContactsPage() {
                 setSearchStage('idle');
                 toast.error(`🤖 AI search failed: ${error.message}`);
                 setAiSearchResults([]);
-            } finally {
-                if (!canUseFullAiSearch) {
-                    setIsAiSearching(false);
-                    setShowSearchProgress(false);
-                    setTimeout(() => setSearchStage('idle'), 2000);
-                }
+                setIsAiSearching(false);
+                setShowSearchProgress(false);
             }
         } else {
-            // Standard keyword search
+            // Standard keyword search logic (unchanged)
             setSearchTerm(query);
             setAiSearchResults(null);
             setSearchStage('idle');
             setShowSearchProgress(false);
         }
     };
+
 
     // NEW: Handle job selection from history
     const handleJobSelection = useCallback((jobData) => {
@@ -336,7 +335,7 @@ export default function ContactsPage() {
         }
     };
 
-    // Enhanced streaming result handler with similarity context
+   // MODIFICATION: `handleEnhancedStreamingResult` is now crucial for updating the UI
     const handleEnhancedStreamingResult = (resultData) => {
         const { contact, insight, processed, total, similarityContext } = resultData;
         
@@ -344,28 +343,33 @@ export default function ContactsPage() {
             ? ` (Vector: ${similarityContext.tier}, Hybrid: ${similarityContext.hybridScore?.toFixed(3)})`
             : '';
         
-        console.log(`✅ Enhanced result: ${contact.name} (AI: ${insight.confidence}/10${similarityInfo}) (${processed}/${total})`);
+        console.log(`✅ Received AI-enhanced result: ${contact.name} (${processed}/${total})`);
         
-        // Add the new result to the existing results array with enhanced sorting
+        // Update the specific contact in the results array with its new AI insights
         setAiSearchResults(prevResults => {
-            const newResults = [...(prevResults || [])];
+            if (!prevResults) return [contact]; // Should not happen, but safe
             
-            // Find and update the existing contact with AI insights
+            const newResults = [...prevResults];
+            
+            // Find the contact by ID and replace it with the enhanced version
             const existingIndex = newResults.findIndex(r => r.id === contact.id);
             
             if (existingIndex >= 0) {
+                console.log(`Updating contact at index ${existingIndex} with AI data.`);
                 newResults[existingIndex] = contact;
             } else {
+                // This case is unlikely in the new flow but good to have
+                console.log(`Contact not in initial list, adding.`);
                 newResults.push(contact);
             }
             
-            // Enhanced sorting by hybrid score
+            // Re-sort by hybrid score to ensure the best results float to the top
             newResults.sort((a, b) => {
                 const scoreA = a.searchMetadata?.hybridScore || 
-                              a.searchMetadata?.aiAnalysis?.confidenceScore / 10 || 
+                              a.searchMetadata?.rerankScore || 
                               a._vectorScore || 0;
                 const scoreB = b.searchMetadata?.hybridScore || 
-                              b.searchMetadata?.aiAnalysis?.confidenceScore / 10 || 
+                              b.searchMetadata?.rerankScore || 
                               b._vectorScore || 0;
                 return scoreB - scoreA;
             });
@@ -373,21 +377,11 @@ export default function ContactsPage() {
             return newResults;
         });
 
-        // Enhanced toast notifications
-        if (insight.confidence >= 9 && similarityContext?.tier === 'high') {
+        // Optional: Show a subtle toast for high-confidence results
+        if (insight.confidence >= 8) {
             toast.success(
-                `Excellent match: ${contact.name} (High similarity + High AI confidence)`,
-                { duration: 4000 }
-            );
-        } else if (insight.confidence >= 8 && similarityContext?.tier === 'medium') {
-            toast.success(
-                `Strong match: ${contact.name} (Medium similarity + Good AI confidence)`,
-                { duration: 3000 }
-            );
-        } else if (insight.confidence >= 8 && similarityContext?.tier === 'low') {
-            toast.success(
-                `Surprising match: ${contact.name} (Low similarity but high AI confidence!)`,
-                { duration: 3000 }
+                `AI analysis for ${contact.name} is ready!`,
+                { duration: 3000, icon: '✨' }
             );
         }
     };

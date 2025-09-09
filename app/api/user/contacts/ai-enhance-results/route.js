@@ -28,6 +28,24 @@ function cleanJsonString(text) {
   
   return text.substring(firstBrace, lastBrace + 1);
 }
+// ====================================================================
+// MODIFICATION #1: Create a helper function for language instructions
+// ====================================================================
+function getLanguageInstruction(languageCode = 'en') {
+  switch (languageCode.toLowerCase()) {
+    case 'fr':
+      return "FORMATEZ VOTRE RÉPONSE EN FRANÇAIS.";
+    case 'es':
+      return "FORMATEA TU RESPUESTA EN ESPAÑOL.";
+    case 'vm': // Assuming 'vm' is for Vietnamese
+      return "ĐỊNH DẠNG PHẢN HỒI CỦA BẠN BẰNG TIẾNG VIỆT.";
+    case 'zh':
+      return "请用中文格式化您的回答。";
+    case 'en':
+    default:
+      return "FORMAT YOUR RESPONSE IN ENGLISH.";
+  }
+}
 
 // app/api/user/contacts/ai-enhance-results/route.js - UPDATED PROMPT FOR RERANK CONTEXT
 
@@ -41,7 +59,8 @@ function generateSimilarityAwarePrompt(query, contact, queryLanguage = 'en') {
   const similarityExplanation = contact.similarityExplanation || `${(vectorScore * 100).toFixed(1)}% semantic similarity`;
 
   let contextualGuidance = '';
-  let rerankContext = '';
+  let rerankContext = ''; 
+ 
   
   // Build rerank context if available
   if (rerankScore !== undefined && rerankScore !== null) {
@@ -67,12 +86,9 @@ function generateSimilarityAwarePrompt(query, contact, queryLanguage = 'en') {
       contextualGuidance = `Analyze this contact's relevance to your query with their semantic similarity context. ${rerankContext}`;
   }
 
-  // Determine output language instruction
-  const outputLanguageInstruction = queryLanguage.startsWith('fr')
-    ? "FORMAT YOUR RESPONSE IN FRENCH."
-    : "FORMAT YOUR RESPONSE IN ENGLISH.";
+    const outputLanguageInstruction = getLanguageInstruction(queryLanguage);
 
-  return `
+ return `
 You are an AI networking assistant analyzing why a contact matches a search query.
 
 SEARCH QUERY: "${query}"
@@ -114,6 +130,7 @@ FORMAT YOUR RESPONSE AS JSON:
   "confidence": 8
 }`;
 }
+
 
 /**
  * Get confidence threshold based on similarity tier
@@ -192,7 +209,8 @@ export async function POST(request) {
       trackCosts = true, 
       mode = 'batch',
       processingStrategy = 'standard',
-      vectorOptimized = false
+      vectorOptimized = false,
+      queryLanguage = 'en'
     } = await request.json();
     
     console.log(`📝 [AIEnhance] [${enhanceId}] Request params:`, {
@@ -201,7 +219,8 @@ export async function POST(request) {
       trackCosts,
       mode,
       processingStrategy,
-      vectorOptimized
+      vectorOptimized,
+      queryLanguage
     });
 
     if (!originalQuery || !contacts || !Array.isArray(contacts)) {
@@ -290,12 +309,13 @@ export async function POST(request) {
         userId, 
         trackCosts, 
         enhanceId,
-        { processingStrategy, vectorOptimized }
+        { processingStrategy, vectorOptimized },
+        queryLanguage
       );
     }
 
     // 7. Handle batch mode with separated cost tracking
-    return handleBatchModeWithSeparatedTracking(model, originalQuery, contacts, modelName, userId, trackCosts, enhanceId);
+    return handleBatchModeWithSeparatedTracking(model, originalQuery, contacts, modelName, userId, trackCosts, enhanceId,queryLanguage);
 
   } catch (error) {
     console.error(`❌ [AIEnhance] [${enhanceId}] API error:`, {
@@ -313,7 +333,7 @@ export async function POST(request) {
 /**
  * Enhanced streaming mode with separated cost tracking
  */
-async function handleEnhancedStreamingModeWithSeparatedTracking(model, originalQuery, contacts, modelName, userId, trackCosts, enhanceId, options = {}) {
+async function handleEnhancedStreamingModeWithSeparatedTracking(model, originalQuery, contacts, modelName, userId, trackCosts, enhanceId, options = {},queryLanguage = 'en') {
   const { processingStrategy = 'standard', vectorOptimized = false } = options;
   
   try {
@@ -368,7 +388,7 @@ async function handleEnhancedStreamingModeWithSeparatedTracking(model, originalQ
               }) + '\n'));
 
               // Generate prompt and call Gemini
-              const prompt = generateSimilarityAwarePrompt(originalQuery, contact);
+              const prompt = generateSimilarityAwarePrompt(originalQuery, contact,queryLanguage);
               const result = await model.generateContent(prompt);
               
               // Calculate cost for this API call
@@ -591,7 +611,7 @@ async function handleEnhancedStreamingModeWithSeparatedTracking(model, originalQ
 /**
  * Handle batch mode with separated cost tracking
  */
-async function handleBatchModeWithSeparatedTracking(model, originalQuery, contacts, modelName, userId, trackCosts, enhanceId) {
+async function handleBatchModeWithSeparatedTracking(model, originalQuery, contacts, modelName, userId, trackCosts, enhanceId,queryLanguage = 'en') {
   console.log(`📦 [AIEnhance] [${enhanceId}] Starting batch mode with separated tracking`);
   
   let totalCosts = 0;
@@ -609,7 +629,7 @@ async function handleBatchModeWithSeparatedTracking(model, originalQuery, contac
         console.log(`🔍 [AIEnhance] [${enhanceId}] Processing contact ${i + 1}/${contacts.length}: ${contact.name}`);
         
         // Generate prompt and call Gemini
-        const prompt = generateSimilarityAwarePrompt(originalQuery, contact);
+        const prompt = generateSimilarityAwarePrompt(originalQuery, contact,queryLanguage);
         const result = await model.generateContent(prompt);
         
         // Calculate cost for this API call

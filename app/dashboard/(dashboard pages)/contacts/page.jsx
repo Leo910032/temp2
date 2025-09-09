@@ -49,7 +49,7 @@ const ContactsMap = dynamic(() => import('./components/ContactsMap'), {
 });
 
 export default function ContactsPage() {
-    const { t } = useTranslation();
+    const { t, locale } = useTranslation();
     const { currentUser } = useAuth();
 
     // Use the contact manager hook
@@ -144,8 +144,8 @@ export default function ContactsPage() {
       
       // Your existing search options
       const searchOptions = {
-        userId: user?.uid, // Make sure this is defined
-        subscriptionLevel: userSubscription?.tier || 'premium',
+        userId: currentUser?.uid, // Make sure this is defined
+        subscriptionLevel: subscriptionStatus?.subscriptionLevel || 'premium',
         maxResults: 10,
         enhanceResults: true,
         useReranking: true,
@@ -213,6 +213,7 @@ export default function ContactsPage() {
                     userId: currentUser?.uid,
                     subscriptionLevel: subscriptionStatus?.subscriptionLevel,
                     useCache: true, // Enable caching
+                    queryLanguage: locale, // <-- ADD THIS LINE
                     ...streamingCallbacks
                 });
 
@@ -1261,7 +1262,7 @@ function ContactsList({
     onEdit, onStatusUpdate, onDelete, onContactAction, onMapView,
     hasMore, onLoadMore, loading, groups = []
 }) {
-    const { t } = useTranslation();
+const { t, locale } = useTranslation();
 
     if (contacts.length === 0) {
         return (

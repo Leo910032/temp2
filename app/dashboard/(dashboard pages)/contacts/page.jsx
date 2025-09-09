@@ -205,7 +205,7 @@ export default function ContactsPage() {
                 
                 // This call now returns IMMEDIATELY with the initial reranked results
                 const searchResponse = await SemanticSearchService.search(query, {
-                    maxResults: 20, // Ask for up to 20 initial results
+                    maxResults: 10, // Ask for up to 20 initial results
                     enhanceResults: canUseFullAiSearch,
                     streamingMode: streamingMode,
                     userId: currentUser?.uid,

@@ -1,31 +1,436 @@
-// app/dashboard/(dashboard pages)/contacts/components/AiSearchResults.jsx - UPDATED WITH RERANK SUPPORT
+// app/dashboard/(dashboard pages)/contacts/components/AiSearchResults.jsx - UPDATED WITH SMART ICEBREAKERS
 "use client"
 import React from 'react';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from "@/lib/translation/useTranslation";
-// NEW: A small component for the "pending" state
-const PendingAILoader = () => (
-    <div className="mt-2 p-2 bg-gray-50 rounded text-xs animate-pulse">
-        <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
-                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-400"></div>
-            </div>
-            <div className="flex-1 space-y-1.5">
-                <div className="h-2 bg-gray-200 rounded w-3/4"></div>
-                <div className="h-2 bg-gray-200 rounded w-1/2"></div>
-            </div>
+import SmartIcebreakerModal from './SmartIcebreakerModal';
+import { hasContactFeature, CONTACT_FEATURES } from '../../../../../lib/services/serviceContact/client/services/constants/contactConstants.js';
+
+// Updated AiSearchResultCard with Smart Icebreaker integration
+const AiSearchResultCard = React.memo(function AiSearchResultCard({ 
+     contact, 
+    index, 
+    searchTier, 
+    isExpanded, 
+    onToggleExpanded, 
+    onContactAction,
+    getRelevanceColor,
+    getRelevanceText,
+    formatDate,
+    groups,
+    hasReranking = false,
+    isNewResult = false,
+    isEnhancementEligible = false,
+    subscriptionLevel = 'base',
+    canUseSmartIcebreakers = false, // ✅ ADD THIS PROP
+    onUsageUpdate
+}) {
+    const hasAiInsights = searchTier === 'business' && contact.searchMetadata?.aiAnalysis;
+    const aiAnalysis = contact.searchMetadata?.aiAnalysis;
+    const vectorScore = contact._vectorScore || contact.searchMetadata?.vectorSimilarity || 0;
+    const rerankScore = contact.searchMetadata?.rerankScore;
+    const hybridScore = contact.searchMetadata?.hybridScore;
+    
+    // Smart Icebreaker integration
+    const [showIcebreakerModal, setShowIcebreakerModal] = useState(false);
+    
+    // Generate strategic questions from AI analysis
+    const strategicQuestions = useMemo(() => {
+        if (!hasAiInsights || !aiAnalysis) {
+            // Fallback strategic questions if no AI analysis
+            return [
+                {
+                    question: `What recent announcements has ${contact.company || 'their company'} made?`,
+                    searchQuery: `"${contact.company}" recent news announcements 2024`,
+                    category: 'company_updates'
+                },
+                {
+                    question: `What are the latest trends in ${contact.jobTitle ? contact.jobTitle + ' role' : 'their industry'}?`,
+                    searchQuery: `${contact.jobTitle || 'business'} trends 2024`,
+                    category: 'industry_trends'
+                },
+                {
+                    question: `Has ${contact.name} been mentioned in recent professional news?`,
+                    searchQuery: `"${contact.name}" "${contact.company}" recent news`,
+                    category: 'personal_updates'
+                }
+            ];
+        }
+
+        // Convert AI analysis factors into strategic questions
+        const questions = [];
+        
+        // Company-related question
+        if (contact.company) {
+            questions.push({
+                question: `What recent developments or announcements has ${contact.company} made?`,
+                searchQuery: `"${contact.company}" recent news announcements 2024`,
+                category: 'company_updates'
+            });
+        }
+        
+        // Role/Industry question
+        const jobContext = contact.jobTitle || 'their role';
+        questions.push({
+            question: `What are the current trends and challenges in ${jobContext}?`,
+            searchQuery: `${contact.jobTitle || contact.company || 'business'} industry trends challenges 2024`,
+            category: 'industry_trends'
+        });
+        
+        // Personal/Professional question
+        questions.push({
+            question: `Has ${contact.name} been featured in recent industry news or achievements?`,
+            searchQuery: `"${contact.name}" "${contact.company}" professional news achievements`,
+            category: 'personal_updates'
+        });
+        
+        return questions;
+    }, [hasAiInsights, aiAnalysis, contact]);
+
+    const handleSmartIcebreakers = () => {
+        if (!canUseSmartIcebreakers) {
+            // Show upgrade message
+            return;
+        }
+        setShowIcebreakerModal(true);
+    };
+
+    // This is the key logic: is it eligible for enhancement but doesn't have the data yet?
+    const isPendingAI = isEnhancementEligible && !hasAiInsights;
+const SmartIcebreakerDebugPanel = ({ subscriptionLevel, contact, hasAiInsights }) => {
+  const canUseSmartIcebreakers = ['business', 'enterprise'].includes(subscriptionLevel?.toLowerCase());
+  
+  return (
+    <div className="p-4 bg-yellow-50 border border-yellow-300 rounded-lg mb-4">
+      <h4 className="font-bold text-yellow-800 mb-2">🐛 Smart Icebreaker Debug Panel</h4>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <div>
+          <h5 className="font-semibold text-yellow-700">Subscription Data:</h5>
+          <ul className="text-yellow-600 space-y-1">
+            <li>Raw subscriptionLevel: <code>"{subscriptionLevel}"</code></li>
+            <li>Type: <code>{typeof subscriptionLevel}</code></li>
+            <li>Lowercase: <code>"{subscriptionLevel?.toLowerCase()}"</code></li>
+            <li>canUseSmartIcebreakers: <code>{canUseSmartIcebreakers.toString()}</code></li>
+          </ul>
         </div>
+        
+        <div>
+          <h5 className="font-semibold text-yellow-700">Contact State:</h5>
+          <ul className="text-yellow-600 space-y-1">
+            <li>Contact ID: <code>{contact?.id}</code></li>
+            <li>hasAiInsights: <code>{hasAiInsights.toString()}</code></li>
+            <li>AI Analysis exists: <code>{!!contact?.searchMetadata?.aiAnalysis}</code></li>
+            <li>Confidence: <code>{contact?.searchMetadata?.aiAnalysis?.confidenceScore}</code></li>
+          </ul>
+        </div>
+      </div>
+      
+      <div className="mt-3 p-2 bg-yellow-100 rounded">
+        <h5 className="font-semibold text-yellow-700">Expected vs Actual:</h5>
+        <p className="text-yellow-600 text-xs">
+          Expected: Business subscription should show Smart Icebreaker button<br/>
+          Actual: {canUseSmartIcebreakers ? '✅ Should show button' : '❌ Button hidden - subscription insufficient'}
+        </p>
+      </div>
+      
+      <div className="mt-3 p-2 bg-blue-100 rounded">
+        <h5 className="font-semibold text-blue-700">Quick Fix Test:</h5>
+        <button 
+          onClick={() => console.log('Debug button clicked - subscription check bypassed')}
+          className="px-3 py-1 bg-blue-600 text-white text-xs rounded"
+        >
+          Test Smart Icebreaker (Debug)
+        </button>
+      </div>
     </div>
-);
+  );
+};
+    return (
+        <>
+            <div className={`bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 ${
+                isNewResult ? 'animate-slide-in-from-top border-green-300 shadow-green-100' : ''
+            } ${isPendingAI ? 'border-dashed border-purple-300' : ''}`}>
+                {isNewResult && (
+                    <div className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-t-lg text-center font-medium border-b border-green-200">
+                        ✨ New Result
+                    </div>
+                )}
+                
+                <div className="p-4 cursor-pointer" onClick={onToggleExpanded}>
+                    <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 mt-1">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
+                                {index + 1}
+                            </div>
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between">
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="font-semibold text-gray-900 text-sm truncate">{contact.name || 'No Name'}</h3>
+                                    <p className="text-xs text-gray-500 truncate">{contact.email || 'No Email'}</p>
+                                    {contact.company && <p className="text-xs text-blue-600 truncate mt-1">{contact.company}</p>}
+                                    
+                                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                        <span className={`text-xs font-medium ${getRelevanceColor(hybridScore || rerankScore || vectorScore)}`}>
+                                            {getRelevanceText(hybridScore || rerankScore || vectorScore)}
+                                        </span>
+                                        {hasAiInsights && (
+                                            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                                                AI Enhanced
+                                            </span>
+                                        )}
+                                        {isPendingAI && (
+                                            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                                                AI Analyzing...
+                                            </span>
+                                        )}
+                                        {hasReranking && rerankScore !== undefined && (
+                                            <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">
+                                                Reranked
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                                
+                                <div className="ml-2">
+                                    <svg className={`w-4 h-4 text-gray-400 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            {hasAiInsights && !isExpanded && (
+                                <div className="mt-2 p-2 bg-purple-50 rounded text-xs">
+                                    <div className="flex items-center gap-1 mb-1">
+                                        <span className="text-lg">💡</span>
+                                        <span className="font-medium text-purple-700">AI Insight:</span>
+                                        <span className="ml-auto text-purple-600 font-medium">
+                                            Confidence: {aiAnalysis.confidenceScore}/10
+                                        </span>
+                                    </div>
+                                    <p className="text-purple-600 line-clamp-2">
+                                        {aiAnalysis.matchExplanation}
+                                    </p>
+                                </div>
+                            )}
+                            {/* Show the pending loader if applicable */}
+                            {isPendingAI && !isExpanded && (
+                                <div className="mt-2 p-2 bg-gray-50 rounded text-xs animate-pulse">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
+                                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-400"></div>
+                                        </div>
+                                        <div className="flex-1 space-y-1.5">
+                                            <div className="h-2 bg-gray-200 rounded w-3/4"></div>
+                                            <div className="h-2 bg-gray-200 rounded w-1/2"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Expanded Content */}
+                {isExpanded && (
+                    <div className="border-t border-gray-100">
+                        <div className="p-4 space-y-4">
+                            
+                            {/* Enhanced Analysis Results - Now includes rerank scores */}
+                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                <span className="text-sm font-medium text-gray-700">Analysis Results:</span>
+                                <div className="flex items-center gap-4 flex-wrap">
+                                    {/* AI Confidence */}
+                                    {hasAiInsights && (
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-gray-600">AI Confidence:</span>
+                                            <div className="w-16 bg-gray-200 rounded-full h-2">
+                                                <div 
+                                                    className={`h-2 rounded-full transition-all duration-300 ${
+                                                        aiAnalysis.confidenceScore >= 8 ? 'bg-green-500' :
+                                                        aiAnalysis.confidenceScore >= 6 ? 'bg-yellow-500' : 'bg-red-500'
+                                                    }`}
+                                                    style={{ width: `${(aiAnalysis.confidenceScore / 10) * 100}%` }}
+                                                ></div>
+                                            </div>
+                                            <span className="text-xs font-bold text-gray-900">
+                                                {aiAnalysis.confidenceScore}/10
+                                            </span>
+                                        </div>
+                                    )}
+                                    
+                                    {/* Rerank Score */}
+                                    {hasReranking && rerankScore !== undefined && (
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-gray-600">Rerank:</span>
+                                            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                                                rerankScore >= 0.8 ? 'bg-teal-100 text-teal-700' :
+                                                rerankScore >= 0.6 ? 'bg-blue-100 text-blue-700' :
+                                                rerankScore >= 0.4 ? 'bg-yellow-100 text-yellow-700' :
+                                                'bg-orange-100 text-orange-700'
+                                            }`}>
+                                                {(rerankScore * 100).toFixed(1)}%
+                                            </span>
+                                        </div>
+                                    )}
+                                    
+                                    {/* Vector Similarity Score */}
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-gray-600">Vector:</span>
+                                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                                            vectorScore >= 0.75 ? 'bg-green-100 text-green-700' :
+                                            vectorScore >= 0.60 ? 'bg-yellow-100 text-yellow-700' :
+                                            'bg-orange-100 text-orange-700'
+                                        }`}>
+                                            {(vectorScore * 100).toFixed(0)}%
+                                        </span>
+                                    </div>
+
+                                    {/* Hybrid Score (if available) */}
+                                    {hybridScore !== undefined && hybridScore !== rerankScore && hybridScore !== vectorScore && (
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-gray-600">Final:</span>
+                                            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                                                hybridScore >= 0.8 ? 'bg-indigo-100 text-indigo-700' :
+                                                hybridScore >= 0.6 ? 'bg-purple-100 text-purple-700' :
+                                                'bg-gray-100 text-gray-700'
+                                            }`}>
+                                                {(hybridScore * 100).toFixed(1)}%
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* AI Insights (Business tier) */}
+                            {hasAiInsights && (
+                                <div className="space-y-3">
+                                    {/* Explanation */}
+                                    <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                                        <h4 className="text-sm font-semibold text-purple-800 mb-1">💡 Why this contact matches:</h4>
+                                        <p className="text-sm text-purple-700">{aiAnalysis.matchExplanation}</p>
+                                    </div>
+
+                                    {/* Key Relevance Factors */}
+                                    {aiAnalysis.relevanceFactors && (
+                                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                            <h4 className="text-sm font-semibold text-blue-800 mb-2">🔑 Key Relevance Factors:</h4>
+                                            <ul className="list-disc list-inside text-sm text-blue-700 space-y-1">
+                                                {aiAnalysis.relevanceFactors.map((factor, i) => <li key={i}>{factor}</li>)}
+                                            </ul>
+                                        </div>
+                                    )}
+
+                                    {/* Smart Icebreaker Generation - NEW */}
+                                    {canUseSmartIcebreakers && (
+                                        <div className="p-3 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <h4 className="text-sm font-semibold text-indigo-800 mb-1">🧠 Smart Icebreakers</h4>
+                                                    <p className="text-xs text-indigo-600">Generate real-time conversation starters</p>
+                                                </div>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleSmartIcebreakers();
+                                                    }}
+                                                    className="px-3 py-2 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                                                >
+                                                    Generate Icebreakers
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Upgrade Prompt for non-Business users */}
+                                    {!canUseSmartIcebreakers && hasAiInsights && (
+                                        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <h4 className="text-sm font-semibold text-yellow-800 mb-1">🚀 Smart Icebreakers</h4>
+                                                    <p className="text-xs text-yellow-700">Upgrade to Business for real-time conversation starters</p>
+                                                </div>
+                                                <button className="px-3 py-2 bg-yellow-600 text-white text-xs rounded-lg hover:bg-yellow-700 transition-colors font-medium">
+                                                    Upgrade
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            
+                            {contact.notes && (
+                                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                    <h4 className="text-sm font-semibold text-yellow-800 mb-2">📝 Notes:</h4>
+                                    <p className="text-sm text-gray-800 whitespace-pre-wrap">{contact.notes}</p>
+                                </div>
+                            )}
+                            
+                            {contact.message && (
+                                <div className="p-3 bg-gray-50 rounded-lg">
+                                    <h4 className="text-sm font-semibold text-gray-800 mb-2">💬 Message:</h4>
+                                    <p className="text-sm text-gray-700 italic">"{contact.message}"</p>
+                                </div>
+                            )}
+
+                            <div className="flex items-center gap-4 text-xs text-gray-500 pt-2 border-t border-gray-100 flex-wrap">
+                                <span>Added {formatDate(contact.submittedAt)}</span>
+                                <span className="capitalize">{contact.source?.replace('_', ' ') || 'Manual'}</span>
+                                {hasAiInsights && (
+                                    <span className="text-purple-600">Enhanced with AI</span>
+                                )}
+                                {hasReranking && rerankScore !== undefined && (
+                                    <span className="text-teal-600">Reranked for accuracy</span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="p-4 border-t border-gray-100">
+                            <div className="grid grid-cols-3 gap-2">
+                                <button className="px-3 py-2 text-xs bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors">
+                                    Email
+                                </button>
+                                <button className="px-3 py-2 text-xs bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors">
+                                    Call
+                                </button>
+                                <button className="px-3 py-2 text-xs bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors">
+                                    View
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Smart Icebreaker Modal */}
+            <SmartIcebreakerModal
+                isOpen={showIcebreakerModal}
+                onClose={() => setShowIcebreakerModal(false)}
+                contact={contact}
+                strategicQuestions={strategicQuestions}
+                subscriptionLevel={subscriptionLevel}
+                onUsageUpdate={onUsageUpdate}
+            />
+        </>
+    );
+});
+
+// Export the main component with Smart Icebreaker integration
 export default function AiSearchResults({ 
-       results,
+    results,
     query, 
     searchTier, 
     onClearSearch, 
     onContactAction, 
     groups = [],
     isStreaming = false,
-    streamingProgress = null
+    streamingProgress = null,
+    subscriptionLevel = 'base',
+    canUseSmartIcebreakers = false, // ✅ ADD THIS
+    onUsageUpdate
 }) {
     const { t } = useTranslation();
     const [expandedCards, setExpandedCards] = useState(new Set());
@@ -57,7 +462,7 @@ export default function AiSearchResults({
         }
     }, [query]);
 
- const categorizedResults = useMemo(() => {
+    const categorizedResults = useMemo(() => {
         const categories = { high: [], medium: [], low: [] };
         if (!Array.isArray(results)) return categories;
         
@@ -82,7 +487,7 @@ export default function AiSearchResults({
         return categories;
     }, [results]);
     
-  useEffect(() => {
+    useEffect(() => {
         const currentHash = getResultsHash((results || []).length, query);
         const hasResults = (results || []).length > 0;
         
@@ -100,7 +505,7 @@ export default function AiSearchResults({
         lastResultsHashRef.current = currentHash;
     }, [categorizedResults, results, query, getResultsHash]);
     
- const filteredAndSortedResults = useMemo(() => {
+    const filteredAndSortedResults = useMemo(() => {
         let combinedResults = [];
         if (selectedSimilarityFilter === 'all') {
             combinedResults = [...categorizedResults.high, ...categorizedResults.medium, ...categorizedResults.low];
@@ -116,38 +521,20 @@ export default function AiSearchResults({
         });
     }, [categorizedResults, selectedSimilarityFilter]);
 
-
-
-    const filteredResults = useMemo(() => {
-        if (selectedSimilarityFilter === 'all') {
-            return [...categorizedResults.high, ...categorizedResults.medium, ...categorizedResults.low];
-        }
-        return categorizedResults[selectedSimilarityFilter] || [];
-    }, [categorizedResults, selectedSimilarityFilter]);
-
-    const sortedResults = useMemo(() => {
-        return [...filteredResults].sort((a, b) => {
-            // Prioritize hybrid score, then rerank score, then vector score
-            const scoreA = a.searchMetadata?.hybridScore || a.searchMetadata?.rerankScore || a._vectorScore || 0;
-            const scoreB = b.searchMetadata?.hybridScore || b.searchMetadata?.rerankScore || b._vectorScore || 0;
-            return scoreB - scoreA;
-        });
-    }, [filteredResults]);
-
     useEffect(() => {
-        if (!Array.isArray(sortedResults)) return;
+        if (!Array.isArray(filteredAndSortedResults)) return;
 
-        setDisplayedResults([...sortedResults]);
+        setDisplayedResults([...filteredAndSortedResults]);
 
-        if (sortedResults.length > 0 && expandedCards.size === 0) {
-            const firstWithInsights = sortedResults.find(r => r.searchMetadata?.aiAnalysis);
+        if (filteredAndSortedResults.length > 0 && expandedCards.size === 0) {
+            const firstWithInsights = filteredAndSortedResults.find(r => r.searchMetadata?.aiAnalysis);
             if (firstWithInsights) {
                 setExpandedCards(new Set([firstWithInsights.id]));
             }
         }
-    }, [sortedResults]);
+    }, [filteredAndSortedResults]);
 
-     const toggleExpanded = useCallback((contactId) => {
+    const toggleExpanded = useCallback((contactId) => {
         setExpandedCards(prev => {
             const newSet = new Set(prev);
             newSet.has(contactId) ? newSet.delete(contactId) : newSet.add(contactId);
@@ -181,11 +568,11 @@ export default function AiSearchResults({
 
     return (
         <div className="space-y-6">
-            {/* ... (Header and Progress Indicator are fine) ... */}
+            {/* Header and Progress Indicator */}
             <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                         <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3">
                             {isStreaming ? (
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
                             ) : (
@@ -206,6 +593,11 @@ export default function AiSearchResults({
                                 {hasReranking && (
                                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
                                         + Reranked
+                                    </span>
+                                )}
+                                {searchTier === 'business' && (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                        🧠 Smart Icebreakers Available
                                     </span>
                                 )}
                             </div>
@@ -248,35 +640,35 @@ export default function AiSearchResults({
                 )}
             </div>
 
-             {/* Similarity Filter Navigation */}
+            {/* Similarity Filter Navigation */}
             <div className="bg-white border border-gray-200 rounded-lg p-4">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                   <span className="text-sm font-medium text-gray-700">Filter by relevance:</span>
+                    <span className="text-sm font-medium text-gray-700">Filter by relevance:</span>
                     <div className="flex flex-wrap gap-2">
                         <SimilarityFilterButton 
                             type="high" 
-                            label="High Relevance" // MODIFICATION
+                            label="High Relevance"
                             count={categorizedResults.high.length} 
                             isSelected={selectedSimilarityFilter === 'high'} 
                             onClick={() => setSelectedSimilarityFilter('high')}
                         />
                         <SimilarityFilterButton 
                             type="medium" 
-                            label="Medium Relevance" // MODIFICATION
+                            label="Medium Relevance"
                             count={categorizedResults.medium.length} 
                             isSelected={selectedSimilarityFilter === 'medium'} 
                             onClick={() => setSelectedSimilarityFilter('medium')}
                         />
                         <SimilarityFilterButton 
                             type="low" 
-                            label="Lower Relevance" // MODIFICATION
+                            label="Lower Relevance"
                             count={categorizedResults.low.length} 
                             isSelected={selectedSimilarityFilter === 'low'} 
                             onClick={() => setSelectedSimilarityFilter('low')}
                         />
                         <SimilarityFilterButton 
                             type="all" 
-                            label="All Results" // This one is fine
+                            label="All Results"
                             count={results.length}
                             isSelected={selectedSimilarityFilter === 'all'} 
                             onClick={() => setSelectedSimilarityFilter('all')}
@@ -285,7 +677,6 @@ export default function AiSearchResults({
                 </div>
             </div>
 
-           
             {/* No Results Message */}
             {results.length > 0 && filteredAndSortedResults.length === 0 && (
                 <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
@@ -296,32 +687,33 @@ export default function AiSearchResults({
                     </p>
                 </div>
             )}
-          {/* Results List */}
-               <div className="space-y-4">
+
+            {/* Results List */}
+            <div className="space-y-4">
                 {filteredAndSortedResults.map((contact) => {
-                    // ====================================================================
-                    // FIX #2: Determine original rank correctly to decide eligibility.
-                    // ====================================================================
                     const originalIndex = results.findIndex(r => r.id === contact.id);
                     const isEligible = searchTier === 'business' && originalIndex !== -1 && originalIndex < 10;
 
                     return (
-                        <AiSearchResultCard 
-                            key={contact.id}
-                            contact={contact}
-                            index={originalIndex}
-                            searchTier={searchTier}
-                            isExpanded={expandedCards.has(contact.id)}
-                            onToggleExpanded={() => toggleExpanded(contact.id)}
-                            onContactAction={onContactAction}
-                            getRelevanceColor={getRelevanceColor}
-                            getRelevanceText={getRelevanceText}
-                            formatDate={formatDate}
-                            groups={groups}
-                            hasReranking={hasReranking}
-                            isNewResult={isStreaming && contact.searchMetadata?.aiAnalysis && !expandedCards.has(contact.id)}
-                            isEnhancementEligible={isEligible}
-                        />
+                       <AiSearchResultCard 
+        key={contact.id}
+        contact={contact}
+        index={originalIndex}
+        searchTier={searchTier}
+        isExpanded={expandedCards.has(contact.id)}
+        onToggleExpanded={() => toggleExpanded(contact.id)}
+        onContactAction={onContactAction}
+        getRelevanceColor={getRelevanceColor}
+        getRelevanceText={getRelevanceText}
+        formatDate={formatDate}
+        groups={groups}
+        hasReranking={hasReranking}
+        isNewResult={isStreaming && contact.searchMetadata?.aiAnalysis && !expandedCards.has(contact.id)}
+        isEnhancementEligible={isEligible}
+        subscriptionLevel={subscriptionLevel}
+        canUseSmartIcebreakers={canUseSmartIcebreakers} // ✅ ADD THIS PROP
+        onUsageUpdate={onUsageUpdate}
+    />
                     )
                 })}
             </div>
@@ -329,7 +721,7 @@ export default function AiSearchResults({
     );
 }
 
-
+// Helper component for similarity filter buttons
 const SimilarityFilterButton = React.memo(function SimilarityFilterButton({ type, label, count, isSelected, onClick }) {
     const getButtonConfig = (type) => {
         switch (type) {
@@ -378,7 +770,6 @@ const SimilarityFilterButton = React.memo(function SimilarityFilterButton({ type
 
     const config = getButtonConfig(type);
 
-
     return (
         <button
             onClick={onClick}
@@ -407,253 +798,6 @@ const SimilarityFilterButton = React.memo(function SimilarityFilterButton({ type
                 </div>
             )}
         </button>
-    );
-});
-
-// MODIFIED AiSearchResultCard to handle the pending state
-const AiSearchResultCard = React.memo(function AiSearchResultCard({ 
-    contact, 
-    index, 
-    searchTier, 
-    isExpanded, 
-    onToggleExpanded, 
-    onContactAction,
-    getRelevanceColor,
-    getRelevanceText,
-    formatDate,
-    groups,
-    hasReranking = false,
-    isNewResult = false,
-    isEnhancementEligible = false // Prop to check if it's one of the top 10
-}) {
-    const hasAiInsights = searchTier === 'business' && contact.searchMetadata?.aiAnalysis;
-    const aiAnalysis = contact.searchMetadata?.aiAnalysis;
-    const vectorScore = contact._vectorScore || contact.searchMetadata?.vectorSimilarity || 0;
-    const rerankScore = contact.searchMetadata?.rerankScore;
-    const hybridScore = contact.searchMetadata?.hybridScore;
-    
-    // This is the key logic: is it eligible for enhancement but doesn't have the data yet?
-    const isPendingAI = isEnhancementEligible && !hasAiInsights;
-
-    return (
-        <div className={`bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 ${
-            isNewResult ? 'animate-slide-in-from-top border-green-300 shadow-green-100' : ''
-        } ${isPendingAI ? 'border-dashed border-purple-300' : ''}`}>
-            {isNewResult && (
-                <div className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-t-lg text-center font-medium border-b border-green-200">
-                    ✨ New Result
-                </div>
-            )}
-            
-            <div className="p-4 cursor-pointer" onClick={onToggleExpanded}>
-                <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 mt-1">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
-                            {index + 1}
-                        </div>
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between">
-                            <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-gray-900 text-sm truncate">{contact.name || 'No Name'}</h3>
-                                <p className="text-xs text-gray-500 truncate">{contact.email || 'No Email'}</p>
-                                {contact.company && <p className="text-xs text-blue-600 truncate mt-1">{contact.company}</p>}
-                                
-                                <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                    <span className={`text-xs font-medium ${getRelevanceColor(hybridScore || rerankScore || vectorScore)}`}>
-                                        {getRelevanceText(hybridScore || rerankScore || vectorScore)}
-                                    </span>
-                                    {hasAiInsights && (
-                                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
-                                            AI Enhanced
-                                        </span>
-                                    )}
-                                    {isPendingAI && (
-                                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                                            AI Analyzing...
-                                        </span>
-                                    )}
-                                    {hasReranking && rerankScore !== undefined && (
-                                        <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">
-                                            Reranked
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                            
-                            <div className="ml-2">
-                                <svg className={`w-4 h-4 text-gray-400 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </div>
-                        </div>
-
-                        {hasAiInsights && !isExpanded && (
-                            <div className="mt-2 p-2 bg-purple-50 rounded text-xs">
-                                <div className="flex items-center gap-1 mb-1">
-                                    <span className="text-lg">💡</span>
-                                    <span className="font-medium text-purple-700">AI Insight:</span>
-                                    <span className="ml-auto text-purple-600 font-medium">
-                                        Confidence: {aiAnalysis.confidenceScore}/10
-                                    </span>
-                                </div>
-                                <p className="text-purple-600 line-clamp-2">
-                                    {aiAnalysis.matchExplanation}
-                                </p>
-                            </div>
-                        )}
-                        {/* Show the pending loader if applicable */}
-                        {isPendingAI && !isExpanded && <PendingAILoader />}
-                    </div>
-                </div>
-            </div>
-
-            {/* Expanded Content */}
-            {isExpanded && (
-                <div className="border-t border-gray-100">
-                    <div className="p-4 space-y-4">
-                        
-                        {/* Enhanced Analysis Results - Now includes rerank scores */}
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <span className="text-sm font-medium text-gray-700">Analysis Results:</span>
-                            <div className="flex items-center gap-4 flex-wrap">
-                                {/* AI Confidence */}
-                                {hasAiInsights && (
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs text-gray-600">AI Confidence:</span>
-                                        <div className="w-16 bg-gray-200 rounded-full h-2">
-                                            <div 
-                                                className={`h-2 rounded-full transition-all duration-300 ${
-                                                    aiAnalysis.confidenceScore >= 8 ? 'bg-green-500' :
-                                                    aiAnalysis.confidenceScore >= 6 ? 'bg-yellow-500' : 'bg-red-500'
-                                                }`}
-                                                style={{ width: `${(aiAnalysis.confidenceScore / 10) * 100}%` }}
-                                            ></div>
-                                        </div>
-                                        <span className="text-xs font-bold text-gray-900">
-                                            {aiAnalysis.confidenceScore}/10
-                                        </span>
-                                    </div>
-                                )}
-                                
-                                {/* Rerank Score */}
-                                {hasReranking && rerankScore !== undefined && (
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs text-gray-600">Rerank:</span>
-                                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                                            rerankScore >= 0.8 ? 'bg-teal-100 text-teal-700' :
-                                            rerankScore >= 0.6 ? 'bg-blue-100 text-blue-700' :
-                                            rerankScore >= 0.4 ? 'bg-yellow-100 text-yellow-700' :
-                                            'bg-orange-100 text-orange-700'
-                                        }`}>
-                                            {(rerankScore * 100).toFixed(1)}%
-                                        </span>
-                                    </div>
-                                )}
-                                
-                                {/* Vector Similarity Score */}
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs text-gray-600">Vector:</span>
-                                    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                                        vectorScore >= 0.75 ? 'bg-green-100 text-green-700' :
-                                        vectorScore >= 0.60 ? 'bg-yellow-100 text-yellow-700' :
-                                        'bg-orange-100 text-orange-700'
-                                    }`}>
-                                        {(vectorScore * 100).toFixed(0)}%
-                                    </span>
-                                </div>
-
-                                {/* Hybrid Score (if available) */}
-                                {hybridScore !== undefined && hybridScore !== rerankScore && hybridScore !== vectorScore && (
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs text-gray-600">Final:</span>
-                                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                                            hybridScore >= 0.8 ? 'bg-indigo-100 text-indigo-700' :
-                                            hybridScore >= 0.6 ? 'bg-purple-100 text-purple-700' :
-                                            'bg-gray-100 text-gray-700'
-                                        }`}>
-                                            {(hybridScore * 100).toFixed(1)}%
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* AI Insights (Business tier) */}
-                        {hasAiInsights && (
-                            <div className="space-y-3">
-                                {/* Explanation */}
-                                <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                                    <h4 className="text-sm font-semibold text-purple-800 mb-1">💡 Why this contact matches:</h4>
-                                    <p className="text-sm text-purple-700">{aiAnalysis.matchExplanation}</p>
-                                </div>
-
-                                {/* Key Relevance Factors */}
-                                {aiAnalysis.relevanceFactors && (
-                                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                        <h4 className="text-sm font-semibold text-blue-800 mb-2">🔑 Key Relevance Factors:</h4>
-                                        <ul className="list-disc list-inside text-sm text-blue-700 space-y-1">
-                                            {aiAnalysis.relevanceFactors.map((factor, i) => <li key={i}>{factor}</li>)}
-                                        </ul>
-                                    </div>
-                                )}
-
-                                {/* Actionable Suggestions */}
-                                {aiAnalysis.actionSuggestions && (
-                                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                                        <h4 className="text-sm font-semibold text-green-800 mb-2">🚀 Actionable Suggestions:</h4>
-                                        <ul className="list-disc list-inside text-sm text-green-700 space-y-1">
-                                            {aiAnalysis.actionSuggestions.map((suggestion, i) => <li key={i}>{suggestion}</li>)}
-                                        </ul>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                        
-                        {contact.notes && (
-                            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                <h4 className="text-sm font-semibold text-yellow-800 mb-2">📝 Notes:</h4>
-                                <p className="text-sm text-gray-800 whitespace-pre-wrap">{contact.notes}</p>
-                            </div>
-                        )}
-                        
-                        {contact.message && (
-                            <div className="p-3 bg-gray-50 rounded-lg">
-                                <h4 className="text-sm font-semibold text-gray-800 mb-2">💬 Message:</h4>
-                                <p className="text-sm text-gray-700 italic">"{contact.message}"</p>
-                            </div>
-                        )}
-
-                        <div className="flex items-center gap-4 text-xs text-gray-500 pt-2 border-t border-gray-100 flex-wrap">
-                            <span>Added {formatDate(contact.submittedAt)}</span>
-                            <span className="capitalize">{contact.source?.replace('_', ' ') || 'Manual'}</span>
-                            {hasAiInsights && (
-                                <span className="text-purple-600">Enhanced with AI</span>
-                            )}
-                            {hasReranking && rerankScore !== undefined && (
-                                <span className="text-teal-600">Reranked for accuracy</span>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="p-4 border-t border-gray-100">
-                        <div className="grid grid-cols-3 gap-2">
-                            <button className="px-3 py-2 text-xs bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors">
-                                Email
-                            </button>
-                            <button className="px-3 py-2 text-xs bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors">
-                                Call
-                            </button>
-                            <button className="px-3 py-2 text-xs bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors">
-                                View
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
     );
 });
 

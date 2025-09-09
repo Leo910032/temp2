@@ -1,4 +1,4 @@
-// app/api/user/contacts/ai-enhance-results/route.js - FIXED WITH SEPARATED COST TRACKING
+// app/api/user/contacts/ai-enhance-results/route.js - UPDATED WITH STRATEGIC QUESTIONS
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -28,6 +28,7 @@ function cleanJsonString(text) {
   
   return text.substring(firstBrace, lastBrace + 1);
 }
+
 // ====================================================================
 // MODIFICATION #1: Create a helper function for language instructions
 // ====================================================================
@@ -47,10 +48,8 @@ function getLanguageInstruction(languageCode = 'en') {
   }
 }
 
-// app/api/user/contacts/ai-enhance-results/route.js - UPDATED PROMPT FOR RERANK CONTEXT
-
 /**
- * Generate enhanced prompt that includes rerank context and multilingual support
+ * Generate enhanced prompt with strategic questions instead of generic suggestions
  */
 function generateSimilarityAwarePrompt(query, contact, queryLanguage = 'en') {
   const vectorScore = contact.vectorScore || contact._vectorScore || 0;
@@ -61,7 +60,6 @@ function generateSimilarityAwarePrompt(query, contact, queryLanguage = 'en') {
   let contextualGuidance = '';
   let rerankContext = ''; 
  
-  
   // Build rerank context if available
   if (rerankScore !== undefined && rerankScore !== null) {
     const rerankPercentage = (rerankScore * 100).toFixed(1);
@@ -86,9 +84,9 @@ function generateSimilarityAwarePrompt(query, contact, queryLanguage = 'en') {
       contextualGuidance = `Analyze this contact's relevance to your query with their semantic similarity context. ${rerankContext}`;
   }
 
-    const outputLanguageInstruction = getLanguageInstruction(queryLanguage);
+  const outputLanguageInstruction = getLanguageInstruction(queryLanguage);
 
- return `
+  return `
 You are an AI networking assistant analyzing why a contact matches a search query.
 
 SEARCH QUERY: "${query}"
@@ -99,6 +97,7 @@ CONTACT INFORMATION:
 - Name: ${contact.name || 'Unknown'}
 - Email: ${contact.email || 'Not provided'}
 - Company: ${contact.company || 'Not provided'}
+- Job Title: ${contact.jobTitle || 'Not provided'}
 - Notes: ${contact.notes || 'No notes available'}
 - Message: ${contact.message || 'No message'}
 - Vector Similarity: ${similarityExplanation}
@@ -112,7 +111,10 @@ Given the ${similarityTier} semantic similarity${rerankScore !== undefined ? ' a
 
 2. RELEVANCE FACTORS (3-5 bullet points): List specific factors that make this contact relevant, weighing semantic indicators, ${rerankScore !== undefined ? 'rerank analysis, ' : ''}and concrete evidence.
 
-3. ACTION SUGGESTIONS (2-3 suggestions): Provide specific, actionable suggestions for engagement based on the similarity level${rerankScore !== undefined ? ', rerank score,' : ''} and contact details.
+3. STRATEGIC QUESTIONS (3 questions): Instead of generic suggestions, generate 3 strategic research questions that could be answered through web searches to create perfect conversation starters with this contact. Focus on:
+   - Recent company/industry developments
+   - Professional achievements or changes  
+   - Current market trends affecting their role
 
 4. CONFIDENCE SCORE (1-10): Rate your confidence that this contact matches what the user seeks, considering:
    - High similarity contacts${rerankScore !== undefined ? ' with high rerank scores' : ''}: Start with baseline 7-8 confidence, adjust based on specifics
@@ -126,11 +128,26 @@ FORMAT YOUR RESPONSE AS JSON:
 {
   "explanation": "...",
   "factors": ["...", "...", "..."],
-  "suggestions": ["...", "...", "..."],
+  "strategicQuestions": [
+    {
+      "question": "What recent announcements has [Company] made?",
+      "searchQuery": "[Company] recent news announcements 2024",
+      "category": "company_updates"
+    },
+    {
+      "question": "What are the latest trends in [Industry/Role]?", 
+      "searchQuery": "[Industry] trends 2024 [Role]",
+      "category": "industry_trends"
+    },
+    {
+      "question": "Has [Name] been mentioned in recent industry news?",
+      "searchQuery": "[Name] [Company] recent news",
+      "category": "personal_updates"
+    }
+  ],
   "confidence": 8
 }`;
 }
-
 
 /**
  * Get confidence threshold based on similarity tier
@@ -186,7 +203,7 @@ function getSimilarityBreakdown(contactsProcessed, insights) {
 
 export async function POST(request) {
   const enhanceId = `enhance_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
-  console.log(`🤖 [AIEnhance] [${enhanceId}] Starting AI enhancement request`);
+  console.log(`🤖 [AIEnhance] [${enhanceId}] Starting AI enhancement request with strategic questions`);
   
   try {
     // 1. Authenticate the user
@@ -266,7 +283,7 @@ export async function POST(request) {
       
       // Estimate cost based on contacts and model
       const avgPromptLength = 1500; // Estimated average prompt length
-      const avgResponseLength = 300; // Estimated average response length
+      const avgResponseLength = 400; // Estimated average response length (longer for strategic questions)
       const estimatedInputTokens = contacts.length * avgPromptLength;
       const estimatedOutputTokens = contacts.length * avgResponseLength;
       
@@ -315,7 +332,7 @@ export async function POST(request) {
     }
 
     // 7. Handle batch mode with separated cost tracking
-    return handleBatchModeWithSeparatedTracking(model, originalQuery, contacts, modelName, userId, trackCosts, enhanceId,queryLanguage);
+    return handleBatchModeWithSeparatedTracking(model, originalQuery, contacts, modelName, userId, trackCosts, enhanceId, queryLanguage);
 
   } catch (error) {
     console.error(`❌ [AIEnhance] [${enhanceId}] API error:`, {
@@ -331,13 +348,13 @@ export async function POST(request) {
 }
 
 /**
- * Enhanced streaming mode with separated cost tracking
+ * Enhanced streaming mode with separated cost tracking and strategic questions
  */
-async function handleEnhancedStreamingModeWithSeparatedTracking(model, originalQuery, contacts, modelName, userId, trackCosts, enhanceId, options = {},queryLanguage = 'en') {
+async function handleEnhancedStreamingModeWithSeparatedTracking(model, originalQuery, contacts, modelName, userId, trackCosts, enhanceId, options = {}, queryLanguage = 'en') {
   const { processingStrategy = 'standard', vectorOptimized = false } = options;
   
   try {
-    console.log(`🔄 [AIEnhance] [${enhanceId}] Starting enhanced streaming mode with separated tracking`);
+    console.log(`🔄 [AIEnhance] [${enhanceId}] Starting enhanced streaming mode with strategic questions`);
     
     // Create a readable stream
     const stream = new ReadableStream({
@@ -356,7 +373,8 @@ async function handleEnhancedStreamingModeWithSeparatedTracking(model, originalQ
             total: contacts.length,
             query: originalQuery,
             processingStrategy,
-            vectorOptimized
+            vectorOptimized,
+            feature: 'strategic_questions'
           }) + '\n'));
 
           // Sort contacts by vector similarity if optimized
@@ -388,7 +406,7 @@ async function handleEnhancedStreamingModeWithSeparatedTracking(model, originalQ
               }) + '\n'));
 
               // Generate prompt and call Gemini
-              const prompt = generateSimilarityAwarePrompt(originalQuery, contact,queryLanguage);
+              const prompt = generateSimilarityAwarePrompt(originalQuery, contact, queryLanguage);
               const result = await model.generateContent(prompt);
               
               // Calculate cost for this API call
@@ -409,14 +427,15 @@ async function handleEnhancedStreamingModeWithSeparatedTracking(model, originalQ
                   userId,
                   apiCallCost,
                   modelName,
-                  'ai_contact_analysis',
+                  'ai_contact_analysis_strategic',
                   {
                     contactId: contact.id,
                     contactName: contact.name,
                     inputTokens,
                     outputTokens,
                     enhanceId,
-                    contactIndex: i
+                    contactIndex: i,
+                    feature: 'strategic_questions'
                   },
                   'api_call' // This is an API call cost
                 );
@@ -438,8 +457,16 @@ async function handleEnhancedStreamingModeWithSeparatedTracking(model, originalQ
                 continue;
               }
 
-              if (!analysis.explanation || !analysis.factors || !analysis.suggestions || !analysis.confidence) {
+              // Updated validation for strategic questions
+              if (!analysis.explanation || !analysis.factors || !analysis.strategicQuestions || !analysis.confidence) {
                 console.error(`❌ [AIEnhance] [${enhanceId}] Invalid response structure for ${contact.name}`);
+                filteredContacts++;
+                continue;
+              }
+
+              // Validate strategic questions format
+              if (!Array.isArray(analysis.strategicQuestions) || analysis.strategicQuestions.length !== 3) {
+                console.error(`❌ [AIEnhance] [${enhanceId}] Invalid strategic questions format for ${contact.name}`);
                 filteredContacts++;
                 continue;
               }
@@ -455,14 +482,15 @@ async function handleEnhancedStreamingModeWithSeparatedTracking(model, originalQ
                     userId,
                     0, // No additional cost for successful run tracking
                     modelName,
-                    'ai_enhancement_success',
+                    'ai_enhancement_strategic_success',
                     {
                       contactId: contact.id,
                       contactName: contact.name,
                       confidence: analysis.confidence,
                       threshold: confidenceThreshold,
                       enhanceId,
-                      contactIndex: i
+                      contactIndex: i,
+                      strategicQuestionsCount: analysis.strategicQuestions.length
                     },
                     'successful_run' // This counts toward run limits
                   );
@@ -472,7 +500,7 @@ async function handleEnhancedStreamingModeWithSeparatedTracking(model, originalQ
                   contactId: contact.id,
                   explanation: analysis.explanation,
                   factors: analysis.factors,
-                  suggestions: analysis.suggestions,
+                  strategicQuestions: analysis.strategicQuestions, // NEW: Store strategic questions
                   confidence: analysis.confidence,
                   analysisTimestamp: new Date().toISOString(),
                   modelUsed: modelName,
@@ -501,10 +529,11 @@ async function handleEnhancedStreamingModeWithSeparatedTracking(model, originalQ
                   confidence: analysis.confidence,
                   similarityTier: contact.similarityTier,
                   vectorScore: contact.vectorScore || contact._vectorScore,
-                  hybridScore: calculateHybridScore(contact.vectorScore || contact._vectorScore, analysis.confidence)
+                  hybridScore: calculateHybridScore(contact.vectorScore || contact._vectorScore, analysis.confidence),
+                  hasStrategicQuestions: true
                 }) + '\n'));
                 
-                console.log(`✅ [AIEnhance] [${enhanceId}] Successful run recorded for ${contact.name}: confidence ${analysis.confidence}/${confidenceThreshold}`);
+                console.log(`✅ [AIEnhance] [${enhanceId}] Successful run recorded for ${contact.name}: confidence ${analysis.confidence}/${confidenceThreshold} with ${analysis.strategicQuestions.length} strategic questions`);
                 
               } else {
                 // Low confidence - API call was paid for but doesn't count as successful run
@@ -554,7 +583,8 @@ async function handleEnhancedStreamingModeWithSeparatedTracking(model, originalQ
             totalCosts,
             apiCallEfficiency: totalApiCalls > 0 ? (successfulRuns / totalApiCalls * 100).toFixed(1) + '%' : '0%',
             averageCostPerApiCall: totalApiCalls > 0 ? (totalCosts / totalApiCalls).toFixed(6) : '0',
-            averageCostPerSuccessfulRun: successfulRuns > 0 ? (totalCosts / successfulRuns).toFixed(6) : '0'
+            averageCostPerSuccessfulRun: successfulRuns > 0 ? (totalCosts / successfulRuns).toFixed(6) : '0',
+            strategicQuestionsGenerated: processedInsights.reduce((sum, insight) => sum + (insight.strategicQuestions?.length || 0), 0)
           };
 
           controller.enqueue(new TextEncoder().encode(JSON.stringify({
@@ -569,7 +599,8 @@ async function handleEnhancedStreamingModeWithSeparatedTracking(model, originalQ
               costs: trackCosts ? { aiEnhancement: totalCosts } : undefined,
               processingStrategy,
               vectorOptimized,
-              similarityBreakdown: getSimilarityBreakdown(contactsToProcess, processedInsights)
+              similarityBreakdown: getSimilarityBreakdown(contactsToProcess, processedInsights),
+              feature: 'strategic_questions'
             },
             metadata: {
               originalQuery,
@@ -579,7 +610,7 @@ async function handleEnhancedStreamingModeWithSeparatedTracking(model, originalQ
             }
           }) + '\n'));
 
-          console.log(`📊 [AIEnhance] [${enhanceId}] Enhancement complete:`, summary);
+          console.log(`📊 [AIEnhance] [${enhanceId}] Enhancement complete with strategic questions:`, summary);
 
         } catch (streamError) {
           console.error(`❌ [AIEnhance] [${enhanceId}] Stream error:`, streamError);
@@ -609,10 +640,10 @@ async function handleEnhancedStreamingModeWithSeparatedTracking(model, originalQ
 }
 
 /**
- * Handle batch mode with separated cost tracking
+ * Handle batch mode with separated cost tracking and strategic questions
  */
-async function handleBatchModeWithSeparatedTracking(model, originalQuery, contacts, modelName, userId, trackCosts, enhanceId,queryLanguage = 'en') {
-  console.log(`📦 [AIEnhance] [${enhanceId}] Starting batch mode with separated tracking`);
+async function handleBatchModeWithSeparatedTracking(model, originalQuery, contacts, modelName, userId, trackCosts, enhanceId, queryLanguage = 'en') {
+  console.log(`📦 [AIEnhance] [${enhanceId}] Starting batch mode with strategic questions`);
   
   let totalCosts = 0;
   let totalApiCalls = 0;
@@ -629,7 +660,7 @@ async function handleBatchModeWithSeparatedTracking(model, originalQuery, contac
         console.log(`🔍 [AIEnhance] [${enhanceId}] Processing contact ${i + 1}/${contacts.length}: ${contact.name}`);
         
         // Generate prompt and call Gemini
-        const prompt = generateSimilarityAwarePrompt(originalQuery, contact,queryLanguage);
+        const prompt = generateSimilarityAwarePrompt(originalQuery, contact, queryLanguage);
         const result = await model.generateContent(prompt);
         
         // Calculate cost for this API call
@@ -650,14 +681,15 @@ async function handleBatchModeWithSeparatedTracking(model, originalQuery, contac
             userId,
             apiCallCost,
             modelName,
-            'ai_contact_analysis',
+            'ai_contact_analysis_strategic',
             {
               contactId: contact.id,
               contactName: contact.name,
               inputTokens,
               outputTokens,
               enhanceId,
-              contactIndex: i
+              contactIndex: i,
+              feature: 'strategic_questions'
             },
             'api_call'
           );
@@ -677,8 +709,16 @@ async function handleBatchModeWithSeparatedTracking(model, originalQuery, contac
           continue;
         }
 
-        if (!analysis.explanation || !analysis.factors || !analysis.suggestions || !analysis.confidence) {
+        // Updated validation for strategic questions
+        if (!analysis.explanation || !analysis.factors || !analysis.strategicQuestions || !analysis.confidence) {
           console.error(`❌ [AIEnhance] [${enhanceId}] Invalid response structure for ${contact.name}`);
+          filteredContacts++;
+          continue;
+        }
+
+        // Validate strategic questions format
+        if (!Array.isArray(analysis.strategicQuestions) || analysis.strategicQuestions.length !== 3) {
+          console.error(`❌ [AIEnhance] [${enhanceId}] Invalid strategic questions format for ${contact.name}`);
           filteredContacts++;
           continue;
         }
@@ -694,14 +734,15 @@ async function handleBatchModeWithSeparatedTracking(model, originalQuery, contac
               userId,
               0, // No additional cost for successful run tracking
               modelName,
-              'ai_enhancement_success',
+              'ai_enhancement_strategic_success',
               {
                 contactId: contact.id,
                 contactName: contact.name,
                 confidence: analysis.confidence,
                 threshold: confidenceThreshold,
                 enhanceId,
-                contactIndex: i
+                contactIndex: i,
+                strategicQuestionsCount: analysis.strategicQuestions.length
               },
               'successful_run'
             );
@@ -711,7 +752,7 @@ async function handleBatchModeWithSeparatedTracking(model, originalQuery, contac
             contactId: contact.id,
             explanation: analysis.explanation,
             factors: analysis.factors,
-            suggestions: analysis.suggestions,
+            strategicQuestions: analysis.strategicQuestions, // NEW: Store strategic questions
             confidence: analysis.confidence,
             analysisTimestamp: new Date().toISOString(),
             modelUsed: modelName,
@@ -727,7 +768,7 @@ async function handleBatchModeWithSeparatedTracking(model, originalQuery, contac
             }
           });
           
-          console.log(`✅ [AIEnhance] [${enhanceId}] Successful run for ${contact.name}: confidence ${analysis.confidence}/${confidenceThreshold}`);
+          console.log(`✅ [AIEnhance] [${enhanceId}] Successful run for ${contact.name}: confidence ${analysis.confidence}/${confidenceThreshold} with ${analysis.strategicQuestions.length} strategic questions`);
           
         } else {
           // Low confidence - API call was paid for but doesn't count as successful run
@@ -749,10 +790,11 @@ async function handleBatchModeWithSeparatedTracking(model, originalQuery, contac
       totalCosts,
       apiCallEfficiency: totalApiCalls > 0 ? (successfulRuns / totalApiCalls * 100).toFixed(1) + '%' : '0%',
       averageCostPerApiCall: totalApiCalls > 0 ? (totalCosts / totalApiCalls).toFixed(6) : '0',
-      averageCostPerSuccessfulRun: successfulRuns > 0 ? (totalCosts / successfulRuns).toFixed(6) : '0'
+      averageCostPerSuccessfulRun: successfulRuns > 0 ? (totalCosts / successfulRuns).toFixed(6) : '0',
+      strategicQuestionsGenerated: results.reduce((sum, result) => sum + (result.strategicQuestions?.length || 0), 0)
     };
 
-    console.log(`📊 [AIEnhance] [${enhanceId}] Batch enhancement complete:`, summary);
+    console.log(`📊 [AIEnhance] [${enhanceId}] Batch enhancement complete with strategic questions:`, summary);
 
     const responseData = {
       insights: results,
@@ -765,7 +807,8 @@ async function handleBatchModeWithSeparatedTracking(model, originalQuery, contac
         filteredLowConfidence: filteredContacts,
         model: modelName,
         timestamp: new Date().toISOString(),
-        enhanceId
+        enhanceId,
+        feature: 'strategic_questions'
       }
     };
 
@@ -783,7 +826,8 @@ async function handleBatchModeWithSeparatedTracking(model, originalQuery, contac
         insightsGenerated: 0,
         error: error.message,
         timestamp: new Date().toISOString(),
-        enhanceId
+        enhanceId,
+        feature: 'strategic_questions'
       }
     });
   }

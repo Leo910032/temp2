@@ -69,7 +69,13 @@ export default function ContactsPage() {
     const [selectionMode, setSelectionMode] = useState(false);
     const [editingContact, setEditingContact] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
-    
+        // Enhanced feature checking
+    const hasFeature = useCallback((feature) => {
+        if (!subscriptionStatus) return false;
+        return hasContactFeature(subscriptionStatus.subscriptionLevel, feature);
+    }, [subscriptionStatus]);
+    const canUseSmartIcebreakers = hasFeature(CONTACT_FEATURES.BUSINESS_SMART_ICEBREAKERS);
+
     const [streamingProgress, setStreamingProgress] = useState(null);
     const [isStreamingActive, setIsStreamingActive] = useState(false);
     const [showGroupManager, setShowGroupManager] = useState(false);
@@ -120,11 +126,7 @@ export default function ContactsPage() {
         }
     }, [subscriptionStatus, refreshUsageInfo]);
 
-    // Enhanced feature checking
-    const hasFeature = useCallback((feature) => {
-        if (!subscriptionStatus) return false;
-        return hasContactFeature(subscriptionStatus.subscriptionLevel, feature);
-    }, [subscriptionStatus]);
+
 
     const canUseBasicAiSearch = hasFeature(CONTACT_FEATURES.PREMIUM_SEMANTIC_SEARCH);
     const canUseFullAiSearch = hasFeature(CONTACT_FEATURES.BUSINESS_AI_SEARCH);
@@ -957,16 +959,20 @@ export default function ContactsPage() {
                        
 
                          <>
-    <AiSearchResults 
-                            results={aiSearchResults}
-                            query={aiSearchQuery}
-                            searchTier={canUseFullAiSearch ? 'business' : 'premium'}
-                            onClearSearch={clearEnhancedSearch}
-                            onContactAction={handleContactAction}
-                            groups={groups}
-                            isStreaming={isStreamingActive}
-                            streamingProgress={streamingProgress}
-                        />
+ <AiSearchResults 
+          results={aiSearchResults}
+          query={aiSearchQuery}
+          searchTier={canUseFullAiSearch ? 'business' : 'premium'}
+          onClearSearch={clearEnhancedSearch}
+          onContactAction={handleContactAction}
+          groups={groups}
+          isStreaming={isStreamingActive}
+          streamingProgress={streamingProgress}
+          subscriptionLevel={subscriptionStatus?.subscriptionLevel}
+          canUseSmartIcebreakers={canUseSmartIcebreakers}
+          onUsageUpdate={refreshUsageInfo} // ✅ CORRECTED: Pass the correct function
+        />
+
     {/* ✅ CORRECTED PROPS FOR VectorDebugPanel */}
     <VectorDebugPanel 
         results={aiSearchResults} 

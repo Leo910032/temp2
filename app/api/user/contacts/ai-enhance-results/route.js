@@ -29,36 +29,55 @@ function cleanJsonString(text) {
   return text.substring(firstBrace, lastBrace + 1);
 }
 
+// app/api/user/contacts/ai-enhance-results/route.js - UPDATED PROMPT FOR RERANK CONTEXT
+
 /**
- * Generate similarity-aware AI prompt
+ * Generate enhanced prompt that includes rerank context and multilingual support
  */
-function generateSimilarityAwarePrompt(query, contact) {
+function generateSimilarityAwarePrompt(query, contact, queryLanguage = 'en') {
   const vectorScore = contact.vectorScore || contact._vectorScore || 0;
+  const rerankScore = contact.rerankScore;
   const similarityTier = contact.similarityTier || 'unknown';
   const similarityExplanation = contact.similarityExplanation || `${(vectorScore * 100).toFixed(1)}% semantic similarity`;
 
   let contextualGuidance = '';
+  let rerankContext = '';
+  
+  // Build rerank context if available
+  if (rerankScore !== undefined && rerankScore !== null) {
+    const rerankPercentage = (rerankScore * 100).toFixed(1);
+    rerankContext = `This contact was also processed through advanced reranking with a score of ${rerankPercentage}%, indicating ${
+      rerankScore >= 0.8 ? 'very high' : 
+      rerankScore >= 0.6 ? 'high' : 
+      rerankScore >= 0.4 ? 'moderate' : 'lower'
+    } relevance when the query and contact details are analyzed together.`;
+  }
   
   switch (similarityTier) {
     case 'high':
-      contextualGuidance = `This contact has HIGH semantic similarity to your query (${similarityExplanation}). Focus on validating and exploring their specific expertise level, recent experience, and practical skills.`;
+      contextualGuidance = `This contact has HIGH semantic similarity to your query (${similarityExplanation}). ${rerankContext} Focus on validating and exploring their specific expertise level, recent experience, and practical skills.`;
       break;
     case 'medium':
-      contextualGuidance = `This contact has MODERATE semantic similarity to your query (${similarityExplanation}). Look for transferable skills, related experience, or potential for growth in this area.`;
+      contextualGuidance = `This contact has MODERATE semantic similarity to your query (${similarityExplanation}). ${rerankContext} Look for transferable skills, related experience, or potential for growth in this area.`;
       break;
     case 'low':
-      contextualGuidance = `This contact has LOWER semantic similarity to your query (${similarityExplanation}). Examine if they have any indirect experience, related background, or valuable network connections.`;
+      contextualGuidance = `This contact has LOWER semantic similarity to your query (${similarityExplanation}). ${rerankContext} Examine if they have any indirect experience, related background, or valuable network connections.`;
       break;
     default:
-      contextualGuidance = `Analyze this contact's relevance to your query with their semantic similarity context.`;
+      contextualGuidance = `Analyze this contact's relevance to your query with their semantic similarity context. ${rerankContext}`;
   }
+
+  // Determine output language instruction
+  const outputLanguageInstruction = queryLanguage.startsWith('fr')
+    ? "FORMAT YOUR RESPONSE IN FRENCH."
+    : "FORMAT YOUR RESPONSE IN ENGLISH.";
 
   return `
 You are an AI networking assistant analyzing why a contact matches a search query.
 
 SEARCH QUERY: "${query}"
 
-VECTOR SIMILARITY CONTEXT: ${contextualGuidance}
+VECTOR & RERANK SIMILARITY CONTEXT: ${contextualGuidance}
 
 CONTACT INFORMATION:
 - Name: ${contact.name || 'Unknown'}
@@ -68,20 +87,24 @@ CONTACT INFORMATION:
 - Message: ${contact.message || 'No message'}
 - Vector Similarity: ${similarityExplanation}
 - Similarity Tier: ${similarityTier.toUpperCase()}
+${rerankScore !== undefined ? `- Rerank Score: ${(rerankScore * 100).toFixed(1)}%` : ''}
 
 ANALYSIS INSTRUCTIONS:
-Given the ${similarityTier} semantic similarity, provide:
+Given the ${similarityTier} semantic similarity${rerankScore !== undefined ? ' and rerank score' : ''}, provide:
 
-1. MATCH EXPLANATION (2-3 sentences): Explain why this contact is relevant, considering both the semantic similarity and specific details.
+1. MATCH EXPLANATION (2-3 sentences): Explain why this contact is relevant, considering both the semantic similarity${rerankScore !== undefined ? ', rerank score,' : ''} and specific details.
 
-2. RELEVANCE FACTORS (3-5 bullet points): List specific factors that make this contact relevant, weighing both semantic indicators and concrete evidence.
+2. RELEVANCE FACTORS (3-5 bullet points): List specific factors that make this contact relevant, weighing semantic indicators, ${rerankScore !== undefined ? 'rerank analysis, ' : ''}and concrete evidence.
 
-3. ACTION SUGGESTIONS (2-3 suggestions): Provide specific, actionable suggestions for engagement based on the similarity level and contact details.
+3. ACTION SUGGESTIONS (2-3 suggestions): Provide specific, actionable suggestions for engagement based on the similarity level${rerankScore !== undefined ? ', rerank score,' : ''} and contact details.
 
 4. CONFIDENCE SCORE (1-10): Rate your confidence that this contact matches what the user seeks, considering:
-   - High similarity contacts: Start with baseline 7-8 confidence, adjust based on specifics
-   - Medium similarity contacts: Start with baseline 5-6 confidence, adjust based on evidence
-   - Low similarity contacts: Start with baseline 3-4 confidence, require strong evidence to score higher
+   - High similarity contacts${rerankScore !== undefined ? ' with high rerank scores' : ''}: Start with baseline 7-8 confidence, adjust based on specifics
+   - Medium similarity contacts${rerankScore !== undefined ? ' with moderate rerank scores' : ''}: Start with baseline 5-6 confidence, adjust based on evidence
+   - Low similarity contacts${rerankScore !== undefined ? ' with lower rerank scores' : ''}: Start with baseline 3-4 confidence, require strong evidence to score higher
+   ${rerankScore !== undefined ? '- Factor in the rerank score as validation of the vector similarity assessment' : ''}
+
+${outputLanguageInstruction}
 
 FORMAT YOUR RESPONSE AS JSON:
 {
@@ -97,7 +120,7 @@ FORMAT YOUR RESPONSE AS JSON:
  */
 function getConfidenceThreshold(similarityTier) {
   switch (similarityTier) {
-    case 'high': return 6;    // Lower threshold for high similarity
+    case 'high': return 5;    // Lower threshold for high similarity
     case 'medium': return 7;  // Standard threshold
     case 'low': return 8;     // Higher threshold for low similarity
     default: return 7;        // Default threshold

@@ -11,6 +11,7 @@ import { useUsageInfo } from './components/GroupModalComponents/hooks/useUsageIn
 import SearchModeIndicator, { SearchProgressIndicator } from './components/SearchModeIndicator';
 import AiSearchResults from './components/AiSearchResults';
 import SearchHistory from './components/SearchHistory'; // NEW IMPORT
+import VectorDebugPanel from './components/VectorDebugPanel';
 
 // Enhanced imports with caching
 import {
@@ -84,6 +85,13 @@ export default function ContactsPage() {
     const [selectedContactForMap, setSelectedContactForMap] = useState(null);
     const [mapSelectedGroupIds, setMapSelectedGroupIds] = useState([]);
     
+// Add these states for search results and debugging
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchMetadata, setSearchMetadata] = useState(null);
+  const [currentQuery, setCurrentQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [debugMode, setDebugMode] = useState(true); // Set to false to hide debug panel
+
     // Enhanced search state with caching and history
     const [searchMode, setSearchMode] = useState('standard');
     const [aiSearchQuery, setAiSearchQuery] = useState('');
@@ -122,6 +130,53 @@ export default function ContactsPage() {
     const canUseFullAiSearch = hasFeature(CONTACT_FEATURES.BUSINESS_AI_SEARCH);
     const canUseAnyAiSearch = canUseBasicAiSearch || canUseFullAiSearch;
 
+     const handleSearch = async (query) => {
+    if (!query || query.trim().length === 0) {
+      setSearchResults([]);
+      setSearchMetadata(null);
+      setCurrentQuery('');
+      return;
+    }
+
+    try {
+      setIsSearching(true);
+      setCurrentQuery(query);
+      
+      // Your existing search options
+      const searchOptions = {
+        userId: user?.uid, // Make sure this is defined
+        subscriptionLevel: userSubscription?.tier || 'premium',
+        maxResults: 10,
+        enhanceResults: true,
+        useReranking: true,
+        streamingMode: false
+      };
+
+      console.log('Starting search with options:', searchOptions);
+      
+      const result = await SemanticSearchService.search(query, searchOptions);
+      
+      console.log('Search completed:', result);
+      
+      // Store the results and metadata for the debug panel
+      setSearchResults(result.results || []);
+      setSearchMetadata(result.searchMetadata || null);
+      
+    } catch (error) {
+      console.error('Search failed:', error);
+      setSearchResults([]);
+      setSearchMetadata(null);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+    // Clear search function
+  const handleClearSearch = () => {
+    setSearchResults([]);
+    setSearchMetadata(null);
+    setCurrentQuery('');
+  };
     // NEW: Enhanced search handler with caching
     const handleEnhancedSearch = async (query, useAI = false) => {
         if (!query.trim()) {
@@ -641,6 +696,28 @@ export default function ContactsPage() {
                     currentFilters={{ status: filter, search: searchTerm }}
                     onActionComplete={reloadData}
                 />
+{/* Debug Mode Toggle - Remove this in production */}
+      {debugMode && (
+        <div className="mb-4 p-2 bg-yellow-100 border border-yellow-300 rounded">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={debugMode}
+              onChange={(e) => setDebugMode(e.target.checked)}
+            />
+            Enable Debug Mode (Vector Score Debugging)
+          </label>
+        </div>
+      )} {/* Debug Panel - Only show when debugging and we have results */}
+      {debugMode && searchResults.length > 0 && (
+        <VectorDebugPanel
+          results={searchResults}
+          query={currentQuery}
+          searchMetadata={searchMetadata}
+        />
+      )}
+
+
 
                 {/* Controls */}
                 <div className="bg-white p-4 rounded-lg shadow mb-6 space-y-4">
@@ -882,7 +959,10 @@ export default function ContactsPage() {
 
                     {/* Contacts List */}
                     {aiSearchResults !== null ? (
-                        <AiSearchResults 
+                       
+
+                         <>
+    <AiSearchResults 
                             results={aiSearchResults}
                             query={aiSearchQuery}
                             searchTier={canUseFullAiSearch ? 'business' : 'premium'}
@@ -892,6 +972,14 @@ export default function ContactsPage() {
                             isStreaming={isStreamingActive}
                             streamingProgress={streamingProgress}
                         />
+    {/* ✅ CORRECTED PROPS FOR VectorDebugPanel */}
+    <VectorDebugPanel 
+        results={aiSearchResults} 
+        query={aiSearchQuery} 
+        searchMetadata={{}} // Pass an empty object for now, or store metadata in state if needed
+    />
+  </>
+                        
                 ) : (
                     <ContactsList
                         contacts={contacts} 

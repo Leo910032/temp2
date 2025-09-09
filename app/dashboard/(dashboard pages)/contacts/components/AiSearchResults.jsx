@@ -1,12 +1,11 @@
-// app/dashboard/(dashboard pages)/contacts/components/AiSearchResults.jsx - FIXED VERSION
+// app/dashboard/(dashboard pages)/contacts/components/AiSearchResults.jsx - UPDATED WITH RERANK SUPPORT
 "use client"
 import React from 'react';
-
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from "@/lib/translation/useTranslation";
 
 export default function AiSearchResults({ 
-    results, // This prop will now be the single source of truth
+    results,
     query, 
     searchTier, 
     onClearSearch, 
@@ -18,13 +17,17 @@ export default function AiSearchResults({
     const { t } = useTranslation();
     const [expandedCards, setExpandedCards] = useState(new Set());
     const [displayedResults, setDisplayedResults] = useState([]);
-    const [loadingNewResults, setLoadingNewResults] = useState(false);
     const [selectedSimilarityFilter, setSelectedSimilarityFilter] = useState('all');
     
     const lastQueryRef = useRef('');
     const lastResultsHashRef = useRef('');
     const filterInitializedRef = useRef(false);
     
+    // Check if reranking was used in these results
+    const hasReranking = useMemo(() => {
+        return results.some(result => result.searchMetadata?.rerankScore !== undefined);
+    }, [results]);
+
     const getResultsHash = useCallback((resultsCount, query) => {
         return `${query}-${resultsCount}`;
     }, []);
@@ -41,7 +44,6 @@ export default function AiSearchResults({
         }
     }, [query]);
 
-   // CORRECTED: Use the `results` prop as the single source of truth for categorization.
     const categorizedResults = useMemo(() => {
         const categories = {
             high: [],
@@ -53,7 +55,6 @@ export default function AiSearchResults({
             return categories;
         }
         
-        // Logic now correctly depends on the `results` prop which gets streamed updates
         results.forEach(contact => {
             if (!contact) return;
             
@@ -63,15 +64,14 @@ export default function AiSearchResults({
                 categories.high.push(contact);
             } else if (tier === 'medium') {
                 categories.medium.push(contact);
-            } else if (tier === 'low' || tier === 'filtered') { // Group low and filtered together for display
+            } else if (tier === 'low' || tier === 'filtered') {
                 categories.low.push(contact);
             }
         });
 
         return categories;
-    }, [results]); // Dependency is now correctly just `results`
-    // Fixed: Stable filter initialization with proper guards
-  
+    }, [results]);
+
     useEffect(() => {
         const currentHash = getResultsHash(
             (results || []).length,
@@ -99,37 +99,35 @@ export default function AiSearchResults({
         }
     }, [categorizedResults, results, query, getResultsHash]);
 
-    // Fixed: Optimized filtered results with stable dependencies
-   const filteredResults = useMemo(() => {
+    const filteredResults = useMemo(() => {
         if (selectedSimilarityFilter === 'all') {
             return [...categorizedResults.high, ...categorizedResults.medium, ...categorizedResults.low];
         }
         return categorizedResults[selectedSimilarityFilter] || [];
     }, [categorizedResults, selectedSimilarityFilter]);
-    // Fixed: Optimized sorted results 
+
     const sortedResults = useMemo(() => {
         return [...filteredResults].sort((a, b) => {
-            const scoreA = a.searchMetadata?.hybridScore || a._vectorScore || 0;
-            const scoreB = b.searchMetadata?.hybridScore || b._vectorScore || 0;
+            // Prioritize hybrid score, then rerank score, then vector score
+            const scoreA = a.searchMetadata?.hybridScore || a.searchMetadata?.rerankScore || a._vectorScore || 0;
+            const scoreB = b.searchMetadata?.hybridScore || b.searchMetadata?.rerankScore || b._vectorScore || 0;
             return scoreB - scoreA;
         });
     }, [filteredResults]);
 
-    // This useEffect now correctly updates the displayed list as `sortedResults` changes
     useEffect(() => {
         if (!Array.isArray(sortedResults)) return;
 
-        // Immediately update displayed results to reflect changes from streaming
         setDisplayedResults([...sortedResults]);
 
-        // Auto-expand the first result when the list initially populates
         if (sortedResults.length > 0 && expandedCards.size === 0) {
             const firstWithInsights = sortedResults.find(r => r.searchMetadata?.aiAnalysis);
             if (firstWithInsights) {
                 setExpandedCards(new Set([firstWithInsights.id]));
             }
         }
-    }, [sortedResults]); // Correctly depends on the derived sorted list
+    }, [sortedResults]);
+
     const toggleExpanded = useCallback((contactId) => {
         setExpandedCards(prev => {
             const newSet = new Set(prev);
@@ -142,7 +140,6 @@ export default function AiSearchResults({
         });
     }, []);
 
-    // Fixed: Memoize utility functions to prevent recreations
     const getRelevanceColor = useCallback((score) => {
         if (!score) return 'text-gray-500';
         if (score >= 0.9) return 'text-green-600';
@@ -177,7 +174,10 @@ export default function AiSearchResults({
                             {isStreaming ? (
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
                             ) : (
-                                <span className="text-2xl">🤖</span>
+                                <div className="flex items-center gap-1">
+                                    <span className="text-2xl">🤖</span>
+                                    {hasReranking && <span className="text-lg">📊</span>}
+                                </div>
                             )}
                         </div>
                         
@@ -185,9 +185,16 @@ export default function AiSearchResults({
                             <h3 className="text-lg font-semibold text-gray-900">
                                 AI Search Results for "{query}"
                             </h3>
-                            <p className="text-sm text-gray-600">
-                                Found {categorizedResults.high.length + categorizedResults.medium.length + categorizedResults.low.length} relevant contacts using {searchTier === 'business' ? 'AI-powered analysis' : 'semantic search'}
-                            </p>
+                            <div className="flex items-center gap-2">
+                                <p className="text-sm text-gray-600">
+                                    Found {categorizedResults.high.length + categorizedResults.medium.length + categorizedResults.low.length} relevant contacts using {searchTier === 'business' ? 'AI-powered analysis' : 'semantic search'}
+                                </p>
+                                {hasReranking && (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+                                        + Reranked
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
                     
@@ -204,11 +211,18 @@ export default function AiSearchResults({
                     <div className="mt-4 p-3 bg-white rounded-lg border border-purple-200">
                         <div className="flex items-center gap-2 mb-2">
                             <div className="animate-pulse w-2 h-2 bg-purple-500 rounded-full"></div>
-                            <span className="text-sm font-medium text-purple-700">Live AI Analysis</span>
+                            <span className="text-sm font-medium text-purple-700">
+                                Live AI Analysis {hasReranking ? '(Reranked Results)' : ''}
+                            </span>
                         </div>
                         {streamingProgress.type === 'processing' && (
                             <div className="text-sm text-gray-600">
                                 Analyzing: {streamingProgress.contactName} ({streamingProgress.processed}/{streamingProgress.total})
+                                {streamingProgress.rerankScore && (
+                                    <span className="ml-2 text-teal-600">
+                                        Rerank: {(streamingProgress.rerankScore * 100).toFixed(1)}%
+                                    </span>
+                                )}
                             </div>
                         )}
                         {streamingProgress.percentage && (
@@ -259,9 +273,7 @@ export default function AiSearchResults({
             {/* No Results */}
             {!isStreaming && displayedResults.length === 0 && (
                 <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="text-4xl mb-2">
-                        🤷
-                    </div>
+                    <div className="text-4xl mb-2">🤷</div>
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No contacts found in this similarity level</h3>
                     <p className="text-gray-600">
                         Try selecting a different similarity filter or clearing the search.
@@ -273,7 +285,7 @@ export default function AiSearchResults({
             <div className="space-y-4">
                 {displayedResults.map((contact, index) => (
                     <AiSearchResultCard 
-                        key={`${contact.id}-${index}`} // Fixed: Stable key
+                        key={`${contact.id}-${index}`}
                         contact={contact}
                         index={index}
                         searchTier={searchTier}
@@ -284,24 +296,15 @@ export default function AiSearchResults({
                         getRelevanceText={getRelevanceText}
                         formatDate={formatDate}
                         groups={groups}
+                        hasReranking={hasReranking}
                         isNewResult={isStreaming && index === displayedResults.length - 1}
                     />
                 ))}
-                
-                {loadingNewResults && (
-                    <div className="flex justify-center py-4">
-                        <div className="flex items-center gap-2 text-gray-600">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
-                            <span className="text-sm">Loading new results...</span>
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );
 }
 
-// Fixed: Memoized filter button to prevent unnecessary re-renders
 const SimilarityFilterButton = React.memo(function SimilarityFilterButton({ type, count, isSelected, onClick }) {
     const getButtonConfig = (type) => {
         switch (type) {
@@ -372,7 +375,6 @@ const SimilarityFilterButton = React.memo(function SimilarityFilterButton({ type
                 {count}
             </span>
             
-            {/* Selection indicator */}
             {isSelected && (
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-white rounded-full flex items-center justify-center">
                     <div className="w-2 h-2 bg-current rounded-full"></div>
@@ -382,7 +384,6 @@ const SimilarityFilterButton = React.memo(function SimilarityFilterButton({ type
     );
 });
 
-// Fixed: Memoized card component to prevent unnecessary re-renders
 const AiSearchResultCard = React.memo(function AiSearchResultCard({ 
     contact, 
     index, 
@@ -394,6 +395,7 @@ const AiSearchResultCard = React.memo(function AiSearchResultCard({
     getRelevanceText,
     formatDate,
     groups,
+    hasReranking = false,
     isNewResult = false
 }) {
     const contactGroups = groups.filter(group => group.contactIds && group.contactIds.includes(contact.id));
@@ -401,6 +403,8 @@ const AiSearchResultCard = React.memo(function AiSearchResultCard({
     const hasAiInsights = searchTier === 'business' && contact.searchMetadata?.aiAnalysis;
     const aiAnalysis = contact.searchMetadata?.aiAnalysis;
     const vectorScore = contact._vectorScore || contact.searchMetadata?.vectorSimilarity || 0;
+    const rerankScore = contact.searchMetadata?.rerankScore;
+    const hybridScore = contact.searchMetadata?.hybridScore;
     
     return (
         <div className={`bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 ${
@@ -428,13 +432,18 @@ const AiSearchResultCard = React.memo(function AiSearchResultCard({
                                 <p className="text-xs text-gray-500 truncate">{contact.email || 'No Email'}</p>
                                 {contact.company && <p className="text-xs text-blue-600 truncate mt-1">{contact.company}</p>}
                                 
-                                <div className="flex items-center gap-2 mt-2">
-                                    <span className={`text-xs font-medium ${getRelevanceColor(vectorScore)}`}>
-                                        {getRelevanceText(vectorScore)}
+                                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                    <span className={`text-xs font-medium ${getRelevanceColor(hybridScore || rerankScore || vectorScore)}`}>
+                                        {getRelevanceText(hybridScore || rerankScore || vectorScore)}
                                     </span>
                                     {hasAiInsights && (
                                         <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
                                             AI Enhanced
+                                        </span>
+                                    )}
+                                    {hasReranking && rerankScore !== undefined && (
+                                        <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">
+                                            Reranked
                                         </span>
                                     )}
                                 </div>
@@ -471,10 +480,10 @@ const AiSearchResultCard = React.memo(function AiSearchResultCard({
                 <div className="border-t border-gray-100">
                     <div className="p-4 space-y-4">
                         
-                        {/* AI Analysis Results */}
+                        {/* Enhanced Analysis Results - Now includes rerank scores */}
                         <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <span className="text-sm font-medium text-gray-700">AI Analysis Results:</span>
-                            <div className="flex items-center gap-4">
+                            <span className="text-sm font-medium text-gray-700">Analysis Results:</span>
+                            <div className="flex items-center gap-4 flex-wrap">
                                 {/* AI Confidence */}
                                 {hasAiInsights && (
                                     <div className="flex items-center gap-2">
@@ -494,9 +503,24 @@ const AiSearchResultCard = React.memo(function AiSearchResultCard({
                                     </div>
                                 )}
                                 
-                                {/* Similarity Score */}
+                                {/* Rerank Score */}
+                                {hasReranking && rerankScore !== undefined && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-gray-600">Rerank:</span>
+                                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                                            rerankScore >= 0.8 ? 'bg-teal-100 text-teal-700' :
+                                            rerankScore >= 0.6 ? 'bg-blue-100 text-blue-700' :
+                                            rerankScore >= 0.4 ? 'bg-yellow-100 text-yellow-700' :
+                                            'bg-orange-100 text-orange-700'
+                                        }`}>
+                                            {(rerankScore * 100).toFixed(1)}%
+                                        </span>
+                                    </div>
+                                )}
+                                
+                                {/* Vector Similarity Score */}
                                 <div className="flex items-center gap-2">
-                                    <span className="text-xs text-gray-600">Similarity:</span>
+                                    <span className="text-xs text-gray-600">Vector:</span>
                                     <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
                                         vectorScore >= 0.75 ? 'bg-green-100 text-green-700' :
                                         vectorScore >= 0.60 ? 'bg-yellow-100 text-yellow-700' :
@@ -505,6 +529,20 @@ const AiSearchResultCard = React.memo(function AiSearchResultCard({
                                         {(vectorScore * 100).toFixed(0)}%
                                     </span>
                                 </div>
+
+                                {/* Hybrid Score (if available) */}
+                                {hybridScore !== undefined && hybridScore !== rerankScore && hybridScore !== vectorScore && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-gray-600">Final:</span>
+                                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                                            hybridScore >= 0.8 ? 'bg-indigo-100 text-indigo-700' :
+                                            hybridScore >= 0.6 ? 'bg-purple-100 text-purple-700' :
+                                            'bg-gray-100 text-gray-700'
+                                        }`}>
+                                            {(hybridScore * 100).toFixed(1)}%
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -553,11 +591,14 @@ const AiSearchResultCard = React.memo(function AiSearchResultCard({
                             </div>
                         )}
 
-                        <div className="flex items-center gap-4 text-xs text-gray-500 pt-2 border-t border-gray-100">
+                        <div className="flex items-center gap-4 text-xs text-gray-500 pt-2 border-t border-gray-100 flex-wrap">
                             <span>Added {formatDate(contact.submittedAt)}</span>
                             <span className="capitalize">{contact.source?.replace('_', ' ') || 'Manual'}</span>
                             {hasAiInsights && (
                                 <span className="text-purple-600">Enhanced with AI</span>
+                            )}
+                            {hasReranking && rerankScore !== undefined && (
+                                <span className="text-teal-600">Reranked for accuracy</span>
                             )}
                         </div>
                     </div>
@@ -582,7 +623,7 @@ const AiSearchResultCard = React.memo(function AiSearchResultCard({
     );
 });
 
-// CSS for animations (unchanged)
+// CSS for animations
 const styles = `
 @keyframes slide-in-from-top {
   from {
@@ -611,7 +652,7 @@ const styles = `
 }
 `;
 
-// Inject styles (unchanged)
+// Inject styles
 if (typeof document !== 'undefined' && !document.querySelector('#ai-search-results-styles')) {
   const styleElement = document.createElement('style');
   styleElement.id = 'ai-search-results-styles';

@@ -82,10 +82,16 @@ export default function SearchHistory({
 
     const getEnhancementIcon = (enhancementLevel) => {
         switch (enhancementLevel) {
+            case 'ai_powered_reranked':
+                return <span className="text-indigo-600" title="AI Enhanced + Reranked">🧠+</span>;
             case 'ai_powered':
                 return <span className="text-purple-600" title="AI Enhanced">🧠</span>;
             case 'vector_streaming_ai':
                 return <span className="text-blue-600" title="Streaming AI">⚡</span>;
+            case 'vector_streaming_ai_reranked':
+                return <span className="text-cyan-600" title="Streaming AI + Reranked">⚡+</span>;
+            case 'vector_reranked':
+                return <span className="text-teal-600" title="Vector + Reranked">🔍+</span>;
             case 'vector_only':
                 return <span className="text-green-600" title="Vector Search">📊</span>;
             default:
@@ -192,6 +198,11 @@ export default function SearchHistory({
                                                 <span className="text-sm font-medium text-gray-900 truncate">
                                                     "{job.query}"
                                                 </span>
+                                                {job.hasReranking && (
+                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-teal-100 text-teal-800">
+                                                        Reranked
+                                                    </span>
+                                                )}
                                             </div>
                                             
                                             <div className="flex items-center gap-4 text-xs text-gray-500">
@@ -218,6 +229,11 @@ export default function SearchHistory({
                                             {job.summary?.hasAI && (
                                                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
                                                     AI
+                                                </span>
+                                            )}
+                                            {job.summary?.hasReranking && (
+                                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-teal-100 text-teal-800">
+                                                    Ranked
                                                 </span>
                                             )}
                                             <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
@@ -257,10 +273,16 @@ export default function SearchHistory({
                     </span>
                     
                     {activeTab === 'jobs' && (
-                        <span className="flex items-center gap-1">
-                            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                            Cache active
-                        </span>
+                        <div className="flex items-center gap-3">
+                            <span className="flex items-center gap-1">
+                                <span className="w-2 h-2 bg-teal-500 rounded-full"></span>
+                                Reranking
+                            </span>
+                            <span className="flex items-center gap-1">
+                                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                                Cache active
+                            </span>
+                        </div>
                     )}
                 </div>
             </div>

@@ -1,5 +1,4 @@
-// File: app/[userId]/House.jsx - UPDATED WITH CONTACT EXCHANGE BUTTONS
-
+// app/[userId]/House.jsx - Updated with scan token support
 "use client"
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { fireApp } from "@/important/firebase";
@@ -13,12 +12,12 @@ import PublicLanguageSwitcher from "./components/PublicLanguageSwitcher";
 import SensitiveWarning from "./components/SensitiveWarning";
 import { trackView } from '@/lib/services/analyticsService';
 
-// ✅ NEW: Import contact exchange components
+// Import contact exchange components
 import ExchangeButton from "./components/ExchangeButton";
 
 export const HouseContext = React.createContext(null);
 
-export default function House({ initialUserData }) {
+export default function House({ initialUserData, scanToken = null, scanAvailable = false }) {
     // Initialize state with server-fetched data
     const [userData, setUserData] = useState(initialUserData);
     const [showSensitiveWarning, setShowSensitiveWarning] = useState(initialUserData?.sensitiveStatus || false);
@@ -36,12 +35,12 @@ export default function House({ initialUserData }) {
         return false;
     }, []);
 
-    // ✅ NEW: Check if contact exchange should be shown
+    // Check if contact exchange should be shown
     const shouldShowContactExchange = useMemo(() => {
         // Don't show in preview mode
         if (isPreviewMode) return false;
         
-        // Check if user has contact exchange enabled (you can add this setting to user data)
+        // Check if user has contact exchange enabled
         const contactExchangeEnabled = userData?.contactExchangeEnabled !== false; // Default to true
         
         // Check if user has basic contact info
@@ -157,7 +156,7 @@ export default function House({ initialUserData }) {
                             <UserInfo />
                             <MyLinks />
                             
-                            {/* ✅ NEW: Contact Exchange Section */}
+                            {/* Contact Exchange Section */}
                             {shouldShowContactExchange && (
                                 <div className="w-full max-w-lg px-4 mt-6 space-y-3">
                                     {/* Section title */}
@@ -166,13 +165,22 @@ export default function House({ initialUserData }) {
                                             🤝 Connect with Me
                                         </h3>
                                         <p className="text-sm text-gray-600">
-                                            Exchange contact information or save my details
+                                            Exchange contact information quickly and easily
                                         </p>
+                                        
+                                        {/* NEW: Show scan availability status */}
+                                        {scanAvailable && (
+                                            <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full">
+                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                                </svg>
+                                                Business card scanning enabled
+                                            </div>
+                                        )}
                                     </div>
                                     
-                                    {/* Contact Exchange Buttons */}
+                                    {/* Contact Exchange Button */}
                                     <div className="space-y-3">
-                                        {/* Exchange Contact Button */}
                                         <ExchangeButton 
                                             username={userData.username}
                                             userInfo={{
@@ -181,10 +189,31 @@ export default function House({ initialUserData }) {
                                                 email: userData.email
                                             }}
                                             userId={userData.uid}
+                                            scanToken={scanToken} // NEW: Pass the scan token
+                                            scanAvailable={scanAvailable} // NEW: Pass scan availability
                                         />
-                                        
-                                      
                                     </div>
+
+                                    {/* NEW: Information about business card scanning */}
+                                    {scanAvailable && (
+                                        <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg">
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-semibold text-blue-800 text-sm mb-1">
+                                                        ✨ AI-Powered Quick Fill
+                                                    </h4>
+                                                    <p className="text-blue-700 text-xs">
+                                                        Simply scan your business card with your phone camera and watch as AI automatically fills out your contact information in seconds!
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

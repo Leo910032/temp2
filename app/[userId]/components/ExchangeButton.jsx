@@ -1,4 +1,4 @@
-// app/[userId]/components/ExchangeButton.jsx - SERVER-SIDE VERSION
+// app/[userId]/components/ExchangeButton.jsx - Updated with scan token support
 "use client"
 import { useState, useEffect } from 'react';
 import { useTranslation } from '@/lib/translation/useTranslation';
@@ -10,7 +10,14 @@ import { hexToRgba } from "@/lib/utilities";
 import { availableFonts_Classic } from "@/lib/FontsList";
 import Image from "next/image";
 
-export default function ExchangeButton({ username, userInfo, fastLookupUsed, userId }) {
+export default function ExchangeButton({ 
+    username, 
+    userInfo, 
+    fastLookupUsed, 
+    userId, 
+    scanToken = null, // NEW: Secure scan token from server
+    scanAvailable = false // NEW: Whether scanning is available
+}) {
     const { t } = useTranslation();
     const [isModalOpen, setIsModalOpen] = useState(false);
     
@@ -21,7 +28,7 @@ export default function ExchangeButton({ username, userInfo, fastLookupUsed, use
     const [btnColor, setBtnColor] = useState('');
     const [selectedTheme, setSelectedTheme] = useState('');
     const [themeTextColour, setThemeTextColour] = useState("");
-    const [selectedFontClass, setSelectedFontClass] = useState(""); // ✅ Add font support
+    const [selectedFontClass, setSelectedFontClass] = useState("");
     const [isHovered, setIsHovered] = useState(false);
 
     useEffect(() => {
@@ -58,7 +65,7 @@ export default function ExchangeButton({ username, userInfo, fastLookupUsed, use
                         setSelectedTheme(data.selectedTheme || '');
                         setThemeTextColour(data.themeFontColor || "");
                         
-                        // ✅ Set font class - SAME AS Button.jsx
+                        // Set font class
                         const fontName = availableFonts_Classic[data.fontType ? data.fontType - 1 : 0];
                         setSelectedFontClass(fontName?.class || '');
                     } else {
@@ -79,7 +86,7 @@ export default function ExchangeButton({ username, userInfo, fastLookupUsed, use
         }
     }, [userId]);
 
-    // ✅ COMPLETE BUTTON STYLING - SAME AS Button.jsx
+    // Button styling functions (same as before)
     const getButtonClasses = () => {
         let baseClasses = "userBtn relative justify-between items-center flex hover:scale-[1.025] w-full";
         
@@ -131,7 +138,6 @@ export default function ExchangeButton({ username, userInfo, fastLookupUsed, use
         }
     };
 
-    // ✅ COMPLETE BUTTON STYLING - SAME AS Button.jsx
     const getButtonStyles = () => {
         if (selectedTheme === "3D Blocks") {
             return {
@@ -183,7 +189,6 @@ export default function ExchangeButton({ username, userInfo, fastLookupUsed, use
         return styles;
     };
 
-    // ✅ GET SPECIAL ELEMENTS - SAME AS Button.jsx
     const getSpecialElements = () => {
         switch (btnType) {
             case 12:
@@ -222,7 +227,6 @@ export default function ExchangeButton({ username, userInfo, fastLookupUsed, use
         }
     };
 
-    // ✅ GET FONT STYLE - SAME AS Button.jsx
     const getFontStyle = () => {
         if (selectedTheme === "3D Blocks") {
             return { color: "#fff" };
@@ -246,143 +250,179 @@ export default function ExchangeButton({ username, userInfo, fastLookupUsed, use
     const specialElements = getSpecialElements();
     const fontStyle = getFontStyle();
 
+    // NEW: Enhanced button text with scan capability indicator
+    const getButtonText = () => {
+        const baseText = t('exchange.button_text') || 'Exchange Contact';
+        const shortText = t('exchange.button_text_short') || 'Exchange';
+        
+        if (scanAvailable) {
+            return {
+                desktop: `📇 ${baseText}`,
+                mobile: `📇 ${shortText}`
+            };
+        }
+        
+        return {
+            desktop: baseText,
+            mobile: shortText
+        };
+    };
+
+    const buttonText = getButtonText();
+
     return (
         <>
-            {/* Debug info - remove this after fixing */}
+            {/* Debug info in development */}
             {process.env.NODE_ENV === 'development' && (
                 <div className="text-xs text-gray-500 mb-1">
-                    ExchangeButton Debug: Type={btnType}, Color={btnColor}, Theme={selectedTheme}, Font={selectedFontClass}
+                    ExchangeButton Debug: Type={btnType}, ScanToken={!!scanToken}, ScanAvailable={scanAvailable}
                 </div>
             )}
             
-        {/* ✅ MARIO THEME RENDERING - SAME AS Button.jsx */}
-        {selectedTheme === "New Mario" ? (
-            <div className={getButtonClasses()}>         
-                {/* Mario brick background - 4 bricks for side-by-side buttons */}
-                {Array(4).fill("").map((_, brick_index) => (
-                    <Image
-                        key={brick_index}
-                        src="https://linktree.sirv.com/Images/Scene/Mario/mario-brick.png"
-                        alt="Mario Brick"
-                        width={650}
-                        height={660}
-                        onClick={() => setIsModalOpen(true)}
-                        onMouseEnter={() => setIsHovered(true)}
-                        onMouseLeave={() => setIsHovered(false)}
-                        className="h-16 w-1/4 object-cover hover:-translate-y-2 cursor-pointer transition-transform"
-                    />
-                ))}
-                
-                {/* Mario box with icon */}
-                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 z-30">
-                    <div className="relative">
+            {/* Mario Theme Rendering */}
+            {selectedTheme === "New Mario" ? (
+                <div className={getButtonClasses()}>         
+                    {/* Mario brick background */}
+                    {Array(4).fill("").map((_, brick_index) => (
                         <Image
-                            src="https://linktree.sirv.com/Images/Scene/Mario/mario-box.png"
-                            alt="Mario Box"
+                            key={brick_index}
+                            src="https://linktree.sirv.com/Images/Scene/Mario/mario-brick.png"
+                            alt="Mario Brick"
                             width={650}
                             height={660}
-                            className={`h-8 w-auto object-contain hover:-translate-y-2 hover:rotate-2 transition-all cursor-pointer ${isHovered ? "rotate-2" : ""}`}
                             onClick={() => setIsModalOpen(true)}
+                            onMouseEnter={() => setIsHovered(true)}
+                            onMouseLeave={() => setIsHovered(false)}
+                            className="h-16 w-1/4 object-cover hover:-translate-y-2 cursor-pointer transition-transform"
                         />
-                        {/* Exchange icon inside the box */}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <svg className="w-4 h-4 text-white drop-shadow-[2px_2px_0px_rgba(0,0,0,1)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                            </svg>
+                    ))}
+                    
+                    {/* Mario box with enhanced icon */}
+                    <div className="absolute left-3 top-1/2 transform -translate-y-1/2 z-30">
+                        <div className="relative">
+                            <Image
+                                src="https://linktree.sirv.com/Images/Scene/Mario/mario-box.png"
+                                alt="Mario Box"
+                                width={650}
+                                height={660}
+                                className={`h-8 w-auto object-contain hover:-translate-y-2 hover:rotate-2 transition-all cursor-pointer ${isHovered ? "rotate-2" : ""}`}
+                                onClick={() => setIsModalOpen(true)}
+                            />
+                            {/* Enhanced Exchange icon */}
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                {scanAvailable ? (
+                                    <svg className="w-4 h-4 text-white drop-shadow-[2px_2px_0px_rgba(0,0,0,1)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                    </svg>
+                                ) : (
+                                    <svg className="w-4 h-4 text-white drop-shadow-[2px_2px_0px_rgba(0,0,0,1)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                    </svg>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Button text overlay */}
+                    <div 
+                        className="absolute top-0 left-0 z-20 w-full h-full flex items-center justify-center cursor-pointer"
+                        onClick={() => setIsModalOpen(true)}
+                        style={{ 
+                            paddingLeft: '3rem' // Space for the box
+                        }}
+                    >
+                        <div className={`${selectedFontClass}`} style={fontStyle}>
+                            {/* Desktop text */}
+                            <span className={`hidden md:block md:text-2xl sm:text-xl text-lg drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] font-semibold ${isHovered ? "text-blue-500" : "text-white"}`}>
+                                {buttonText.desktop}
+                            </span>
+                            
+                            {/* Mobile text */}
+                            <span className={`block md:hidden text-sm drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] font-semibold ${isHovered ? "text-blue-500" : "text-white"}`}>
+                                {buttonText.mobile}
+                            </span>
                         </div>
                     </div>
                 </div>
-                
-                {/* Button text overlay */}
-                <div 
-                    className="absolute top-0 left-0 z-20 w-full h-full flex items-center justify-center cursor-pointer"
-                    onClick={() => setIsModalOpen(true)}
-                    style={{ 
-                        paddingLeft: '3rem' // Space for the box
-                    }}
-                >
-                    {/* ✅ FIXED: Use selectedFontClass and proper styling */}
-                    <div className={`${selectedFontClass}`} style={fontStyle}>
-                        {/* Desktop text */}
-                        <span className={`hidden md:block md:text-2xl sm:text-xl text-lg drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] font-semibold ${isHovered ? "text-blue-500" : "text-white"}`}>
-                            {t('exchange.button_text') || 'Exchange Contact'}
-                        </span>
-                        
-                        {/* Mobile text (shorter) */}
-                        <span className={`block md:hidden text-sm drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] font-semibold ${isHovered ? "text-blue-500" : "text-white"}`}>
-                            {t('exchange.button_text_short') || 'Exchange'}
-                        </span>
+            ) : selectedTheme === "3D Blocks" ? (
+                <div className="userBtn relative justify-between items-center flex hover:scale-[1.025] w-full">
+                    <div
+                        onClick={() => setIsModalOpen(true)}
+                        className={getButtonClasses()}
+                        style={{...getButtonStyles(), borderColor: selectedTheme === "Matrix" ? `${themeTextColour}` : ""}}
+                    >
+                        <div className="cursor-pointer flex gap-3 items-center min-h-10 py-3 px-3 flex-1">
+                            {specialElements}
+                            
+                            {/* Enhanced Exchange Icon */}
+                            {scanAvailable ? (
+                                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                </svg>
+                            ) : (
+                                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                </svg>
+                            )}
+                            
+                            <div className={`${selectedFontClass} font-semibold truncate max-w-[90%] flex-1`} style={fontStyle}>
+                                {/* Desktop text */}
+                                <span className="hidden md:block">
+                                    {buttonText.desktop}
+                                </span>
+                                
+                                {/* Mobile text */}
+                                <span className="block md:hidden text-sm">
+                                    {buttonText.mobile}
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        ) : selectedTheme === "3D Blocks" ? (
-            <div className="userBtn relative justify-between items-center flex hover:scale-[1.025] w-full">
+            ) : (
                 <div
-                    onClick={() => setIsModalOpen(true)}
                     className={getButtonClasses()}
                     style={{...getButtonStyles(), borderColor: selectedTheme === "Matrix" ? `${themeTextColour}` : ""}}
                 >
-                    <div className="cursor-pointer flex gap-3 items-center min-h-10 py-3 px-3 flex-1">
+                    <div
+                        onClick={() => setIsModalOpen(true)}
+                        className="cursor-pointer flex gap-3 items-center min-h-10 py-3 px-3 flex-1"
+                    >
                         {specialElements}
                         
-                        {/* Exchange Icon */}
-                        <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                        </svg>
+                        {/* Enhanced Exchange Icon */}
+                        {scanAvailable ? (
+                            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            </svg>
+                        ) : (
+                            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                            </svg>
+                        )}
                         
-                        {/* ✅ FIXED: Use selectedFontClass and fontStyle */}
                         <div className={`${selectedFontClass} font-semibold truncate max-w-[90%] flex-1`} style={fontStyle}>
                             {/* Desktop text */}
                             <span className="hidden md:block">
-                                {t('exchange.button_text') || 'Exchange Contact'}
+                                {buttonText.desktop}
                             </span>
                             
-                            {/* Mobile text (shorter) */}
+                            {/* Mobile text */}
                             <span className="block md:hidden text-sm">
-                                {t('exchange.button_text_short') || 'Exchange'}
+                                {buttonText.mobile}
                             </span>
                         </div>
                     </div>
                 </div>
-            </div>
-        ) : (
-            <div
-                className={getButtonClasses()}
-                style={{...getButtonStyles(), borderColor: selectedTheme === "Matrix" ? `${themeTextColour}` : ""}}
-            >
-                <div
-                    onClick={() => setIsModalOpen(true)}
-                    className="cursor-pointer flex gap-3 items-center min-h-10 py-3 px-3 flex-1"
-                >
-                    {specialElements}
-                    
-                    {/* Exchange Icon */}
-                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                    </svg>
-                    
-                    {/* ✅ FIXED: Use selectedFontClass and fontStyle */}
-                    <div className={`${selectedFontClass} font-semibold truncate max-w-[90%] flex-1`} style={fontStyle}>
-                        {/* Desktop text */}
-                        <span className="hidden md:block">
-                            {t('exchange.button_text') || 'Exchange Contact'}
-                        </span>
-                        
-                        {/* Mobile text (shorter) */}
-                        <span className="block md:hidden text-sm">
-                            {t('exchange.button_text_short') || 'Exchange'}
-                        </span>
-                    </div>
-                </div>
-            </div>
-        )}
+            )}
             
-            {/* ✅ UPDATED: Pass userInfo for optimized server-side submission */}
+            {/* Enhanced ExchangeModal with scan token support */}
             <ExchangeModal 
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 profileOwnerUsername={username}
-                profileOwnerId={userInfo?.userId || userId} // ✅ Pass user ID for fastest submission
+                profileOwnerId={userInfo?.userId || userId}
+                scanToken={scanToken} // NEW: Pass the secure scan token
             />
         </>
     );

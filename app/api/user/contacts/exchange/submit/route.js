@@ -1,4 +1,3 @@
-// app/api/user/contacts/exchange/submit/route.js - OPTIMIZED for fast response
 import { NextResponse } from 'next/server';
 import { ExchangeService } from '@/lib/services/serviceContact/server/exchangeService';
 
@@ -6,20 +5,19 @@ export async function POST(request) {
   const requestStartTime = Date.now();
   
   try {
-    console.log('🔄 API: Processing exchange contact submission');
+    console.log('🔄 API: Processing enhanced exchange contact submission');
 
-    // Quick CSRF Protection - removed localhost:3000 restriction
+    // CSRF Protection
     const origin = request.headers.get('origin');
     const allowedOrigins = [
       process.env.NEXT_PUBLIC_BASE_URL, 
       'http://localhost:3000',
-      'http://localhost:3001', // Added for your setup
+      'http://localhost:3001',
       'https://localhost:3000',
       'https://localhost:3001'
     ];
     
     if (process.env.NODE_ENV === 'development') {
-      // In development, allow any localhost origin
       const isDevelopmentOrigin = origin?.includes('localhost') || origin?.includes('127.0.0.1');
       if (!isDevelopmentOrigin && !allowedOrigins.includes(origin)) {
         console.warn(`🚨 CSRF Warning: Request from invalid origin: ${origin}`);
@@ -30,7 +28,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid origin' }, { status: 403 });
     }
 
-    // Fast rate limiting check
+    // Rate limiting
     const rateLimitStart = Date.now();
     const forwarded = request.headers.get("x-forwarded-for");
     const ip = forwarded ? forwarded.split(",")[0] : request.headers.get("x-real-ip") || 'unknown';
@@ -52,7 +50,7 @@ export async function POST(request) {
     const { userId, username, contact, metadata } = body;
     console.log(`📋 Request parsed (${Date.now() - parseStart}ms)`);
 
-    // Quick validation
+    // Enhanced validation
     if (!contact) {
       return NextResponse.json({ 
         error: 'Contact data is required',
@@ -67,32 +65,40 @@ export async function POST(request) {
       }, { status: 400 });
     }
 
-    // Prepare submission data
+    // Prepare enhanced submission data
     const submissionData = {
       userId,
       username,
-      contact,
+      contact: {
+        ...contact,
+        // Ensure dynamic fields are properly included
+        dynamicFields: contact.dynamicFields || []
+      },
       metadata: {
         ...metadata,
         ip,
-        submissionTime: new Date().toISOString()
+        submissionTime: new Date().toISOString(),
+        enhancedExchange: true,
+        hasScannedData: !!(metadata?.scannedCard || contact.dynamicFields?.length > 0)
       }
     };
 
-    // Submit exchange contact (this should be FAST now - vector processing is async)
+    // Submit through enhanced exchange service
     const submissionStart = Date.now();
-    console.log('🚀 Starting exchange submission...');
+    console.log('🚀 Starting enhanced exchange submission...');
     
     const result = await ExchangeService.submitExchangeContact(submissionData);
     
     const submissionTime = Date.now() - submissionStart;
     const totalTime = Date.now() - requestStartTime;
     
-    console.log(`✅ Exchange contact submitted successfully in ${submissionTime}ms (total request: ${totalTime}ms):`);
+    console.log(`✅ Enhanced exchange contact submitted successfully in ${submissionTime}ms (total: ${totalTime}ms)`);
     console.log({
       contactId: result.contactId,
       targetUserId: result.targetProfile.userId,
       hasLocation: !!(contact.location),
+      hasDynamicFields: !!(contact.dynamicFields?.length > 0),
+      dynamicFieldCount: contact.dynamicFields?.length || 0,
       timing: {
         rateLimitCheck: `${Date.now() - rateLimitStart}ms`,
         parsing: `${Date.now() - parseStart}ms`,
@@ -101,25 +107,30 @@ export async function POST(request) {
       }
     });
 
-    // Return immediately - vector processing happens in background
     return NextResponse.json({
       success: true,
-      message: 'Contact submitted successfully! AI processing in background.',
+      message: 'Contact submitted successfully with enhanced features!',
       contactId: result.contactId,
       submittedAt: result.submittedAt,
       targetProfile: result.targetProfile,
       processing: {
         database: 'completed',
-        vectorSearch: 'background', // User knows it's happening in background
+        vectorSearch: 'background',
+        enhancedFeatures: 'enabled',
         timing: `${totalTime}ms`
+      },
+      features: {
+        dynamicFields: contact.dynamicFields?.length || 0,
+        hasLocation: !!(contact.location),
+        hasScannedData: !!(metadata?.scannedCard)
       }
     });
 
   } catch (error) {
     const totalTime = Date.now() - requestStartTime;
-    console.error(`❌ API Error in exchange submission after ${totalTime}ms:`, error);
+    console.error(`❌ API Error in enhanced exchange submission after ${totalTime}ms:`, error);
     
-    // Handle specific error types with timing info
+    // Enhanced error handling
     if (error.message.includes('not found') || error.message.includes('Profile not found')) {
       return NextResponse.json({ 
         error: 'Profile not found',

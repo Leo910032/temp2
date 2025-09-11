@@ -464,20 +464,20 @@ if (results.length === 1) {
 
 // ENHANCED: Pass both standard and dynamic fields to parent
 const enhancedFields = {
-    standardFields: finalStandardFields,
-    dynamicFields: finalDynamicFields,
-    metadata: {
-        ...results[0]?.metadata,
-        totalFields: finalStandardFields.length + finalDynamicFields.length,
-        enhancedProcessing: true
-    }
+  standardFields: finalStandardFields,
+  dynamicFields: finalDynamicFields, // ✅ ENSURE THIS IS PASSED
+  metadata: {
+    ...results[0]?.metadata,
+    totalFields: finalStandardFields.length + finalDynamicFields.length,
+    enhancedProcessing: true
+  }
 };
 
 // Store dynamic fields in component state
 setDynamicFields(finalDynamicFields);
 setScanMetadata(enhancedFields.metadata);
 
-onContactParsed(enhancedFields); // Pass enhanced data instead of just finalFields
+onContactParsed(enhancedFields); // ✅ Pass enhanced data with dynamic fields
 
 toast.success(`Card scanning complete! Found ${finalStandardFields.length} standard fields and ${finalDynamicFields.length} dynamic fields.`);
 

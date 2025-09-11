@@ -157,39 +157,50 @@ export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSa
         if (activeCategory === 'all') return fields;
         return fields.filter(field => field.category === activeCategory);
     };
+const handleSave = async () => {
+    // Enhanced validation
+    const hasNameOrEmail = fields.some(f => 
+        (f.label.toLowerCase().includes('name') || f.label.toLowerCase().includes('email')) && 
+        f.value.trim() !== ''
+    );
 
-    const handleSave = async () => {
-        // Enhanced validation
-        const hasNameOrEmail = fields.some(f => 
-            (f.label.toLowerCase().includes('name') || f.label.toLowerCase().includes('email')) && 
-            f.value.trim() !== ''
-        );
+    if (!hasNameOrEmail) {
+        toast.error('Please ensure the contact has at least a Name or Email.');
+        return;
+    }
 
-        if (!hasNameOrEmail) {
-            toast.error('Please ensure the contact has at least a Name or Email.');
-            return;
-        }
+    // Remove empty fields before saving
+    const fieldsToSave = fields.filter(f => f.value && f.value.trim().length > 0);
 
-        // Remove empty fields before saving
-        const fieldsToSave = fields.filter(f => f.value && f.value.trim().length > 0);
+    if (fieldsToSave.length === 0) {
+        toast.error('Please add at least one field with a value.');
+        return;
+    }
 
-        if (fieldsToSave.length === 0) {
-            toast.error('Please add at least one field with a value.');
-            return;
-        }
+    setIsSaving(true);
+    try {
+        // ✅ STRUCTURE THE DATA PROPERLY FOR THE CONTACT SERVICE
+        const structuredContactData = {
+            // Separate standard and dynamic fields
+            standardFields: fieldsToSave.filter(f => !f.isDynamic),
+            dynamicFields: fieldsToSave.filter(f => f.isDynamic),
+            metadata: {
+                totalFields: fieldsToSave.length,
+                source: 'business_card_scan_review',
+                processedAt: new Date().toISOString()
+            }
+        };
 
-        setIsSaving(true);
-        try {
-            await onSave(fieldsToSave);
-            toast.success(`Contact saved with ${fieldsToSave.length} fields!`);
-            onClose();
-        } catch (error) {
-            console.error('Error saving enhanced contact:', error);
-            toast.error('Failed to save contact.');
-        } finally {
-            setIsSaving(false);
-        }
-    };
+        await onSave(structuredContactData);
+        toast.success(`Contact saved with ${fieldsToSave.length} fields!`);
+        onClose();
+    } catch (error) {
+        console.error('Error saving enhanced contact:', error);
+        toast.error('Failed to save contact.');
+    } finally {
+        setIsSaving(false);
+    }
+};
 
     const getCategoryCount = (category) => fieldCategories[category] || 0;
     const getTotalFields = () => Object.values(fieldCategories).reduce((sum, count) => sum + count, 0);

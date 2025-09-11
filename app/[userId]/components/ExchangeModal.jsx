@@ -1,4 +1,4 @@
-// app/[userId]/components/ExchangeModal.jsx - Updated with proper service integration
+// app/[userId]/components/ExchangeModal.jsx - Updated with pre-verified props
 "use client"
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
@@ -12,7 +12,11 @@ export default function ExchangeModal({
     isOpen, 
     onClose, 
     profileOwnerUsername, 
-    profileOwnerId = null
+    profileOwnerId = null,
+    // NEW: Pre-verified props from server-side
+    preVerified = false,
+    scanToken = null,
+    scanAvailable = false
 }) {
     const { t, locale } = useTranslation();
     
@@ -38,13 +42,14 @@ export default function ExchangeModal({
         state: 'unavailable', 
         supported: false 
     });
-    const [profileVerified, setProfileVerified] = useState(false);
+    
+    // Use pre-verified status instead of verifying on open
+    const [profileVerified, setProfileVerified] = useState(preVerified);
     
     // Enhanced scanning states
     const [dynamicFields, setDynamicFields] = useState([]);
     const [scanMetadata, setScanMetadata] = useState(null);
     const [personalizedMessage, setPersonalizedMessage] = useState(null);
-    const [scanToken, setScanToken] = useState(null);
     
     // Scanner UI states
     const [showScanner, setShowScanner] = useState(false);
@@ -78,74 +83,50 @@ export default function ExchangeModal({
     useEffect(() => {
         if (isOpen) {
             console.log("Enhanced exchange modal opened for:", profileOwnerUsername);
+            console.log("Pre-verified:", preVerified, "Scan available:", scanAvailable);
             initializeModal();
         } else {
             resetModalState();
         }
-    }, [isOpen, profileOwnerUsername, profileOwnerId]);
+    }, [isOpen, profileOwnerUsername, profileOwnerId, preVerified, scanAvailable]);
 
-    const initializeModal = async () => {
-        try {
-            // Initialize location services
-            const permission = await exchangeService.current.checkLocationPermission();
-            setLocationPermission(permission);
-            
-            if (permission.state === 'granted') {
-                await requestLocation();
-            }
+  // Replace the initializeModal function in ExchangeModal.jsx
 
-            // Verify target profile
-            await verifyTargetProfile();
-            
-            // Request scan token for potential business card scanning
-            await requestScanToken();
-
-        } catch (error) {
-            console.error("Error initializing enhanced modal:", error);
+const initializeModal = async () => {
+    try {
+        // Initialize location services
+        const permission = await exchangeService.current.checkLocationPermission();
+        setLocationPermission(permission);
+        
+        if (permission.state === 'granted') {
+            await requestLocation();
         }
-    };
 
-    const verifyTargetProfile = async () => {
-        try {
-            let verification;
+        // Use pre-verified status (no API call needed)
+        setProfileVerified(preVerified);
+        
+        if (!preVerified) {
+            toast.error(t('exchange.profile_unavailable') || 'This profile is not available for contact exchange');
+        }
+
+        // Use pre-generated scan token if available (no API call needed)
+        if (scanToken && scanAvailable) {
+            const tokenCached = exchangeService.current.usePreGeneratedScanToken(
+                scanToken, 
+                new Date(Date.now() + 3600000).toISOString() // 1 hour expiry
+            );
             
-            if (profileOwnerId) {
-                verification = await exchangeService.current.verifyProfileByUserId(profileOwnerId);
-            } else if (profileOwnerUsername) {
-                verification = await exchangeService.current.verifyProfileByUsername(profileOwnerUsername);
+            if (tokenCached) {
+                console.log("✅ Pre-generated scan token cached successfully");
             } else {
-                throw new Error('No profile identifier provided');
+                console.warn("⚠️ Failed to cache pre-generated scan token");
             }
-
-            setProfileVerified(verification.available);
-            
-            if (!verification.available) {
-                toast.error(t('exchange.profile_unavailable') || 'This profile is not available for contact exchange');
-            }
-
-        } catch (error) {
-            console.error("Error verifying profile:", error);
-            setProfileVerified(false);
-            toast.error(t('exchange.profile_verification_failed') || 'Unable to verify profile availability');
         }
-    };
 
-    const requestScanToken = async () => {
-        try {
-            const identifier = profileOwnerUsername || profileOwnerId;
-            const identifierType = profileOwnerUsername ? 'username' : 'userId';
-            
-            const tokenResult = await exchangeService.current.requestScanToken(identifier, identifierType);
-            setScanToken(tokenResult.scanToken);
-            
-            console.log("Scan token obtained successfully");
-            
-        } catch (error) {
-            console.error("Failed to obtain scan token:", error);
-            // Don't show error to user - scanning will just be unavailable
-        }
-    };
-
+    } catch (error) {
+        console.error("Error initializing enhanced modal:", error);
+    }
+};
     const requestLocation = async () => {
         try {
             console.log("Requesting location...");
@@ -279,12 +260,6 @@ export default function ExchangeModal({
                     };
                 });
                 
-                if (scanMode === 'single') {
-                    // Ready to scan
-                } else {
-                    toast.success(`${currentSide} side uploaded successfully!`);
-                }
-                
             } else if (files.length === 2 && scanMode === 'double') {
                 const frontFile = files[0];
                 const backFile = files[1];
@@ -318,8 +293,15 @@ export default function ExchangeModal({
     };
 
     const processScannedImages = async () => {
-        if (!scanToken) {
+        if (!scanAvailable) {
             toast.error('Business card scanning is not available for this profile');
+            return;
+        }
+
+        // Check if we have a cached token
+        const cachedToken = exchangeService.current.getCachedScanToken();
+        if (!cachedToken && !scanToken) {
+            toast.error('Scan session expired. Please refresh the page.');
             return;
         }
 
@@ -375,7 +357,7 @@ export default function ExchangeModal({
             } else if (error.message.includes('RATE_LIMIT')) {
                 errorMessage = 'Too many scan attempts. Please try again later.';
             } else if (error.message.includes('Invalid or expired')) {
-                errorMessage = 'This scan session has expired. Please close and re-open the form.';
+                errorMessage = 'This scan session has expired. Please refresh the page.';
             }
             
             toast.error(errorMessage);
@@ -660,7 +642,6 @@ export default function ExchangeModal({
         setDynamicFields([]);
         setLocation(null);
         setLocationPermission({ state: 'unavailable', supported: false });
-        setProfileVerified(false);
         setErrors({});
         setScanResult(null);
         setPersonalizedMessage(null);
@@ -1084,7 +1065,8 @@ export default function ExchangeModal({
                         </svg>
                     </button>
                 </div>
-   {/* Content */}
+   
+                {/* Content */}
                 <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
                      {personalizedMessage && typeof personalizedMessage === 'object' && (
                     <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg">
@@ -1119,7 +1101,7 @@ export default function ExchangeModal({
                     </p>
 
                     {/* Business Card Scanner Option */}
-                    {scanToken && !scanResult && (
+                    {scanAvailable && !scanResult && (
                         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-2">
@@ -1145,7 +1127,7 @@ export default function ExchangeModal({
                     {!profileVerified && (
                         <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                             <p className="text-yellow-800 text-sm">
-                                {t('exchange.verifying_profile') || 'Verifying profile availability...'}
+                                {t('exchange.profile_unavailable') || 'This profile is not available for contact exchange'}
                             </p>
                         </div>
                     )}
@@ -1205,20 +1187,21 @@ export default function ExchangeModal({
                                 disabled={isSubmitting}
                             />
                         </div>
-{/* Job Title Field */}
-<div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">
-        Job Title
-    </label>
-    <input
-        type="text"
-        value={formData.jobTitle}
-        onChange={(e) => handleInputChange('jobTitle', e.target.value)}
-        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-        placeholder="Your job title or position"
-        disabled={isSubmitting}
-    />
-</div>
+
+                        {/* Job Title Field */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Job Title
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.jobTitle}
+                                onChange={(e) => handleInputChange('jobTitle', e.target.value)}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                                placeholder="Your job title or position"
+                                disabled={isSubmitting}
+                            />
+                        </div>
 
                         {/* Company Field */}
                         <div>
@@ -1234,86 +1217,88 @@ export default function ExchangeModal({
                                 disabled={isSubmitting}
                             />
                         </div>
+                        
                         {/* Website Field */}
-<div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">
-        Website
-    </label>
-    <input
-        type="url"
-        value={formData.website}
-        onChange={(e) => handleInputChange('website', e.target.value)}
-        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-        placeholder="https://yourwebsite.com"
-        disabled={isSubmitting}
-    />
-</div>
-{/* Dynamic Fields Section */}
-{dynamicFields.length > 0 && (
-    <div className="mt-6">
-        <div className="flex items-center justify-between mb-4">
-            <h4 className="text-lg font-semibold text-gray-900">Additional Information</h4>
-            <span className="text-sm text-gray-500">
-                {dynamicFields.length} field{dynamicFields.length !== 1 ? 's' : ''} detected
-            </span>
-        </div>
-        
-        <div className="space-y-3">
-            {dynamicFields.map((field) => (
-                <div key={field.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border">
-                    <div className="flex-shrink-0 w-8 h-8 bg-white rounded-full flex items-center justify-center text-sm border">
-                        {getCategoryIcon(field.category)}
-                    </div>
-                    <div className="flex-1 space-y-2">
-                        <div className="flex items-center gap-2">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Website
+                            </label>
                             <input
-                                type="text"
-                                value={field.label}
-                                onChange={(e) => updateDynamicField(field.id, 'label', e.target.value)}
-                                placeholder="Field Label"
-                                className="flex-1 px-3 py-1 border-b border-gray-300 focus:outline-none focus:border-blue-500 text-sm font-medium bg-transparent"
+                                type="url"
+                                value={formData.website}
+                                onChange={(e) => handleInputChange('website', e.target.value)}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                                placeholder="https://yourwebsite.com"
                                 disabled={isSubmitting}
                             />
-                            <span className="text-xs text-gray-400 px-2 py-1 bg-gray-200 rounded-full">
-                                {field.category}
-                            </span>
                         </div>
-                        <input
-                            type="text"
-                            value={field.value}
-                            onChange={(e) => updateDynamicField(field.id, 'value', e.target.value)}
-                            placeholder="Field Value"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-                            disabled={isSubmitting}
-                        />
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => removeDynamicField(field.id)}
-                        className="p-2 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                        disabled={isSubmitting}
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                    </button>
-                </div>
-            ))}
-        </div>
 
-        <button
-            type="button"
-            onClick={addDynamicField}
-            className="w-full mt-3 flex items-center justify-center gap-2 p-3 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
-            disabled={isSubmitting}
-        >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Add Custom Field
-        </button>
-    </div>
-)}
+                        {/* Dynamic Fields Section */}
+                        {dynamicFields.length > 0 && (
+                            <div className="mt-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h4 className="text-lg font-semibold text-gray-900">Additional Information</h4>
+                                    <span className="text-sm text-gray-500">
+                                        {dynamicFields.length} field{dynamicFields.length !== 1 ? 's' : ''} detected
+                                    </span>
+                                </div>
+                                
+                                <div className="space-y-3">
+                                    {dynamicFields.map((field) => (
+                                        <div key={field.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border">
+                                            <div className="flex-shrink-0 w-8 h-8 bg-white rounded-full flex items-center justify-center text-sm border">
+                                                {getCategoryIcon(field.category)}
+                                            </div>
+                                            <div className="flex-1 space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={field.label}
+                                                        onChange={(e) => updateDynamicField(field.id, 'label', e.target.value)}
+                                                        placeholder="Field Label"
+                                                        className="flex-1 px-3 py-1 border-b border-gray-300 focus:outline-none focus:border-blue-500 text-sm font-medium bg-transparent"
+                                                        disabled={isSubmitting}
+                                                    />
+                                                    <span className="text-xs text-gray-400 px-2 py-1 bg-gray-200 rounded-full">
+                                                        {field.category}
+                                                    </span>
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    value={field.value}
+                                                    onChange={(e) => updateDynamicField(field.id, 'value', e.target.value)}
+                                                    placeholder="Field Value"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                                                    disabled={isSubmitting}
+                                                />
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeDynamicField(field.id)}
+                                                className="p-2 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                                                disabled={isSubmitting}
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={addDynamicField}
+                                    className="w-full mt-3 flex items-center justify-center gap-2 p-3 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                                    disabled={isSubmitting}
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                    </svg>
+                                    Add Custom Field
+                                </button>
+                            </div>
+                        )}
 
                         {/* Message Field */}
                         <div>

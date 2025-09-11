@@ -1194,30 +1194,30 @@ export default function ContactsPage() {
                 onGetTeamMembers={getTeamMembersForSharing}
                 hasFeature={hasFeature}
             />
-            
-          <BusinessCardScanner 
+<BusinessCardScanner 
     isOpen={showScanner} 
     onClose={() => setShowScanner(false)} 
-    onContactParsed={(enhancedFields) => {
-        // Handle the new enhanced structure
-        if (enhancedFields.standardFields) {
-            // If it's the new enhanced structure
-            setScannedFields({
-                standardFields: enhancedFields.standardFields || [],
-                dynamicFields: enhancedFields.dynamicFields || [],
-                metadata: enhancedFields.metadata || {}
-            });
-        } else {
-            // Fallback for old structure (array of fields)
-            setScannedFields({
-                standardFields: Array.isArray(enhancedFields) ? enhancedFields : [],
-                dynamicFields: [],
-                metadata: {}
-            });
-        }
-        setShowReviewModal(true); 
-        setShowScanner(false);
-    }} 
+// Around line 800-820, update the onContactParsed handler:
+onContactParsed={(enhancedFields) => {
+    // Handle the new enhanced structure
+    if (enhancedFields.standardFields) {
+        // If it's the new enhanced structure
+        setScannedFields({
+            standardFields: enhancedFields.standardFields || [],
+            dynamicFields: enhancedFields.dynamicFields || [], // ✅ ENSURE THIS IS SET
+            metadata: enhancedFields.metadata || {}
+        });
+    } else {
+        // Fallback for old structure (array of fields)
+        setScannedFields({
+            standardFields: Array.isArray(enhancedFields) ? enhancedFields : [],
+            dynamicFields: [], // ✅ EMPTY ARRAY FOR BACKWARD COMPATIBILITY
+            metadata: {}
+        });
+    }
+    setShowReviewModal(true); 
+    setShowScanner(false);
+}}
     hasFeature={hasFeature}
 />
 
@@ -1228,7 +1228,7 @@ export default function ContactsPage() {
                 onSave={async (parsedFields) => {
                     try {
                         const toastId = toast.loading('Saving scanned contact...');
-                        const result = await createContactFromScan(parsedFields);
+            const result = await createContactFromScan(currentUser.uid, parsedFields);
                         toast.success('Contact saved from business card!', { id: toastId });
                         setShowReviewModal(false);
                         setScannedFields(null);

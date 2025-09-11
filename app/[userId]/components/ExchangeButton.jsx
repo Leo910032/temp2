@@ -1,4 +1,4 @@
-// app/[userId]/components/ExchangeButton.jsx - Updated with scan token support
+// app/[userId]/components/ExchangeButton.jsx - Complete file with pre-verification support
 "use client"
 import { useState, useEffect } from 'react';
 import { useTranslation } from '@/lib/translation/useTranslation';
@@ -9,14 +9,17 @@ import { fetchUserData } from "@/lib/fetch data/fetchUserData";
 import { hexToRgba } from "@/lib/utilities";
 import { availableFonts_Classic } from "@/lib/FontsList";
 import Image from "next/image";
+import { toast } from 'react-hot-toast';
 
 export default function ExchangeButton({ 
     username, 
     userInfo, 
     fastLookupUsed, 
     userId, 
-    scanToken = null, // NEW: Secure scan token from server
-    scanAvailable = false // NEW: Whether scanning is available
+    scanToken = null,
+    scanAvailable = false,
+    preVerified = false,
+    verificationLoading = false
 }) {
     const { t } = useTranslation();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -86,9 +89,64 @@ export default function ExchangeButton({
         }
     }, [userId]);
 
-    // Button styling functions (same as before)
+    // Handle button click with verification check
+    const handleButtonClick = () => {
+        if (verificationLoading) {
+            return; // Don't open modal while verification is in progress
+        }
+        
+        if (!preVerified) {
+            toast.error(t('exchange.profile_unavailable') || 'This profile is not available for contact exchange');
+            return;
+        }
+        
+        setIsModalOpen(true);
+    };
+
+    // Update button text based on loading/verification state
+    const getButtonText = () => {
+        if (verificationLoading) {
+            return {
+                desktop: t('exchange.button_verifying') || 'Verifying...',
+                mobile: t('exchange.button_verifying_short') || 'Verifying...'
+            };
+        }
+        
+        if (!preVerified) {
+            return {
+                desktop: t('exchange.button_unavailable') || 'Contact Exchange Unavailable',
+                mobile: t('exchange.button_unavailable_short') || 'Unavailable'
+            };
+        }
+        
+        const baseText = t('exchange.button_text') || 'Exchange Contact';
+        const shortText = t('exchange.button_text_short') || 'Exchange';
+        
+        if (scanAvailable) {
+            return {
+                desktop: `📇 ${baseText}`,
+                mobile: `📇 ${shortText}`
+            };
+        }
+        
+        return {
+            desktop: baseText,
+            mobile: shortText
+        };
+    };
+
+    const buttonText = getButtonText();
+
+    // Button styling functions
     const getButtonClasses = () => {
         let baseClasses = "userBtn relative justify-between items-center flex hover:scale-[1.025] w-full";
+        
+        // Add disabled cursor if not ready
+        if (verificationLoading || !preVerified) {
+            baseClasses += " cursor-not-allowed";
+        } else {
+            baseClasses += " cursor-pointer";
+        }
         
         if (selectedTheme === "3D Blocks") {
             return `${baseClasses} relative after:absolute after:h-2 after:w-[100.5%] after:bg-black bg-white after:-bottom-2 after:left-[1px] after:skew-x-[57deg] after:ml-[2px] before:absolute before:h-[107%] before:w-3 before:bg-[currentColor] before:top-[1px] before:border-2 before:border-black before:-right-3 before:skew-y-[30deg] before:grid before:grid-rows-2 border-2 border-black inset-2 ml-[-20px] btn`;
@@ -142,7 +200,8 @@ export default function ExchangeButton({
         if (selectedTheme === "3D Blocks") {
             return {
                 color: "#fff",
-                backgroundColor: "#191414" 
+                backgroundColor: "#191414",
+                opacity: (verificationLoading || !preVerified) ? 0.6 : 1
             };
         }
         
@@ -153,7 +212,8 @@ export default function ExchangeButton({
                 backgroundImage: `url('https://linktree.sirv.com/Images/Scene/Mario/mario-brick.png')`,
                 backgroundSize: "cover",
                 backgroundRepeat: "no-repeat",
-                backgroundPosition: "center"
+                backgroundPosition: "center",
+                opacity: (verificationLoading || !preVerified) ? 0.6 : 1
             };
         }
         
@@ -161,6 +221,11 @@ export default function ExchangeButton({
             color: btnFontColor || "#000",
             backgroundColor: btnColor || "#fff"
         };
+
+        // Apply disabled styling if not verified or loading
+        if (verificationLoading || !preVerified) {
+            styles.opacity = 0.6;
+        }
 
         switch (btnType) {
             case 6:
@@ -250,32 +315,43 @@ export default function ExchangeButton({
     const specialElements = getSpecialElements();
     const fontStyle = getFontStyle();
 
-    // NEW: Enhanced button text with scan capability indicator
-    const getButtonText = () => {
-        const baseText = t('exchange.button_text') || 'Exchange Contact';
-        const shortText = t('exchange.button_text_short') || 'Exchange';
-        
-        if (scanAvailable) {
-            return {
-                desktop: `📇 ${baseText}`,
-                mobile: `📇 ${shortText}`
-            };
+    // Get the appropriate icon based on state
+    const getButtonIcon = () => {
+        if (verificationLoading) {
+            return (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
+            );
         }
         
-        return {
-            desktop: baseText,
-            mobile: shortText
-        };
+        if (!preVerified) {
+            return (
+                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            );
+        }
+        
+        if (scanAvailable) {
+            return (
+                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                </svg>
+            );
+        }
+        
+        return (
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+        );
     };
-
-    const buttonText = getButtonText();
 
     return (
         <>
             {/* Debug info in development */}
             {process.env.NODE_ENV === 'development' && (
                 <div className="text-xs text-gray-500 mb-1">
-                    ExchangeButton Debug: Type={btnType}, ScanToken={!!scanToken}, ScanAvailable={scanAvailable}
+                    ExchangeButton Debug: Type={btnType}, PreVerified={preVerified}, Loading={verificationLoading}, ScanAvailable={scanAvailable}
                 </div>
             )}
             
@@ -290,10 +366,14 @@ export default function ExchangeButton({
                             alt="Mario Brick"
                             width={650}
                             height={660}
-                            onClick={() => setIsModalOpen(true)}
+                            onClick={handleButtonClick}
                             onMouseEnter={() => setIsHovered(true)}
                             onMouseLeave={() => setIsHovered(false)}
-                            className="h-16 w-1/4 object-cover hover:-translate-y-2 cursor-pointer transition-transform"
+                            className={`h-16 w-1/4 object-cover transition-transform ${
+                                verificationLoading || !preVerified 
+                                    ? 'cursor-not-allowed' 
+                                    : 'hover:-translate-y-2 cursor-pointer'
+                            }`}
                         />
                     ))}
                     
@@ -305,40 +385,44 @@ export default function ExchangeButton({
                                 alt="Mario Box"
                                 width={650}
                                 height={660}
-                                className={`h-8 w-auto object-contain hover:-translate-y-2 hover:rotate-2 transition-all cursor-pointer ${isHovered ? "rotate-2" : ""}`}
-                                onClick={() => setIsModalOpen(true)}
+                                className={`h-8 w-auto object-contain transition-all ${
+                                    verificationLoading || !preVerified
+                                        ? 'cursor-not-allowed opacity-60'
+                                        : `hover:-translate-y-2 hover:rotate-2 cursor-pointer ${isHovered ? "rotate-2" : ""}`
+                                }`}
+                                onClick={handleButtonClick}
                             />
                             {/* Enhanced Exchange icon */}
                             <div className="absolute inset-0 flex items-center justify-center">
-                                {scanAvailable ? (
-                                    <svg className="w-4 h-4 text-white drop-shadow-[2px_2px_0px_rgba(0,0,0,1)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                    </svg>
-                                ) : (
-                                    <svg className="w-4 h-4 text-white drop-shadow-[2px_2px_0px_rgba(0,0,0,1)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                                    </svg>
-                                )}
+                                {getButtonIcon()}
                             </div>
                         </div>
                     </div>
                     
                     {/* Button text overlay */}
                     <div 
-                        className="absolute top-0 left-0 z-20 w-full h-full flex items-center justify-center cursor-pointer"
-                        onClick={() => setIsModalOpen(true)}
+                        className="absolute top-0 left-0 z-20 w-full h-full flex items-center justify-center"
+                        onClick={handleButtonClick}
                         style={{ 
                             paddingLeft: '3rem' // Space for the box
                         }}
                     >
                         <div className={`${selectedFontClass}`} style={fontStyle}>
                             {/* Desktop text */}
-                            <span className={`hidden md:block md:text-2xl sm:text-xl text-lg drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] font-semibold ${isHovered ? "text-blue-500" : "text-white"}`}>
+                            <span className={`hidden md:block md:text-2xl sm:text-xl text-lg drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] font-semibold ${
+                                verificationLoading || !preVerified 
+                                    ? "text-gray-400" 
+                                    : isHovered ? "text-blue-500" : "text-white"
+                            }`}>
                                 {buttonText.desktop}
                             </span>
                             
                             {/* Mobile text */}
-                            <span className={`block md:hidden text-sm drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] font-semibold ${isHovered ? "text-blue-500" : "text-white"}`}>
+                            <span className={`block md:hidden text-sm drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] font-semibold ${
+                                verificationLoading || !preVerified 
+                                    ? "text-gray-400" 
+                                    : isHovered ? "text-blue-500" : "text-white"
+                            }`}>
                                 {buttonText.mobile}
                             </span>
                         </div>
@@ -347,23 +431,15 @@ export default function ExchangeButton({
             ) : selectedTheme === "3D Blocks" ? (
                 <div className="userBtn relative justify-between items-center flex hover:scale-[1.025] w-full">
                     <div
-                        onClick={() => setIsModalOpen(true)}
+                        onClick={handleButtonClick}
                         className={getButtonClasses()}
                         style={{...getButtonStyles(), borderColor: selectedTheme === "Matrix" ? `${themeTextColour}` : ""}}
                     >
-                        <div className="cursor-pointer flex gap-3 items-center min-h-10 py-3 px-3 flex-1">
+                        <div className="flex gap-3 items-center min-h-10 py-3 px-3 flex-1">
                             {specialElements}
                             
                             {/* Enhanced Exchange Icon */}
-                            {scanAvailable ? (
-                                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                </svg>
-                            ) : (
-                                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                                </svg>
-                            )}
+                            {getButtonIcon()}
                             
                             <div className={`${selectedFontClass} font-semibold truncate max-w-[90%] flex-1`} style={fontStyle}>
                                 {/* Desktop text */}
@@ -385,21 +461,13 @@ export default function ExchangeButton({
                     style={{...getButtonStyles(), borderColor: selectedTheme === "Matrix" ? `${themeTextColour}` : ""}}
                 >
                     <div
-                        onClick={() => setIsModalOpen(true)}
-                        className="cursor-pointer flex gap-3 items-center min-h-10 py-3 px-3 flex-1"
+                        onClick={handleButtonClick}
+                        className="flex gap-3 items-center min-h-10 py-3 px-3 flex-1"
                     >
                         {specialElements}
                         
                         {/* Enhanced Exchange Icon */}
-                        {scanAvailable ? (
-                            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                            </svg>
-                        ) : (
-                            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                            </svg>
-                        )}
+                        {getButtonIcon()}
                         
                         <div className={`${selectedFontClass} font-semibold truncate max-w-[90%] flex-1`} style={fontStyle}>
                             {/* Desktop text */}
@@ -416,13 +484,15 @@ export default function ExchangeButton({
                 </div>
             )}
             
-            {/* Enhanced ExchangeModal with scan token support */}
+            {/* Enhanced ExchangeModal with pre-verification support */}
             <ExchangeModal 
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 profileOwnerUsername={username}
                 profileOwnerId={userInfo?.userId || userId}
-                scanToken={scanToken} // NEW: Pass the secure scan token
+                preVerified={preVerified}
+                scanToken={scanToken}
+                scanAvailable={scanAvailable}
             />
         </>
     );

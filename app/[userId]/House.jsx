@@ -1,4 +1,4 @@
-// app/[userId]/House.jsx - Updated with scan token support
+// app/[userId]/House.jsx - Fixed with proper hook placement
 "use client"
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { fireApp } from "@/important/firebase";
@@ -25,6 +25,13 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
     const [retryCount, setRetryCount] = useState(0);
     const [viewTracked, setViewTracked] = useState(false);
     const updateInProgress = useRef(false);
+
+    // FIXED: Move the profileVerificationStatus state to the top level
+    const [profileVerificationStatus, setProfileVerificationStatus] = useState({
+        verified: false,
+        loading: true,
+        error: null
+    });
 
     // Check for preview mode once on component mount
     const isPreviewMode = useMemo(() => {
@@ -117,6 +124,54 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
         };
     }, []);
 
+    // Effect to verify profile early (before modal opens)
+    useEffect(() => {
+        const verifyProfileEarly = async () => {
+            if (isPreviewMode || !shouldShowContactExchange) {
+                setProfileVerificationStatus({ verified: false, loading: false, error: null });
+                return;
+            }
+
+            try {
+                console.log('🔍 House: Early profile verification for contact exchange');
+                
+                // Import the service dynamically to avoid SSR issues
+                const { EnhancedExchangeService } = await import('@/lib/services/serviceContact/client/services/EnhancedExchangeService');
+                const exchangeService = new EnhancedExchangeService();
+                
+                let verification;
+                if (userData?.uid) {
+                    verification = await exchangeService.verifyProfileByUserId(userData.uid);
+                } else if (userData?.username) {
+                    verification = await exchangeService.verifyProfileByUsername(userData.username);
+                } else {
+                    throw new Error('No profile identifier available');
+                }
+
+                setProfileVerificationStatus({
+                    verified: verification.available,
+                    loading: false,
+                    error: null
+                });
+
+                console.log('✅ House: Profile verification completed:', verification.available);
+
+            } catch (error) {
+                console.error('❌ House: Profile verification failed:', error);
+                setProfileVerificationStatus({
+                    verified: false,
+                    loading: false,
+                    error: error.message
+                });
+            }
+        };
+
+        // Run verification after initial data is loaded
+        if (userData?.uid || userData?.username) {
+            verifyProfileEarly();
+        }
+    }, [userData?.uid, userData?.username, isPreviewMode, shouldShowContactExchange]);
+
     const contextValue = useMemo(() => ({
         userData,
         setShowSensitiveWarning,
@@ -168,7 +223,7 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
                                             Exchange contact information quickly and easily
                                         </p>
                                         
-                                        {/* NEW: Show scan availability status */}
+                                        {/* Show scan availability status */}
                                         {scanAvailable && (
                                             <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full">
                                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -189,12 +244,14 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
                                                 email: userData.email
                                             }}
                                             userId={userData.uid}
-                                            scanToken={scanToken} // NEW: Pass the scan token
-                                            scanAvailable={scanAvailable} // NEW: Pass scan availability
+                                            scanToken={scanToken}
+                                            scanAvailable={scanAvailable}
+                                            preVerified={profileVerificationStatus.verified}
+                                            verificationLoading={profileVerificationStatus.loading}
                                         />
                                     </div>
 
-                                    {/* NEW: Information about business card scanning */}
+                                    {/* Information about business card scanning */}
                                     {scanAvailable && (
                                         <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg">
                                             <div className="flex items-start gap-3">

@@ -1,4 +1,3 @@
-// app/dashboard/(dashboard pages)/contacts/components/ContactCard.jsx
 "use client";
 
 import { useState } from 'react';
@@ -9,43 +8,16 @@ export default function ContactCard({ contact, onEdit, onStatusUpdate, onDelete,
     const [expanded, setExpanded] = useState(false);
     const contactGroups = groups.filter(group => group.contactIds && group.contactIds.includes(contact.id));
 
-    // Extract dynamic fields and special fields from details array
-    const extractFieldsFromDetails = () => {
-        if (!contact.details || !Array.isArray(contact.details)) {
-            return { taglines: [], dynamicFields: [], standardDetails: [] };
-        }
-
-        const taglines = [];
-        const dynamicFields = [];
-        const standardDetails = [];
-
-        contact.details.forEach(detail => {
-            const label = detail.label?.toLowerCase() || '';
-            
-            // Check for taglines/slogans
-            if (label.includes('tagline') || label.includes('slogan') || label.includes('motto')) {
-                taglines.push(detail);
-            }
-            // Check for dynamic fields
-            else if (detail.isDynamic) {
-                dynamicFields.push(detail);
-            }
-            // All other details (non-standard fields that aren't already shown in main contact info)
-            else if (!isStandardContactField(detail.label)) {
-                standardDetails.push(detail);
-            }
-        });
-
-        return { taglines, dynamicFields, standardDetails };
-    };
-
-    // Check if a field is already displayed in the main contact info section
-    const isStandardContactField = (label) => {
-        const standardFields = ['name', 'email', 'phone', 'company', 'job title', 'title', 'website', 'address'];
-        return standardFields.some(field => label?.toLowerCase().includes(field));
-    };
-
-    const { taglines, dynamicFields, standardDetails } = extractFieldsFromDetails();
+    // Simplified logic: Directly use the top-level dynamicFields array.
+    // We can still look for taglines within it for special display.
+    const allDynamicFields = contact.dynamicFields || [];
+    const taglines = allDynamicFields.filter(field => 
+        field.label?.toLowerCase().includes('tagline')
+    );
+    // Display all other dynamic fields in the "AI Insights" section.
+    const otherDynamicFields = allDynamicFields.filter(field => 
+        !field.label?.toLowerCase().includes('tagline')
+    );
 
     const getStatusColor = (status) => {
         switch (status) {
@@ -58,11 +30,10 @@ export default function ContactCard({ contact, onEdit, onStatusUpdate, onDelete,
     
     const formatDate = (dateString) => {
         if (!dateString) return '';
-        return new Date(dateString).toLocaleDateString('fr-FR', { 
+        return new Date(dateString).toLocaleDateString('en-US', { 
             day: '2-digit', 
             month: 'short', 
-            hour: '2-digit', 
-            minute: '2-digit' 
+            year: 'numeric'
         });
     };
     
@@ -103,7 +74,6 @@ export default function ContactCard({ contact, onEdit, onStatusUpdate, onDelete,
                                     {contact.jobTitle && contact.company ? ` at ${contact.company}` : (!contact.jobTitle && contact.company ? contact.company : '')}
                                 </p>
                                 
-                                {/* Enhanced: Show tagline/slogan prominently */}
                                 {taglines.length > 0 && (
                                     <p className="text-xs text-blue-600 italic mt-1 truncate">
                                         "{taglines[0].value}"
@@ -116,10 +86,9 @@ export default function ContactCard({ contact, onEdit, onStatusUpdate, onDelete,
                                     </span>
                                     {contact.location && <span className="text-xs text-green-600">📍</span>}
                                     {isFromTeamMember && <span className="text-xs text-purple-600">👥</span>}
-                                    {/* Enhanced: Show dynamic field indicator */}
-                                    {dynamicFields.length > 0 && (
-                                        <span className="text-xs text-purple-500" title={`${dynamicFields.length} AI-detected fields`}>
-                                            ✨{dynamicFields.length}
+                                    {allDynamicFields.length > 0 && (
+                                        <span className="text-xs text-purple-500" title={`${allDynamicFields.length} AI-detected fields`}>
+                                            ✨{allDynamicFields.length}
                                         </span>
                                     )}
                                 </div>
@@ -164,50 +133,14 @@ export default function ContactCard({ contact, onEdit, onStatusUpdate, onDelete,
                             )}
                         </div>
 
-                        {/* Enhanced: Message section */}
-                        {contact.message && (
-                            <div className="p-3 bg-gray-50 rounded-lg border">
-                                <p className="text-sm text-gray-700 italic">&quot;{contact.message}&quot;</p>
-                            </div>
-                        )}
-
-                        {/* Enhanced: Company Taglines/Slogans Section */}
-                        {taglines.length > 0 && (
-                            <div className="pt-3 border-t border-gray-100">
-                                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1">
-                                    💭 Company Taglines & Slogans
-                                </h4>
-                                <div className="space-y-2">
-                                    {taglines.map((tagline, index) => (
-                                        <div key={tagline.id || index} className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                            <div className="flex items-start justify-between">
-                                                <div className="flex-1">
-                                                    <div className="font-medium text-blue-900 text-sm mb-1">{tagline.label}</div>
-                                                    <div className="text-blue-800 italic">&quot;{tagline.value}&quot;</div>
-                                                </div>
-                                                <div className="flex items-center gap-1 text-xs text-blue-600 ml-2">
-                                                    <span className={getConfidenceColor(tagline.confidence)}>
-                                                        {Math.round((tagline.confidence || 0) * 100)}%
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Enhanced: AI-Detected Dynamic Fields Section */}
-                        {dynamicFields.length > 0 && (
+                        {/* AI-Detected Dynamic Fields Section (includes taglines and others) */}
+                        {allDynamicFields.length > 0 && (
                             <div className="pt-3 border-t border-gray-100">
                                 <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1">
                                     ✨ AI-Detected Information
-                                    <span className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full text-xs font-normal">
-                                        {dynamicFields.length}
-                                    </span>
                                 </h4>
                                 <div className="space-y-2">
-                                    {dynamicFields.map((field, index) => (
+                                    {allDynamicFields.map((field, index) => (
                                         <div key={field.id || index} className="flex items-start gap-3 text-sm p-3 bg-purple-50 rounded-lg border border-purple-200">
                                             <div className="flex-shrink-0 w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center text-xs border border-purple-300">
                                                 {getCategoryIcon(field.category)}
@@ -237,33 +170,6 @@ export default function ContactCard({ contact, onEdit, onStatusUpdate, onDelete,
                             </div>
                         )}
 
-                        {/* Enhanced: Additional Standard Details */}
-                        {standardDetails.length > 0 && (
-                            <div className="pt-3 border-t border-gray-100">
-                                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Additional Information</h4>
-                                <div className="space-y-2">
-                                    {standardDetails.map((field, index) => (
-                                        <div key={field.id || index} className="flex items-start gap-3 text-sm">
-                                            <div className="flex-shrink-0 w-5 h-5 bg-gray-100 rounded-full flex items-center justify-center text-xs border">
-                                                {getCategoryIcon(field.category)}
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="font-medium text-gray-800">{field.label}</div>
-                                                    {field.confidence && field.confidence < 1.0 && (
-                                                        <span className={`text-xs ${getConfidenceColor(field.confidence)}`}>
-                                                            {Math.round(field.confidence * 100)}%
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div className="text-gray-600 break-words">{field.value}</div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
                         {/* Groups section */}
                         {contactGroups.length > 0 && (
                              <div className="pt-3 border-t border-gray-100">
@@ -278,31 +184,22 @@ export default function ContactCard({ contact, onEdit, onStatusUpdate, onDelete,
                             </div>
                         )}
 
-                        {/* Enhanced: Scan metadata if available */}
-                        {contact.source === 'business_card_scan' && (
-                            <div className="pt-3 border-t border-gray-100">
-                                <div className="flex items-center gap-2 text-xs text-gray-500">
-                                    <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full flex items-center gap-1">
-                                        📇 Business Card Scan
-                                    </span>
-                                    <span>•</span>
-                                    <span>Added {formatDate(contact.submittedAt)}</span>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Standard timestamp */}
-                        {contact.source !== 'business_card_scan' && (
-                            <div className="flex items-center gap-2 text-xs text-gray-500 pt-3 border-t border-gray-100 mt-3">
+                        {/* Metadata section */}
+                        <div className="flex items-center gap-2 text-xs text-gray-500 pt-3 border-t border-gray-100 mt-3">
+                            {contact.source === 'business_card_scan' ? (
+                                <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full flex items-center gap-1">
+                                    📇 Business Card Scan
+                                </span>
+                            ) : (
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
-                                <span>{t('contacts.added') || 'Added'} {formatDate(contact.submittedAt)}</span>
-                            </div>
-                        )}
+                            )}
+                            <span>{t('contacts.added') || 'Added'} {formatDate(contact.submittedAt)}</span>
+                        </div>
                     </div>
                     
-                    {/* Action buttons section - unchanged */}
+                    {/* Action buttons section */}
                     <div className="p-3 sm:p-4 border-t border-gray-100 bg-gray-50/50">
                          <div className="grid grid-cols-2 gap-2 mb-3">
                             {(!isFromTeamMember || contact.canEdit) && (

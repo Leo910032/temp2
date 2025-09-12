@@ -1,8 +1,10 @@
-"use client"
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
+"use client";
 
 import React, { useEffect, useState, useMemo, useCallback, createContext, useRef } from "react";
 import Image from "next/image";
-import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "@/lib/translation/useTranslation";
 import { useDebounce } from "@/LocalHooks/useDebounce";
 import { generateRandomId } from "@/lib/utilities";
@@ -10,27 +12,26 @@ import { toast } from "react-hot-toast";
 import AddBtn from "../general elements/addBtn";
 import DraggableList from "./Drag";
 
-// Create context to pass state down to child components
+// ✅ IMPORT THE NEW SERVICES AND CONTEXT
+import { useDashboard } from '@/app/dashboard/DashboardContext.js';
+import { LinksService } from '@/lib/services/client/link/serviceLinks/LinksService.js';
+
 export const ManageLinksContent = createContext(null);
 
 export default function ManageLinks() {
-    const { currentUser } = useAuth();
     const { t, isInitialized } = useTranslation();
+    const { currentUser, isLoading: isSessionLoading } = useDashboard(); // Get global session
     
-    // --- State Management ---
-    const [data, setData] = useState([]); // Live data state for the UI
+    // Page-specific state
+    const [data, setData] = useState([]);
     const [isSaving, setIsSaving] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoadingLinks, setIsLoadingLinks] = useState(true);
     
-    // --- Refs for Lifecycle Management ---
     const hasInitiallyLoaded = useRef(false);
-    const lastSavedData = useRef(null); // Track what was last saved to prevent unnecessary saves
-    const isServerUpdate = useRef(false); // Flag to distinguish server updates from user changes
-
-    // Debounce state changes
+    const lastSavedData = useRef(null);
+    const isServerUpdate = useRef(false);
     const debouncedData = useDebounce(data, 1500);
 
-    // Memoize translations for performance
     const translations = useMemo(() => {
         if (!isInitialized) return {};
         return {
@@ -43,94 +44,65 @@ export default function ManageLinks() {
         };
     }, [t, isInitialized]);
 
-    // --- User Actions ---
     const addLinkItem = useCallback(() => {
-        const newLink = { id: generateRandomId(), title: "", url: "", urlKind: "", isActive: true, type: 1 };
+        const newLink = { 
+            id: generateRandomId(), 
+            title: "", 
+            url: "", 
+            urlKind: "", 
+            isActive: true, 
+            type: 1 
+        };
         setData(prevData => [newLink, ...prevData]);
     }, []);
 
     const addHeaderItem = useCallback(() => {
-        const newHeader = { id: generateRandomId(), title: "", isActive: true, type: 0 };
+        const newHeader = { 
+            id: generateRandomId(), 
+            title: "", 
+            isActive: true, 
+            type: 0 
+        };
         setData(prevData => [newHeader, ...prevData]);
     }, []);
-    
-    // --- Server-Side Data Fetching (Replaces real-time listener) ---
+
+    // ✅ REFACTORED API CALLS to use the client-side service
     const fetchLinksFromServer = useCallback(async () => {
         if (!currentUser) return;
         
+        setIsLoadingLinks(true);
         try {
-            const token = await currentUser.getIdToken();
-            const response = await fetch('/api/user/links', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch links');
-            }
-
-            const result = await response.json();
-            const fetchedLinks = result.links || [];
-            
-            // Mark this as a server update to prevent saving loop
+            const result = await LinksService.getLinks();
             isServerUpdate.current = true;
-            setData(fetchedLinks);
-            lastSavedData.current = JSON.stringify(fetchedLinks);
-            
-            console.log('✅ Links loaded from server:', fetchedLinks.length);
-            
+            setData(result.links || []);
+            lastSavedData.current = JSON.stringify(result.links || []);
         } catch (error) {
             console.error("Error fetching links:", error);
             toast.error(translations.loadingError);
         } finally {
-            setIsLoading(false);
+            setIsLoadingLinks(false);
             hasInitiallyLoaded.current = true;
-            // Reset the server update flag after a brief delay
-            setTimeout(() => {
-                isServerUpdate.current = false;
-            }, 100);
+            setTimeout(() => { isServerUpdate.current = false; }, 100);
         }
     }, [currentUser, translations.loadingError]);
 
-    // --- API Call to Save Data ---
     const saveLinksToServer = useCallback(async (linksToSave) => {
         if (!currentUser) return;
         
-        console.log('💾 Saving links to server...', linksToSave.length);
         setIsSaving(true);
-        
         try {
-            const token = await currentUser.getIdToken();
-            const response = await fetch('/api/user/links', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ links: linksToSave })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || translations.savingError);
-            }
-
-            // Update the last saved data reference
+            await LinksService.saveLinks(linksToSave);
             lastSavedData.current = JSON.stringify(linksToSave);
             toast.success(translations.linksSaved);
-            console.log('✅ Links saved successfully');
-            
         } catch (error) {
-            console.error("❌ Error saving links:", error);
-            toast.error(error.message);
+            console.error("Error saving links:", error);
+            toast.error(error.message || translations.savingError);
         } finally {
             setIsSaving(false);
         }
     }, [currentUser, translations.linksSaved, translations.savingError]);
 
-    // ✅ MOVED: Context value memoization before any early returns
+    // Context value for child components
     const contextValue = useMemo(() => ({
         setData,
         data,
@@ -138,51 +110,26 @@ export default function ManageLinks() {
         isSaving
     }), [data, fetchLinksFromServer, isSaving]);
 
-    // --- Initial Data Fetch ---
+    // Effects
     useEffect(() => {
         if (currentUser && isInitialized) {
             fetchLinksFromServer();
-        } else if (!currentUser) {
-            setData([]);
-            setIsLoading(false);
-            hasInitiallyLoaded.current = false;
-            lastSavedData.current = null;
         }
     }, [currentUser, isInitialized, fetchLinksFromServer]);
 
-    // --- Auto-Save Effect (Fixed Logic) ---
     useEffect(() => {
-        // Guard 1: Don't save until initial data is loaded
-        if (!hasInitiallyLoaded.current) {
-            console.log('🔄 Skipping save - initial data not loaded yet');
-            return;
-        }
-
-        // Guard 2: Don't save if this update came from the server
-        if (isServerUpdate.current) {
-            console.log('🔄 Skipping save - server update detected');
-            return;
-        }
-
-        // Guard 3: Check if data actually changed from last saved state
+        if (!hasInitiallyLoaded.current || isServerUpdate.current) return;
         const currentDataString = JSON.stringify(debouncedData);
-        if (currentDataString === lastSavedData.current) {
-            console.log('🔄 Skipping save - no changes detected');
-            return;
-        }
-
-        // If we get here, it's a real user change that needs saving
-        console.log('💾 User change detected, saving to server...');
+        if (currentDataString === lastSavedData.current) return;
         saveLinksToServer(debouncedData);
-        
     }, [debouncedData, saveLinksToServer]);
 
-    // --- Render Logic ---
-    if (!isInitialized) {
+    // Combined loading state - wait for both session and links data
+    if (isSessionLoading || isLoadingLinks) {
         return (
-            <div className="h-full flex-col gap-4 py-1 flex sm:px-2 px-1">
-                <div className="h-12 bg-gray-200 rounded-3xl animate-pulse"></div>
-                <div className="h-10 w-32 bg-gray-200 rounded-3xl animate-pulse mx-auto mt-3"></div>
+            <div className="flex-1 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                <span className="ml-3 text-gray-600">Loading your links...</span>
             </div>
         );
     }
@@ -197,7 +144,7 @@ export default function ManageLinks() {
                     <span>{translations.addHeader}</span>
                 </div>
                 
-                {/* ✅ IMPROVED: Better saving indicator */}
+                {/* Improved saving indicator */}
                 {isSaving && (
                     <div className="text-center text-sm text-blue-600 animate-pulse flex items-center justify-center gap-2">
                         <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
@@ -205,21 +152,13 @@ export default function ManageLinks() {
                     </div>
                 )}
 
-                {/* Loading state */}
-                {isLoading && (
-                    <div className="text-center text-gray-500 py-10 flex items-center justify-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
-                        Loading links...
-                    </div>
-                )}
-                
                 {/* Links list */}
-                {!isLoading && hasInitiallyLoaded.current && data.length > 0 && (
+                {hasInitiallyLoaded.current && data.length > 0 && (
                     <DraggableList array={data} />
                 )}
 
                 {/* Empty state */}
-                {!isLoading && hasInitiallyLoaded.current && data.length === 0 && (
+                {hasInitiallyLoaded.current && data.length === 0 && (
                     <div className="p-6 flex-col gap-4 flex items-center justify-center opacity-30">
                         <Image src={"https://linktree.sirv.com/Images/logo-icon.svg"} alt="logo" height={100} width={100} className="opacity-50 sm:w-24 w-16" />
                         <span className="text-center sm:text-base text-sm max-w-[15rem] font-semibold">{translations.emptyStateTitle}</span>

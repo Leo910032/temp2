@@ -1,3 +1,6 @@
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
 // app/api/user/subscription/status/route.js
 import { NextResponse } from 'next/server';
 import { createApiSession } from '@/lib/server/session';

@@ -197,40 +197,54 @@ export async function POST(request) {
       }
     }
 
-    // 9. Fetch contact details from database
-    console.log(`📋 [SemanticSearch] [${searchId}] Fetching contact details...`);
-    let validContacts = [];
+  // 9. Fetch contact details from database
+console.log(`📋 [SemanticSearch] [${searchId}] Fetching contact details...`);
+let validContacts = [];
 
-    if (searchResults.matches && searchResults.matches.length > 0) {
-      const userContactsDoc = await adminDb.collection('Contacts').doc(userId).get();
+if (searchResults.matches && searchResults.matches.length > 0) {
+  const userContactsDoc = await adminDb.collection('Contacts').doc(userId).get();
 
-      if (userContactsDoc.exists) {
-        const allUserContacts = userContactsDoc.data().contacts || [];
-        const contactsMap = new Map(allUserContacts.map(contact => [contact.id, contact]));
-        
-        validContacts = searchResults.matches.map(match => {
-          const contactData = contactsMap.get(match.id);
-          if (contactData) {
-            return {
-              ...contactData,
-              id: match.id,
-              _vectorScore: match.score,
-              searchMetadata: {
-                score: match.score,
-                namespace,
-                retrievedAt: new Date().toISOString(),
-                tier: subscriptionLevel,
-                searchId
-              }
-            };
+  if (userContactsDoc.exists) {
+    const allUserContacts = userContactsDoc.data().contacts || [];
+    const contactsMap = new Map(allUserContacts.map(contact => [contact.id, contact]));
+    
+    validContacts = searchResults.matches.map(match => {
+      const contactData = contactsMap.get(match.id);
+      if (contactData) {
+        // Log dynamic fields for debugging
+        if (contactData.dynamicFields?.length > 0) {
+          console.log(`📋 [SemanticSearch] [${searchId}] Contact ${contactData.name} has ${contactData.dynamicFields.length} dynamic fields:`, 
+            contactData.dynamicFields.map(f => `${f.label}: ${f.value}`));
+        }
+
+        return {
+          ...contactData,
+          id: match.id,
+          _vectorScore: match.score,
+          searchMetadata: {
+            score: match.score,
+            namespace,
+            retrievedAt: new Date().toISOString(),
+            tier: subscriptionLevel,
+            searchId,
+            // Include dynamic field metadata from Pinecone
+            dynamicFieldsFromVector: Object.entries(match.metadata || {})
+              .filter(([key]) => !['userId', 'name', 'email', 'company', 'subscriptionTier', 'lastUpdated', 'source', 'embeddingModel'].includes(key))
+              .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {})
           }
-          return null;
-        }).filter(contact => contact !== null);
+        };
       }
-    }
+      return null;
+    }).filter(contact => contact !== null);
+  }
+}
 
-    console.log(`📋 [SemanticSearch] [${searchId}] Contacts retrieved: ${validContacts.length}`);
-
+console.log(`📋 [SemanticSearch] [${searchId}] Contacts retrieved: ${validContacts.length}`);
+// Log summary of dynamic fields found
+const contactsWithDynamicFields = validContacts.filter(c => c.dynamicFields?.length > 0);
+if (contactsWithDynamicFields.length > 0) {
+  console.log(`📋 [SemanticSearch] [${searchId}] Found ${contactsWithDynamicFields.length} contacts with dynamic fields`);
+}
     // 10. Record successful run if results were found
     if (trackCosts && validContacts.length > 0) {
       try {

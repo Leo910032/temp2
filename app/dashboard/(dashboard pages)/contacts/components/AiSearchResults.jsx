@@ -25,8 +25,13 @@ const AiSearchResultCard = React.memo(function AiSearchResultCard({
     canUseSmartIcebreakers = false, // ✅ ADD THIS PROP
     onUsageUpdate
 }) {
-    const hasAiInsights = searchTier === 'business' && contact.searchMetadata?.aiAnalysis;
+    
+// 1. Define the status variables at the top of the component
+    // 1. Define the status variables at the top of the component
     const aiAnalysis = contact.searchMetadata?.aiAnalysis;
+    const hasAiInsights = searchTier === 'business' && !!aiAnalysis;
+    const isFiltered = contact.searchMetadata?.aiAnalysisStatus === 'filtered';
+    const isPendingAI = isEnhancementEligible && !hasAiInsights && !isFiltered;
     const vectorScore = contact._vectorScore || contact.searchMetadata?.vectorSimilarity || 0;
     const rerankScore = contact.searchMetadata?.rerankScore;
     const hybridScore = contact.searchMetadata?.hybridScore;
@@ -96,7 +101,19 @@ const AiSearchResultCard = React.memo(function AiSearchResultCard({
     };
 
     // This is the key logic: is it eligible for enhancement but doesn't have the data yet?
-    const isPendingAI = isEnhancementEligible && !hasAiInsights;
+
+// TEMPORARY DEBUG - add this block
+console.log(`[DEBUG] Contact ${contact.name}:`, {
+    contactId: contact.id,
+    aiAnalysisStatus: contact.searchMetadata?.aiAnalysisStatus,
+    isFiltered,
+    isPendingAI,
+    hasAiInsights,
+    isEnhancementEligible,
+    confidence: contact.searchMetadata?.confidence,
+    confidenceThreshold: contact.searchMetadata?.confidenceThreshold
+});
+                   
 const SmartIcebreakerDebugPanel = ({ subscriptionLevel, contact, hasAiInsights }) => {
   const canUseSmartIcebreakers = ['business', 'enterprise'].includes(subscriptionLevel?.toLowerCase());
   
@@ -146,92 +163,75 @@ const SmartIcebreakerDebugPanel = ({ subscriptionLevel, contact, hasAiInsights }
     </div>
   );
 };
-    return (
-        <>
-            <div className={`bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 ${
-                isNewResult ? 'animate-slide-in-from-top border-green-300 shadow-green-100' : ''
-            } ${isPendingAI ? 'border-dashed border-purple-300' : ''}`}>
-                {isNewResult && (
-                    <div className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-t-lg text-center font-medium border-b border-green-200">
-                        ✨ New Result
+   return (
+    <>
+        <div className={`bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 ${
+            isNewResult ? 'animate-slide-in-from-top border-green-300 shadow-green-100' : ''
+        } ${isPendingAI ? 'border-dashed border-purple-300' : ''}`}>
+            {isNewResult && (
+                <div className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-t-lg text-center font-medium border-b border-green-200">
+                    ✨ New Result
+                </div>
+            )}
+            
+            <div className="p-4 cursor-pointer" onClick={onToggleExpanded}>
+                <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-1">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
+                            {index + 1}
+                        </div>
                     </div>
-                )}
-                
-                <div className="p-4 cursor-pointer" onClick={onToggleExpanded}>
-                    <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 mt-1">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
-                                {index + 1}
-                            </div>
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between">
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="font-semibold text-gray-900 text-sm truncate">{contact.name || 'No Name'}</h3>
-                                    <p className="text-xs text-gray-500 truncate">{contact.email || 'No Email'}</p>
-                                    {contact.company && <p className="text-xs text-blue-600 truncate mt-1">{contact.company}</p>}
-                                    
-                                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                        <span className={`text-xs font-medium ${getRelevanceColor(hybridScore || rerankScore || vectorScore)}`}>
-                                            {getRelevanceText(hybridScore || rerankScore || vectorScore)}
-                                        </span>
-                                        {hasAiInsights && (
-                                            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
-                                                AI Enhanced
-                                            </span>
-                                        )}
-                                        {isPendingAI && (
-                                            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                                                AI Analyzing...
-                                            </span>
-                                        )}
-                                        {hasReranking && rerankScore !== undefined && (
-                                            <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">
-                                                Reranked
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
+                    
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-gray-900 text-sm truncate">{contact.name || 'No Name'}</h3>
+                                <p className="text-xs text-gray-500 truncate">{contact.email || 'No Email'}</p>
+                                {contact.company && <p className="text-xs text-blue-600 truncate mt-1">{contact.company}</p>}
                                 
-                                <div className="ml-2">
-                                    <svg className={`w-4 h-4 text-gray-400 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                    </svg>
+                                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                    <span className={`text-xs font-medium ${getRelevanceColor(hybridScore || rerankScore || vectorScore)}`}>
+                                        {getRelevanceText(hybridScore || rerankScore || vectorScore)}
+                                    </span>
+                                    {hasAiInsights && (
+                                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                                            AI Enhanced
+                                        </span>
+                                    )}
+                                    {/* FIXED: Only show "AI Analyzing..." if not filtered */}
+{isPendingAI && !isFiltered && (
+                                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                                            AI Analyzing...
+                                        </span>
+                                    )}
+                                    {/* ADDED: Show filtered status badge */}
+{isFiltered && (
+                                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">
+                                            Low Confidence
+                                        </span>
+                                    )}
+                                    {hasReranking && rerankScore !== undefined && (
+                                        <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">
+                                            Reranked
+                                        </span>
+                                    )}
                                 </div>
                             </div>
-
-                            {hasAiInsights && !isExpanded && (
-                                <div className="mt-2 p-2 bg-purple-50 rounded text-xs">
-                                    <div className="flex items-center gap-1 mb-1">
-                                        <span className="text-lg">💡</span>
-                                        <span className="font-medium text-purple-700">AI Insight:</span>
-                                        <span className="ml-auto text-purple-600 font-medium">
-                                            Confidence: {aiAnalysis.confidenceScore}/10
-                                        </span>
-                                    </div>
-                                    <p className="text-purple-600 line-clamp-2">
-                                        {aiAnalysis.matchExplanation}
-                                    </p>
-                                </div>
-                            )}
-                            {/* Show the pending loader if applicable */}
-                            {isPendingAI && !isExpanded && (
-                                <div className="mt-2 p-2 bg-gray-50 rounded text-xs animate-pulse">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
-                                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-400"></div>
-                                        </div>
-                                        <div className="flex-1 space-y-1.5">
-                                            <div className="h-2 bg-gray-200 rounded w-3/4"></div>
-                                            <div className="h-2 bg-gray-200 rounded w-1/2"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+                            
+                            <div className="ml-2">
+                                <svg className={`w-4 h-4 text-gray-400 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
                         </div>
+
+                      {/* FIRST: Check for filtered status (highest priority) */}
+
+                        {/* This entire block controls the preview shown when the card is COLLAPSED */}
+                   
                     </div>
                 </div>
+            </div>
 
                 {/* Expanded Content */}
                 {isExpanded && (
@@ -289,7 +289,8 @@ const SmartIcebreakerDebugPanel = ({ subscriptionLevel, contact, hasAiInsights }
                                     </div>
 
                                     {/* Hybrid Score (if available) */}
-                                    {hybridScore !== undefined && hybridScore !== rerankScore && hybridScore !== vectorScore && (
+                                                                    {/* Hybrid Score (if available and is a valid number) */}
+                                    {typeof hybridScore === 'number' && !isNaN(hybridScore) && (
                                         <div className="flex items-center gap-2">
                                             <span className="text-xs text-gray-600">Final:</span>
                                             <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${

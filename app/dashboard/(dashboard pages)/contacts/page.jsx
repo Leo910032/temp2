@@ -269,6 +269,30 @@ export default function ContactsPage() {
         }
     };
 
+// Add this function to your ContactsPage component
+const testDynamicFieldsSearch = async () => {
+  console.log('🧪 Testing dynamic fields search...');
+  
+  // Search for a dynamic field value from your example
+  const testQuery = "Company Tagline";
+  console.log(`🧪 Searching for: "${testQuery}"`);
+  
+  try {
+    const results = await handleEnhancedSearch(testQuery, true);
+    console.log(`🧪 Search results:`, results);
+    
+    // Check if any results have dynamic fields
+    const resultsWithDynamic = results.filter(r => r.dynamicFields?.length > 0);
+    console.log(`🧪 Results with dynamic fields: ${resultsWithDynamic.length}`);
+    
+    resultsWithDynamic.forEach(result => {
+      console.log(`🧪 ${result.name} dynamic fields:`, result.dynamicFields);
+    });
+  } catch (error) {
+    console.error('🧪 Test failed:', error);
+  }
+};
+
 
     // NEW: Handle job selection from history
     const handleJobSelection = useCallback((jobData) => {
@@ -316,25 +340,82 @@ export default function ContactsPage() {
                     : '';
                 console.log(`⏳ Processing: ${progressData.contactName}${similarityInfo}`);
                 break;
-                
-            case 'filtered':
-                const filterInfo = progressData.similarityTier 
-                    ? ` (${progressData.similarityTier} similarity, ${progressData.reason})`
-                    : ` (${progressData.reason})`;
-                console.log(`⚠️ Filtered: ${progressData.contactName}${filterInfo}`);
-                break;
-                
-            case 'complete':
-                console.log('🎉 Enhanced AI analysis complete:', progressData.stats);
-                if (progressData.stats?.similarityBreakdown) {
-                    console.log('📊 Final similarity breakdown:', progressData.stats.similarityBreakdown);
-                }
-                setSearchStage('complete');
-                setIsStreamingActive(false);
-                setIsAiSearching(false);
-                setShowSearchProgress(false);
-                setStreamingProgress(null);
-                break;
+ // In app/dashboard/(dashboard pages)/contacts/ContactsPage.jsx
+// Inside the handleEnhancedStreamingProgress function
+
+   case 'filtered':
+    const filterReason = progressData.reason || 'Low confidence';
+    console.log(`[CLIENT] Received 'filtered' event for: ${progressData.contactName} (ID: ${progressData.contactId}) - Reason: ${filterReason}`);
+    
+    setAiSearchResults(prevResults => {
+        // Defensive check: If there are no previous results, do nothing.
+        if (!prevResults || prevResults.length === 0) {
+            console.error('[CLIENT-DEBUG] CRITICAL: "filtered" event received but prevResults is empty. This should not happen.');
+            return prevResults;
+        }
+
+        const contactIdToFind = progressData.contactId;
+
+        // Enhanced logging to find the mismatch
+        const availableIds = prevResults.map(r => r.id);
+        const contactIndex = prevResults.findIndex(r => r.id === contactIdToFind);
+
+        if (contactIndex === -1) {
+            console.error(`[CLIENT-DEBUG] FAILED LOOKUP: Contact ID "${contactIdToFind}" not found.`);
+            console.log('[CLIENT-DEBUG] Available IDs in state:', availableIds);
+            // Return previous state to avoid crashing
+            return prevResults;
+        }
+
+        console.log(`[CLIENT-DEBUG] SUCCESS: Found contact ${progressData.contactName} at index ${contactIndex}. Updating status.`);
+
+        // Create a new array with the updated contact (immutable update)
+        const newResults = [...prevResults];
+        const originalContact = newResults[contactIndex];
+
+        newResults[contactIndex] = {
+            ...originalContact,
+            searchMetadata: {
+                ...originalContact.searchMetadata,
+                aiAnalysisStatus: 'filtered', // This is the key state change
+                filterReason: filterReason,
+                confidence: progressData.confidence,
+                confidenceThreshold: progressData.threshold,
+            },
+        };
+        
+        console.log(`[CLIENT] Successfully updated state for ${progressData.contactName} to "filtered".`);
+        return newResults;
+    });
+    break;
+    
+    case 'complete':
+    console.log('🎉 Enhanced AI analysis complete:', progressData.stats);
+    if (progressData.stats?.similarityBreakdown) {
+        console.log('📊 Final similarity breakdown:', progressData.stats.similarityBreakdown);
+    }
+    
+    // NEW: Handle completion messaging based on results
+    const { successfulRuns = 0, filteredContacts = 0 } = progressData.stats || {};
+    
+    if (successfulRuns === 0 && filteredContacts > 0) {
+        toast.info(
+            `AI analysis complete. All ${filteredContacts} contact(s) had low confidence scores and were not analyzed in detail.`,
+            { duration: 6000 }
+        );
+    } else if (filteredContacts > 0) {
+        toast.success(
+            `AI analysis complete! ${successfulRuns} detailed analysis, ${filteredContacts} filtered for low confidence.`,
+            { duration: 5000 }
+        );
+    }
+    
+    setSearchStage('complete');
+    setIsStreamingActive(false);
+    setIsAiSearching(false);        // ← This is the key fix
+    setShowSearchProgress(false);
+    setStreamingProgress(null);
+    break;
         }
     };
 
@@ -755,7 +836,9 @@ export default function ContactsPage() {
                             )}
                         </div>
                     </div>
-
+<button onClick={testDynamicFieldsSearch} className="px-4 py-2 bg-red-500 text-white rounded">
+  Test Dynamic Fields
+</button>
                     {/* Main Search Input */}
                     <div className="relative">
                         <input

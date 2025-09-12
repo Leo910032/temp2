@@ -13,16 +13,23 @@ const COHERE_RERANK_PRICING = {
   'rerank-english-v3.0': 1.00 / 1000,      // $1.00 per 1,000 documents
 };
 
-/**
- * Build document text for reranking
- */
 function buildRerankDocument(contact, subscriptionLevel) {
+  // ✅ Initialize the document variable at the very beginning.
   let document = `[Contact Name]: ${contact.name || 'Unknown'}\n`;
   document += `[Email]: ${contact.email || 'No email'}\n`;
   document += `[Company]: ${contact.company || 'No company'}\n`;
   
   if (contact.jobTitle) {
     document += `[Job Title]: ${contact.jobTitle}\n`;
+  }
+  
+  // Include dynamic fields for all subscription levels since they're important for matching
+  if (contact.dynamicFields && Array.isArray(contact.dynamicFields)) {
+    contact.dynamicFields.forEach(field => {
+      if (field.value && field.label) {
+        document += `[${field.label}]: ${field.value}\n`;
+      }
+    });
   }
   
   // Include more details for higher subscription tiers
@@ -36,20 +43,17 @@ function buildRerankDocument(contact, subscriptionLevel) {
       document += `[Message]: ${contact.message}\n`;
     }
     
-    if (contact.location?.address) {
-      document += `[Location]: ${contact.location.address}\n`;
+    if (contact.website) {
+      document += `[Website]: ${contact.website}\n`;
     }
     
-    if (contact.details && Array.isArray(contact.details)) {
-      contact.details.forEach(detail => {
-        document += `[${detail.label}]: ${detail.value}\n`;
-      });
+    if (contact.location?.address) {
+      document += `[Location]: ${contact.location.address}\n`;
     }
   }
   
   return document.trim();
 }
-
 /**
  * Detect query language for multilingual support
  */

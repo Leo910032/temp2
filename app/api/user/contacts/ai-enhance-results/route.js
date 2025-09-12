@@ -52,6 +52,10 @@ function getLanguageInstruction(languageCode = 'en') {
  * Generate enhanced prompt with strategic questions instead of generic suggestions
  */
 function generateSimilarityAwarePrompt(query, contact, queryLanguage = 'en') {
+    if (contact.dynamicFields && contact.dynamicFields.length > 0) {
+    console.log(`🤖 [AIEnhance] Contact ${contact.name} has ${contact.dynamicFields.length} dynamic fields:`, 
+      contact.dynamicFields.map(f => `${f.label}: ${f.value}`));
+  }
   const vectorScore = contact.vectorScore || contact._vectorScore || 0;
   const rerankScore = contact.rerankScore;
   const similarityTier = contact.similarityTier || 'unknown';
@@ -98,8 +102,13 @@ CONTACT INFORMATION:
 - Email: ${contact.email || 'Not provided'}
 - Company: ${contact.company || 'Not provided'}
 - Job Title: ${contact.jobTitle || 'Not provided'}
+- Phone: ${contact.phone || 'Not provided'}
+- Website: ${contact.website || 'Not provided'}
 - Notes: ${contact.notes || 'No notes available'}
 - Message: ${contact.message || 'No message'}
+${contact.dynamicFields && contact.dynamicFields.length > 0 ? 
+  contact.dynamicFields.map(field => `- ${field.label}: ${field.value || 'Not provided'}`).join('\n') + '\n' : 
+  ''}
 - Vector Similarity: ${similarityExplanation}
 - Similarity Tier: ${similarityTier.toUpperCase()}
 ${rerankScore !== undefined ? `- Rerank Score: ${(rerankScore * 100).toFixed(1)}%` : ''}
@@ -367,15 +376,7 @@ async function handleEnhancedStreamingModeWithSeparatedTracking(model, originalQ
         let processedCount = 0;
 
         try {
-          // Send initial message
-          controller.enqueue(new TextEncoder().encode(JSON.stringify({
-            type: 'start',
-            total: contacts.length,
-            query: originalQuery,
-            processingStrategy,
-            vectorOptimized,
-            feature: 'strategic_questions'
-          }) + '\n'));
+
 
           // Sort contacts by vector similarity if optimized
           const contactsToProcess = vectorOptimized 
@@ -541,18 +542,24 @@ async function handleEnhancedStreamingModeWithSeparatedTracking(model, originalQ
                 console.log(`🚫 [AIEnhance] [${enhanceId}] Contact filtered (paid but not counted): ${contact.name} - confidence ${analysis.confidence}/${confidenceThreshold}`);
                 
                 // Send filtered result
-                controller.enqueue(new TextEncoder().encode(JSON.stringify({
-                  type: 'filtered',
-                  contactIndex: i,
-                  contactId: contact.id,
-                  contactName: contact.name,
-                  reason: `Low confidence (${analysis.confidence}/${confidenceThreshold} required for ${contact.similarityTier || 'unknown'} similarity)`,
-                  confidence: analysis.confidence,
-                  processed: processedCount,
-                  total: contactsToProcess.length,
-                  similarityTier: contact.similarityTier,
-                  vectorScore: contact.vectorScore || contact._vectorScore
-                }) + '\n'));
+              // Send filtered result
+   // Send filtered result
+controller.enqueue(new TextEncoder().encode(JSON.stringify({
+    type: 'filtered',
+    contactIndex: i,
+    // ==========================================================
+    // ✅ THE FIX IS HERE: Add the contactId to the payload
+    // ==========================================================
+    contactId: contact.id, 
+    contactName: contact.name,
+    reason: `Low confidence (${analysis.confidence}/${confidenceThreshold} required for ${contact.similarityTier || 'unknown'} similarity)`,
+    confidence: analysis.confidence,
+    threshold: confidenceThreshold, 
+    processed: processedCount,
+    total: contactsToProcess.length,
+    similarityTier: contact.similarityTier,
+    vectorScore: contact.vectorScore || contact._vectorScore
+}) + '\n'));
               }
 
               // Small delay to prevent overwhelming the client

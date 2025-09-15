@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { adminAuth } from '@/lib/firebaseAdmin'; 
 import { BusinessCardService } from '@/lib/services/serviceContact/server/businessCardService';
 import { CostTrackingService } from '@/lib/services/serviceContact/server/costTrackingService';
-import { AI_COST_ESTIMATES } from '@/lib/services/serviceContact/client/services/constants/contactConstants';
+import { AI_COST_ESTIMATES } from '@/lib/services/serviceContact/client/constants/contactConstants';
 
 /**
  * POST /api/user/contacts/scan - Scan business card with cost tracking

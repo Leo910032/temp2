@@ -1,4 +1,6 @@
-// app/[userId]/page.jsx - Updated with scan token generation
+// app/[userId]/page.jsx (This is a Server Component)
+
+// ✅ SAFE IMPORTS
 import { fetchProfileByUsername } from "@/lib/server/fetchProfileData";
 import { ScanTokenService } from "@/lib/services/serviceContact/server/scanTokenService";
 import House from "./House";

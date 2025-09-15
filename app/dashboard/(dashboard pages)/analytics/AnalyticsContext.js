@@ -1,3 +1,6 @@
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
 // app/dashboard/(dashboard pages)/analytics/AnalyticsContext.js
 "use client";
 

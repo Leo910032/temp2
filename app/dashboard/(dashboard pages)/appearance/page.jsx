@@ -1,16 +1,18 @@
-//app/dashboard/(dashboard pages)/appearance/page
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
+// app/dashboard/(dashboard pages)/appearance/page.jsx
 "use client"
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useDashboard } from '@/app/dashboard/DashboardContext';
 import { useDebounce } from '@/LocalHooks/useDebounce';
 import { useTranslation } from "@/lib/translation/useTranslation";
 import { toast } from 'react-hot-toast';
-import { updateAppearanceData, getAppearanceData } from '@/lib/services/appearanceService';
+import { AppearanceService } from '@/lib/services/serviceAppearance/client/appearanceService.js';
+import { APPEARANCE_FEATURES } from '@/lib/services/constants';
 
-// ✅ FIXED: Import context from separate file
+// Import context and components
 import { AppearanceContext } from './AppearanceContext';
-
-// Import all the child components for this page
 import ProfileCard from './components/ProfileCard';
 import Themes from './components/Themes';
 import Backgrounds from './components/Backgrounds';
@@ -18,23 +20,32 @@ import Buttons from './components/Buttons';
 import FontsOptions from './components/FontsOptions';
 import ChristmasAccessories from './components/ChristmasAccessories';
 
-// ✅ GLOBAL STATE: Store appearance data AND last saved hash outside component
+// Global state for caching
 let globalAppearanceCache = null;
 let globalDataFetched = false;
-let globalLastSavedHash = null; // ✅ FIXED: Store hash globally so it persists across navigations
+let globalLastSavedHash = null;
 
-function AppearancePage() {
-    const { currentUser } = useAuth();
+export default function AppearancePage() {
+    // 1. GET GLOBAL DATA (permissions, session state)
+    const { permissions, isLoading: isSessionLoading, currentUser } = useDashboard();
     const { t, isInitialized } = useTranslation();
-    
+
+    // 2. MANAGE PAGE-SPECIFIC STATE
     const [appearance, setAppearance] = useState(globalAppearanceCache);
     const [isSaving, setIsSaving] = useState(false);
-    const [isLoading, setIsLoading] = useState(!globalDataFetched);
+    const [isLoadingAppearance, setIsLoadingAppearance] = useState(!globalDataFetched);
     const [hasLoadError, setHasLoadError] = useState(false);
-    const debouncedAppearance = useDebounce(appearance, 2000);
+    
+    const debouncedAppearance = useDebounce(appearance, 100);
     const isInitialLoad = useRef(!globalDataFetched);
-    const componentId = useRef(Math.random().toString(36).substring(7)); // Unique ID for debugging
+    const componentId = useRef(Math.random().toString(36).substring(7));
 
+    const canUseCustomButtons = permissions[APPEARANCE_FEATURES.CUSTOM_BUTTONS];
+    const canUseCustomFonts = permissions[APPEARANCE_FEATURES.CUSTOM_FONTS];
+    const canUseCustomBackground = permissions[APPEARANCE_FEATURES.CUSTOM_BACKGROUND];
+
+
+    // Pre-compute translations
     const translations = useMemo(() => {
         if (!isInitialized) return {};
         return {
@@ -54,7 +65,7 @@ function AppearancePage() {
         };
     }, [t, isInitialized]);
 
-    // ✅ HELPER: Create deterministic hash from appearance data
+    // HELPER: Hash function for change detection
     const createAppearanceHash = useCallback((data) => {
         if (!data) return null;
         
@@ -84,7 +95,7 @@ function AppearancePage() {
         return JSON.stringify(sortedData);
     }, []);
 
-    // ✅ PERSISTENT DATA FETCH: Only fetch once and cache globally
+    // 3. FETCH PAGE-SPECIFIC DATA (using the service)
     const fetchAppearanceData = useCallback(async (forceRefresh = false) => {
         if (!currentUser) return;
         
@@ -92,21 +103,22 @@ function AppearancePage() {
         if (globalAppearanceCache && !forceRefresh) {
             console.log(`📋 [${componentId.current}] Using cached appearance data`);
             setAppearance(globalAppearanceCache);
-            setIsLoading(false);
+            setIsLoadingAppearance(false);
             return;
         }
         
-        setIsLoading(true);
+        setIsLoadingAppearance(true);
         setHasLoadError(false);
         
         try {
             console.log(`📥 [${componentId.current}] Fetching fresh appearance data from server...`);
-            const data = await getAppearanceData();
             
-            // ✅ CACHE GLOBALLY: Store data and hash globally
+            const data = await AppearanceService.getAppearanceData();
+            
+            // Cache globally
             globalAppearanceCache = data;
             globalDataFetched = true;
-            globalLastSavedHash = createAppearanceHash(data); // ✅ Store hash globally
+            globalLastSavedHash = createAppearanceHash(data);
             
             setAppearance(data);
             
@@ -115,73 +127,68 @@ function AppearancePage() {
         } catch (error) {
             console.error(`❌ [${componentId.current}] Failed to fetch appearance data:`, error);
             setHasLoadError(true);
+            toast.error(error.message || translations.loadingError);
         } finally {
-            setIsLoading(false);
+            setIsLoadingAppearance(false);
         }
-    }, [currentUser, createAppearanceHash]);
+    }, [currentUser, createAppearanceHash, translations.loadingError]);
 
-    // ✅ LOAD DATA: Only on first mount or when user changes
+    // Initial data fetch
     useEffect(() => {
-        if (currentUser && isInitialized) {
+        if (currentUser && isInitialized && !isSessionLoading) {
             if (!globalAppearanceCache) {
                 console.log(`🚀 [${componentId.current}] Component mounted, fetching data...`);
                 fetchAppearanceData();
             } else {
                 console.log(`⚡ [${componentId.current}] Component mounted, using cached data`);
                 setAppearance(globalAppearanceCache);
-                setIsLoading(false);
+                setIsLoadingAppearance(false);
             }
         }
         
         // Reset cache when user changes
-        if (!currentUser) {
+        if (!currentUser && !isSessionLoading) {
             console.log(`👋 [${componentId.current}] User logged out, clearing cache`);
             globalAppearanceCache = null;
             globalDataFetched = false;
-            globalLastSavedHash = null; // ✅ Clear hash too
+            globalLastSavedHash = null;
             setAppearance(null);
-            setIsLoading(false);
+            setIsLoadingAppearance(false);
             isInitialLoad.current = true;
         }
-    }, [currentUser, isInitialized, fetchAppearanceData]);
+    }, [currentUser, isInitialized, isSessionLoading, fetchAppearanceData]);
 
-    // ✅ IMPROVED SAVE LOGIC: Use global hash for change detection
+    // 4. SAVE LOGIC (using the service)
     const saveAppearance = useCallback(async (dataToSave) => {
-        if (!currentUser || !dataToSave || isSaving) return;
-        
+        if (!dataToSave || isSaving) return;
+
         const currentDataHash = createAppearanceHash(dataToSave);
-        
-        // ✅ FIXED: Compare with global hash that persists across navigations
         if (currentDataHash === globalLastSavedHash) {
             console.log(`🔄 [${componentId.current}] No changes detected, skipping save`);
             return;
         }
-        
-        const { 
-            links, socials, createdAt, email, uid, username, lastLogin, 
-            emailVerified, onboardingCompleted, isTestUser, testUserIndex,
-            sensitiveStatus, sensitivetype, supportBannerStatus, supportBanner,
-            metaData, socialPosition,
-            ...appearanceData 
-        } = dataToSave;
-        
-        // Remove undefined keys
-        const cleanedData = {};
-        Object.keys(appearanceData).forEach(key => {
-            if (key !== 'undefined' && appearanceData[key] !== undefined) {
-                cleanedData[key] = appearanceData[key];
-            }
-        });
-        
+
         setIsSaving(true);
-        console.log(`💾 [${componentId.current}] Saving appearance data...`, Object.keys(cleanedData));
+        console.log(`💾 [${componentId.current}] Saving appearance data...`);
         
         try {
-            const result = await updateAppearanceData(cleanedData);
+            // Only send the fields that have actually changed
+            const initialData = JSON.parse(globalLastSavedHash || '{}');
+            const changedData = {};
+            for (const key in dataToSave) {
+                if (JSON.stringify(dataToSave[key]) !== JSON.stringify(initialData[key])) {
+                    changedData[key] = dataToSave[key];
+                }
+            }
             
-            // ✅ UPDATE GLOBAL CACHE AND HASH: Keep them in sync
-            globalAppearanceCache = { ...globalAppearanceCache, ...cleanedData };
-            globalLastSavedHash = currentDataHash; // ✅ Update global hash
+            if (Object.keys(changedData).length === 0) {
+                setIsSaving(false);
+                return; // No real changes found
+            }
+
+            await AppearanceService.updateAppearanceData(changedData);
+            globalLastSavedHash = currentDataHash; // Update hash after successful save
+            globalAppearanceCache = dataToSave; // Update cache
             
             toast.success(translations.saved, { 
                 duration: 2000,
@@ -189,7 +196,7 @@ function AppearancePage() {
                 position: 'bottom-right'
             });
             
-            console.log(`✅ [${componentId.current}] Appearance saved:`, Object.keys(cleanedData));
+            console.log(`✅ [${componentId.current}] Appearance saved:`, Object.keys(changedData));
             
         } catch (error) {
             console.error(`❌ [${componentId.current}] Save error:`, error);
@@ -197,14 +204,12 @@ function AppearancePage() {
         } finally {
             setIsSaving(false);
         }
-    }, [currentUser, translations.saved, translations.error, createAppearanceHash]);
+    }, [isSaving, createAppearanceHash, translations.saved, translations.error]);
 
-    // ✅ FIXED: Handle debounced saves with better initial load detection
+    // Debounced auto-save effect
     useEffect(() => {
-        // Skip if no data or still in initial load phase
         if (debouncedAppearance === null) return;
         
-        // Skip initial load - wait until cache is established
         if (isInitialLoad.current) {
             if (appearance !== null && globalLastSavedHash !== null) {
                 isInitialLoad.current = false;
@@ -217,7 +222,7 @@ function AppearancePage() {
         saveAppearance(debouncedAppearance);
     }, [debouncedAppearance, saveAppearance, appearance]);
 
-    // ✅ UPDATE FUNCTION: Update both local state and cache
+    // Function to be passed in context for child components to update state
     const updateAppearance = useCallback((fieldOrData, value) => {
         setAppearance(prev => {
             if (!prev) return prev;
@@ -227,7 +232,6 @@ function AppearancePage() {
                 newAppearance = { ...prev, ...fieldOrData };
                 console.log(`🔄 [${componentId.current}] Appearance bulk update:`, Object.keys(fieldOrData));
             } else {
-                // Skip undefined fields
                 if (fieldOrData === 'undefined' || fieldOrData === undefined) {
                     console.warn(`⚠️ [${componentId.current}] Attempted to update undefined field, skipping`);
                     return prev;
@@ -236,22 +240,61 @@ function AppearancePage() {
                 console.log(`🔄 [${componentId.current}] Appearance field updated:`, fieldOrData, '→', value);
             }
             
-            // ✅ UPDATE CACHE: Keep global cache in sync
+            // Update cache
             globalAppearanceCache = newAppearance;
             
             return newAppearance;
         });
     }, []);
+ // ✅ STEP 1: CREATE THE NEW FILE UPLOAD HANDLER HERE
+    const handleFileUpload = useCallback(async (file, uploadType) => {
+        // This function will be called by child components like BackgroundCard
+        console.log(`[AppearancePage] Handling upload for type: ${uploadType}`);
+        
+        try {
+            // Call the service to perform the upload
+            const result = await AppearanceService.uploadFile(file, uploadType);
 
+            // On success, update the global state with the new URL
+            const updateKey = uploadType === 'backgroundImage' ? 'backgroundImage' : 'backgroundVideo';
+            updateAppearance({
+                [updateKey]: result.downloadURL,
+                backgroundType: uploadType === 'backgroundImage' ? 'Image' : 'Video'
+            });
+
+            toast.success('Background updated successfully!');
+            return { success: true }; // Return success to the child component
+        } catch (error) {
+            console.error(`[AppearancePage] Upload error for ${uploadType}:`, error);
+            toast.error(error.message || 'Upload failed.');
+            return { success: false, error }; // Return failure
+        }
+    }, [updateAppearance]); // Dependency on updateAppearance
+
+    // 5. PROVIDE CONTEXT to child components
     const contextValue = useMemo(() => ({
         appearance,
         updateAppearance,
         isSaving,
-        isLoading,
+        handleFileUpload,
+        isLoading: isLoadingAppearance,
         hasLoadError,
         refreshData: () => fetchAppearanceData(true),
-        isDataLoaded: !!appearance && !isLoading
-    }), [appearance, updateAppearance, isSaving, isLoading, hasLoadError, fetchAppearanceData]);
+        isDataLoaded: !!appearance && !isLoadingAppearance,
+        permissions // Provide permissions to child components
+    }), [appearance, updateAppearance, isSaving, isLoadingAppearance, hasLoadError, fetchAppearanceData, permissions,handleFileUpload]);
+
+    // --- RENDER LOGIC ---
+    if (isSessionLoading) {
+        return (
+            <div className="flex-1 py-2 flex flex-col max-h-full overflow-y-auto">
+                <div className="p-6 text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <div className="text-gray-500">Loading session...</div>
+                </div>
+            </div>
+        );
+    }
 
     if (!isInitialized) {
         return (
@@ -263,7 +306,7 @@ function AppearancePage() {
         );
     }
 
-    if (isLoading && !appearance) {
+    if (isLoadingAppearance && !appearance) {
         return (
             <div className="flex-1 py-2 flex flex-col max-h-full overflow-y-auto">
                 <div className="p-6 text-center">
@@ -284,6 +327,23 @@ function AppearancePage() {
                         className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                     >
                         Try Again
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // Permission check
+    if (!permissions[APPEARANCE_FEATURES.CAN_UPDATE_APPEARANCE]) {
+        return (
+            <div className="flex-1 py-2 flex flex-col max-h-full overflow-y-auto items-center justify-center">
+                <div className="p-6 text-center bg-white rounded-lg shadow-md">
+                    <div className="text-xl font-semibold text-amber-600 mb-4">
+                        Appearance Customization
+                    </div>
+                    <p className="text-gray-600 mb-6">This feature is not included in your current plan.</p>
+                    <button className="px-6 py-3 bg-amber-500 text-white font-bold rounded-lg hover:bg-amber-600 transition-colors">
+                        Upgrade Your Plan
                     </button>
                 </div>
             </div>
@@ -316,7 +376,7 @@ function AppearancePage() {
                 </div>
                 <div className="py-4">
                     <h2 className="text-lg font-semibold my-4">{translations.backgrounds}</h2>
-                    <Backgrounds />
+                    {canUseCustomBackground ? <Backgrounds /> : <UpgradePrompt feature="Custom Backgrounds" requiredTier="Premium" />}
                 </div>
                 <div className="py-4">
                     <h2 className="text-lg font-semibold my-4">
@@ -327,18 +387,15 @@ function AppearancePage() {
                     </h2>
                     <ChristmasAccessories />
                 </div>
-                <div className="py-4">
+              <div className="py-4">
                     <h2 className="text-lg font-semibold my-4">{translations.buttons}</h2>
-                    <Buttons />
+                    {canUseCustomButtons ? <Buttons /> : <UpgradePrompt feature="Custom Buttons" requiredTier="Pro" />}
                 </div>
-                <div className="py-4">
+              <div className="py-4">
                     <h2 className="text-lg font-semibold my-4">{translations.fonts}</h2>
-                    <FontsOptions />
+                    {canUseCustomFonts ? <FontsOptions /> : <UpgradePrompt feature="Custom Fonts" requiredTier="Pro" />}
                 </div>
             </div>
         </AppearanceContext.Provider>
     );
 }
-
-// ✅ FIXED: Only export the default component function
-export default AppearancePage;

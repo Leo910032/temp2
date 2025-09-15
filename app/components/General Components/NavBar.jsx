@@ -4,7 +4,7 @@
 "use client";
 import { useTranslation } from "@/lib/translation/useTranslation";
 import { isAdmin } from "@/lib/adminAuth";
-import { getAppearanceData } from "@/lib/services/appearanceService";
+import { getAppearanceData } from "@/lib/services/serviceAppearance/client/appearanceService.js";
 import { useDashboard } from '../../dashboard/DashboardContext'; // The ONLY context hook we need
 import Image from "next/image";
 import Link from "next/link";

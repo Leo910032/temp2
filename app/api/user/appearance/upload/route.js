@@ -1,33 +1,30 @@
-// app/api/appearance/upload/route.js - FIXED VERSION
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
+// app/api/user/appearance/upload/route.js - REFACTORED to use AppearanceService
 import { NextResponse } from 'next/server';
-import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
-
-
-
-
-
-
+import { createApiSession } from '@/lib/server/session';
+import { AppearanceService } from '@/lib/services/serviceAppearance/server/appearanceService.js';
+import { APPEARANCE_FEATURES } from '@/lib/services/constants'; // <-- Import constants
 /**
  * Handle file uploads for profile images, background images, videos, and CV documents
  * POST /api/user/appearance/upload
  */
 export async function POST(request) {
     try {
-        // 1. Verify authentication
-        const authHeader = request.headers.get('authorization');
-        if (!authHeader?.startsWith('Bearer ')) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        // Step A: Create session first (security gate)
+        const session = await createApiSession(request);
+    // ✅ ADD an explicit permission check at the API boundary.
+        // Even though the service also checks, this is best practice.
+        if (!session.permissions[APPEARANCE_FEATURES.CAN_UPLOAD_FILES]) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
-
-        const token = authHeader.split('Bearer ')[1];
-        const decodedToken = await adminAuth.verifyIdToken(token);
-        const userId = decodedToken.uid;
-
-        // 2. Parse form data
+        // Step B: Parse FormData
         const formData = await request.formData();
         const file = formData.get('file');
-        const uploadType = formData.get('uploadType'); // 'profile', 'backgroundImage', 'backgroundVideo', 'cv'
+        const uploadType = formData.get('uploadType');
 
+        // Basic validation
         if (!file) {
             return NextResponse.json({ error: 'No file provided' }, { status: 400 });
         }
@@ -36,113 +33,32 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Invalid upload type' }, { status: 400 });
         }
 
-        // 3. Validate file
-        const validationResult = validateFile(file, uploadType);
-        if (!validationResult.valid) {
-            return NextResponse.json({ error: validationResult.error }, { status: 400 });
-        }
-
-        // 4. Generate unique filename
-        const fileExtension = file.name.substring(file.name.lastIndexOf('.') + 1);
-        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExtension}`;
-        
-        // 5. Determine storage path
-        let storagePath;
-        switch (uploadType) {
-            case 'profile':
-                storagePath = `profilePhoto/${userId}/${fileName}`;
-                break;
-            case 'backgroundImage':
-                storagePath = `backgroundImage/${userId}/${fileName}`;
-                break;
-            case 'backgroundVideo':
-                storagePath = `backgroundVideo/${userId}/${fileName}`;
-                break;
-            case 'cv':
-                storagePath = `cvDocuments/${userId}/${fileName}`;
-                break;
-        }
-
-        // 6. Upload to Firebase Storage
-        const { initializeApp: initClientApp, getApps: getClientApps } = await import('firebase/app');
-        const { getStorage: getClientStorage, ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
-        
-        let clientApp;
-        if (getClientApps().length === 0) {
-            clientApp = initClientApp({
-                apiKey: process.env.NEXT_PUBLIC_apiKey,
-                authDomain: process.env.NEXT_PUBLIC_authDomain,
-                projectId: process.env.FIREBASE_PROJECT_ID,
-                storageBucket: process.env.NEXT_PUBLIC_storageBucket,
-                messagingSenderId: process.env.NEXT_PUBLIC_messagingSenderId,
-                appId: process.env.NEXT_PUBLIC_appId,
-            });
-        } else {
-            clientApp = getClientApps()[0];
-        }
-
-        const storage = getClientStorage(clientApp);
-        const storageRef = ref(storage, storagePath);
-        
-        // Convert file to buffer
-        const fileBuffer = await file.arrayBuffer();
-        const uint8Array = new Uint8Array(fileBuffer);
-
-        // Upload file
-        const snapshot = await uploadBytes(storageRef, uint8Array, {
-            contentType: file.type,
-        });
-
-        // Get download URL
-        const downloadURL = await getDownloadURL(snapshot.ref);
-
-        // 7. Update user document with new file URL
-        const docRef = adminDb.collection('AccountData').doc(userId);
-        let updateData = {};
-
-        switch (uploadType) {
-            case 'profile':
-                updateData.profilePhoto = downloadURL;
-                break;
-            case 'backgroundImage':
-                updateData.backgroundImage = downloadURL;
-                updateData.backgroundType = 'Image';
-                break;
-            case 'backgroundVideo':
-                updateData.backgroundVideo = downloadURL;
-                updateData.backgroundType = 'Video';
-                break;
-            case 'cv':
-                updateData.cvDocument = {
-                    url: downloadURL,
-                    fileName: file.name, // Store original filename
-                    uploadDate: new Date().toISOString(),
-                    fileSize: file.size,
-                    fileType: file.type
-                };
-                break;
-        }
-
-        await docRef.update(updateData);
-
-        return NextResponse.json({
-            success: true,
-            downloadURL,
-            fileName: uploadType === 'cv' ? file.name : fileName,
+        // Step C: Delegate all work to the service
+        const result = await AppearanceService.uploadFile({
+            file,
             uploadType,
-            fileInfo: uploadType === 'cv' ? {
-                originalName: file.name,
-                size: file.size,
-                type: file.type
-            } : null,
-            message: 'File uploaded successfully'
+            session
         });
+
+        // Step D: Return response
+        return NextResponse.json(result);
 
     } catch (error) {
-        console.error('File upload error:', error);
+        console.error('POST /api/user/appearance/upload error:', error);
         
-        if (error.code === 'auth/id-token-expired') {
-            return NextResponse.json({ error: 'Token expired' }, { status: 401 });
+        // Handle specific error types
+        if (error.message.includes('Unauthorized') || error.message.includes('Invalid session')) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        
+        if (error.message.includes('Invalid upload type') || 
+            error.message.includes('File too large') || 
+            error.message.includes('Invalid file type')) {
+            return NextResponse.json({ error: error.message }, { status: 400 });
+        }
+        
+        if (error.message.includes('Insufficient permissions')) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         return NextResponse.json({
@@ -158,93 +74,45 @@ export async function POST(request) {
  */
 export async function DELETE(request) {
     try {
-        const authHeader = request.headers.get('authorization');
-        if (!authHeader?.startsWith('Bearer ')) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
+        // Step A: Create session first (security gate)
+        const session = await createApiSession(request);
 
-        const token = authHeader.split('Bearer ')[1];
-        const decodedToken = await adminAuth.verifyIdToken(token);
-        const userId = decodedToken.uid;
+        // Parse request body
+        const { deleteType } = await request.json();
 
-        const { deleteType } = await request.json(); // 'profile', 'backgroundImage', 'backgroundVideo', 'cv'
-
+        // Basic validation
         if (!deleteType || !['profile', 'backgroundImage', 'backgroundVideo', 'cv'].includes(deleteType)) {
             return NextResponse.json({ error: 'Invalid delete type' }, { status: 400 });
         }
 
-        // Update user document to remove file reference
-        const docRef = adminDb.collection('AccountData').doc(userId);
-        let updateData = {};
-
-        switch (deleteType) {
-            case 'profile':
-                updateData.profilePhoto = '';
-                break;
-            case 'backgroundImage':
-                updateData.backgroundImage = '';
-                break;
-            case 'backgroundVideo':
-                updateData.backgroundVideo = '';
-                break;
-            case 'cv':
-                updateData.cvDocument = null;
-                break;
-        }
-
-        await docRef.update(updateData);
-
-        return NextResponse.json({
-            success: true,
-            message: 'File reference removed successfully'
+        // Step C: Delegate all work to the service
+        const result = await AppearanceService.deleteFile({
+            deleteType,
+            session
         });
 
+        // Step D: Return response
+        return NextResponse.json(result);
+
     } catch (error) {
-        console.error('File delete error:', error);
-        return NextResponse.json({ error: 'Delete failed' }, { status: 500 });
+        console.error('DELETE /api/user/appearance/upload error:', error);
+        
+        // Handle specific error types
+        if (error.message.includes('Unauthorized') || error.message.includes('Invalid session')) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        
+        if (error.message.includes('Invalid delete type')) {
+            return NextResponse.json({ error: error.message }, { status: 400 });
+        }
+        
+        if (error.message.includes('Insufficient permissions')) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        return NextResponse.json({ 
+            error: 'Delete failed',
+            ...(process.env.NODE_ENV === 'development' && { details: error.message })
+        }, { status: 500 });
     }
-}
-
-// Helper function to validate files
-function validateFile(file, uploadType) {
-    const maxSizes = {
-        profile: 5 * 1024 * 1024,        // 5MB for profile images
-        backgroundImage: 10 * 1024 * 1024, // 10MB for background images
-        backgroundVideo: 50 * 1024 * 1024, // 50MB for background videos
-        cv: 50 * 1024 * 1024              // 50MB for CV documents
-    };
-
-    const allowedTypes = {
-        profile: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-        backgroundImage: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-        backgroundVideo: ['video/mp4', 'video/webm', 'video/mov', 'video/avi'],
-        cv: [
-            'application/pdf',
-            'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'application/vnd.ms-excel',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'application/vnd.ms-powerpoint',
-            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            'text/plain'
-        ]
-    };
-
-    // Check file size
-    if (file.size > maxSizes[uploadType]) {
-        return {
-            valid: false,
-            error: `File too large. Maximum size for ${uploadType} is ${Math.round(maxSizes[uploadType] / (1024 * 1024))}MB`
-        };
-    }
-
-    // Check file type
-    if (!allowedTypes[uploadType].includes(file.type)) {
-        return {
-            valid: false,
-            error: `Invalid file type. Allowed types for ${uploadType}: ${allowedTypes[uploadType].join(', ')}`
-        };
-    }
-
-    return { valid: true };
 }

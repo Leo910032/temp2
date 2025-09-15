@@ -1,8 +1,11 @@
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
 // app/dashboard/(dashboard pages)/appearance/elements/GradientPicker.jsx - API VERSION
 "use client"
 
 import { useAuth } from "@/contexts/AuthContext";
-import { updateThemeGradientDirection } from "@/lib/services/appearanceService";
+import { updateThemeButton } from "@/lib/services/serviceAppearance/client/appearanceService.js"; // ✅ NEW PATH
 import { useContext, useState, useMemo } from "react";
 import { AppearanceContext } from "../AppearanceContext";
 import { toast } from "react-hot-toast";

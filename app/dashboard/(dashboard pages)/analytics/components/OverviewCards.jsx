@@ -1,46 +1,117 @@
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
 "use client"
 import Image from "next/image";
 import { useTranslation } from "@/lib/translation/useTranslation";
 import { useMemo } from "react";
 
-// ✅ This component is now much simpler. It only displays data.
 export default function OverviewCards({ selectedPeriod, analytics }) {
     const { t } = useTranslation();
 
-    // ✅ STEP 1: Use useMemo to select the correct pre-calculated data. No more loops!
- const displayData = useMemo(() => {
-    // ✅ FIX: Provide a default value for periodLabel
-    const periodLabel = t(`analytics.period.${selectedPeriod}`, { defaultValue: `Overview for ${selectedPeriod}` });
+    // Calculate display data based on the actual analytics structure
+    const displayData = useMemo(() => {
+        console.log("📊 OverviewCards: Processing analytics data:", analytics);
+        console.log("📊 OverviewCards: Selected period:", selectedPeriod);
+        
+        if (!analytics) {
+            return { 
+                views: 0, 
+                clicks: 0, 
+                previousViews: 0, 
+                previousClicks: 0,
+                periodLabel: t('analytics.period.all', 'Lifetime Overview')
+            };
+        }
 
-    if (!analytics || !analytics.periods) {
-        return { 
-            views: 0, 
-            clicks: 0, 
-            previousViews: 0, 
-            previousClicks: 0,
-            periodLabel: t('analytics.period.all', { defaultValue: 'Lifetime Overview' }) // Default to lifetime
+        let views = 0;
+        let clicks = 0;
+        let previousViews = 0;
+        let previousClicks = 0;
+        let periodLabel = '';
+
+        // Get current period data based on selected period
+        switch (selectedPeriod) {
+            case 'today':
+                // For today, show current day data
+                const today = new Date().toISOString().split('T')[0];
+                views = analytics.dailyViews?.[today] || 0;
+                clicks = analytics.dailyClicks?.[today] || 0;
+                
+                // Previous day for comparison
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayKey = yesterday.toISOString().split('T')[0];
+                previousViews = analytics.dailyViews?.[yesterdayKey] || 0;
+                previousClicks = analytics.dailyClicks?.[yesterdayKey] || 0;
+                
+                periodLabel = t('analytics.period.today', 'Today');
+                break;
+                
+            case 'week':
+                views = analytics.thisWeekViews || 0;
+                clicks = analytics.thisWeekClicks || 0;
+                
+                // Calculate previous week data
+                const now = new Date();
+                const currentWeekNumber = Math.ceil(((now - new Date(now.getFullYear(), 0, 1)) / 86400000 + new Date(now.getFullYear(), 0, 1).getDay() + 1) / 7);
+                const previousWeekNumber = currentWeekNumber - 1;
+                const currentYear = now.getFullYear();
+                const previousWeekKey = `${currentYear}-W${String(previousWeekNumber).padStart(2, '0')}`;
+                
+                // Sum up previous week's daily data if weekly totals aren't available
+                previousViews = analytics.weeklyViews?.[previousWeekKey] || 0;
+                previousClicks = analytics.weeklyClicks?.[previousWeekKey] || 0;
+                
+                periodLabel = t('analytics.period.week', 'This Week');
+                break;
+                
+            case 'month':
+                views = analytics.thisMonthViews || 0;
+                clicks = analytics.thisMonthClicks || 0;
+                
+                // Calculate previous month data
+                const currentDate = new Date();
+                const previousMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+                const previousMonthKey = `${previousMonth.getFullYear()}-${String(previousMonth.getMonth() + 1).padStart(2, '0')}`;
+                
+                previousViews = analytics.monthlyViews?.[previousMonthKey] || 0;
+                previousClicks = analytics.monthlyClicks?.[previousMonthKey] || 0;
+                
+                periodLabel = t('analytics.period.month', 'This Month');
+                break;
+                
+            case 'all':
+            default:
+                views = analytics.totalViews || 0;
+                clicks = analytics.totalClicks || 0;
+                // No previous period for "all time"
+                previousViews = 0;
+                previousClicks = 0;
+                periodLabel = t('analytics.period.all', 'All Time');
+                break;
+        }
+
+        const result = {
+            views,
+            clicks,
+            previousViews,
+            previousClicks,
+            periodLabel
         };
-    }
+        
+        console.log("📊 OverviewCards: Final display data:", result);
+        return result;
+    }, [analytics, selectedPeriod, t]);
 
-    const periodKey = selectedPeriod === 'year' ? 'all' : selectedPeriod;
-    const currentPeriodData = analytics.periods[periodKey] || analytics.periods.all;
-    
-    return {
-        views: currentPeriodData.views || 0,
-        clicks: currentPeriodData.clicks || 0,
-        previousViews: currentPeriodData.previousViews || 0,
-        previousClicks: currentPeriodData.previousClicks || 0,
-        periodLabel: periodLabel
-    };
-}, [analytics, selectedPeriod, t]);
-
-
-    // ✅ The change indicator function remains the same, as it's pure presentation logic.
+    // Change indicator function
     const getChangeIndicator = (current, previous) => {
         if (previous === 0 && current > 0) {
             return (
                 <div className="flex items-center text-xs text-green-600">
-                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
                     New!
                 </div>
             );
@@ -52,13 +123,14 @@ export default function OverviewCards({ selectedPeriod, analytics }) {
         
         return (
             <div className={`flex items-center text-xs ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                <svg className={`w-3 h-3 mr-1 ${isPositive ? '' : 'transform rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                <svg className={`w-3 h-3 mr-1 ${isPositive ? '' : 'transform rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
                 {isPositive ? '+' : ''}{Math.abs(change).toFixed(0)}%
             </div>
         );
     };
 
-    // ✅ The JSX is cleaner, using the simplified `displayData` object.
     return (
         <div className="w-full"> 
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">
@@ -75,12 +147,12 @@ export default function OverviewCards({ selectedPeriod, analytics }) {
                     </div>
                     <div>
                         <p className="text-sm font-medium text-gray-600">
-                            {t('analytics.profile_views') || 'Profile Views'}
+                            {t('analytics.profile_views', 'Profile Views')}
                         </p>
                         <p className="text-2xl font-bold text-gray-900 mt-0.5">
                             {displayData.views.toLocaleString()}
                         </p>
-                        <div className="mt-1.5 h-4"> {/* Added fixed height for layout consistency */}
+                        <div className="mt-1.5 h-4">
                             {selectedPeriod !== 'all' && getChangeIndicator(displayData.views, displayData.previousViews)}
                         </div>
                     </div>
@@ -96,17 +168,18 @@ export default function OverviewCards({ selectedPeriod, analytics }) {
                     </div>
                     <div>
                         <p className="text-sm font-medium text-gray-600">
-                            {t('analytics.link_clicks') || 'Link Clicks'}
+                            {t('analytics.link_clicks', 'Link Clicks')}
                         </p>
                         <p className="text-2xl font-bold text-gray-900 mt-0.5">
                             {displayData.clicks.toLocaleString()}
                         </p>
-                        <div className="mt-1.5 h-4"> {/* Added fixed height for layout consistency */}
+                        <div className="mt-1.5 h-4">
                             {selectedPeriod !== 'all' && getChangeIndicator(displayData.clicks, displayData.previousClicks)}
                         </div>
                     </div>
                 </div>
             </div>
+        
         </div>
     );
 }

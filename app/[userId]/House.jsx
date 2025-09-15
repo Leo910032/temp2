@@ -1,3 +1,6 @@
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
 // app/[userId]/House.jsx - Fixed with proper hook placement
 "use client"
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
@@ -11,6 +14,7 @@ import SupportBanner from "./components/SupportBanner";
 import PublicLanguageSwitcher from "./components/PublicLanguageSwitcher";
 import SensitiveWarning from "./components/SensitiveWarning";
 import { trackView } from '@/lib/services/analyticsService';
+import AssetLayer from "./components/AssetLayer"; // ✅ IMPORT THE NEW COMPONENT
 
 // Import contact exchange components
 import ExchangeButton from "./components/ExchangeButton";
@@ -205,6 +209,8 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
             ) : (
                 <>
                     <BgDiv />
+                                        <AssetLayer />
+
                     <div className="relative z-20 md:w-[50rem] w-full flex flex-col items-center h-full mx-auto">
                         <div className="flex flex-col items-center flex-1 overflow-auto py-6">
                             <ProfilePic />

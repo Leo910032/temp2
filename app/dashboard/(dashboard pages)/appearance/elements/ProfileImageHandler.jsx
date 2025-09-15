@@ -1,24 +1,24 @@
-// app/dashboard/(dashboard pages)/appearance/elements/ProfileImageHandler.jsx - FIXED VERSION
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
+// app/dashboard/(dashboard pages)/appearance/elements/ProfileImageHandler.jsx
 "use client"
-import { useAuth } from "@/contexts/AuthContext";
-import { uploadProfileImage, removeProfileImage } from "@/lib/services/appearanceService";
-import { AppearanceContext } from "../AppearanceContext";
-import Image from "next/image";
-import { useRef, useState, useEffect, useMemo, useContext } from "react";
-import { FaCheck, FaX } from "react-icons/fa6";
+import { useContext, useRef, useState, useEffect, useMemo } from "react";
 import { toast } from "react-hot-toast";
+import { AppearanceContext } from "../AppearanceContext";
+import { AppearanceService } from '@/lib/services/serviceAppearance/client/appearanceService.js';
+import Image from "next/image";
+import { FaCheck, FaX } from "react-icons/fa6";
 import { useTranslation } from "@/lib/translation/useTranslation";
 
 export default function ProfileImageManager() {
     const { t, isInitialized } = useTranslation();
-    const { currentUser } = useAuth();
-    
-    // ✅ NEW: Get data from context instead of direct API calls
+
+    // ✅ GET DATA FROM CONTEXT INSTEAD OF PROPS
     const { appearance, updateAppearance } = useContext(AppearanceContext);
-    
+
     const [uploadedPhoto, setUploadedPhoto] = useState(null);
     const [uploadedPhotoPreview, setUploadedPhotoPreview] = useState('');
-    const [profilePicture, setProfilePicture] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isRemoving, setIsRemoving] = useState(false);
     const [previewing, setPreviewing] = useState(false);
@@ -32,7 +32,6 @@ export default function ProfileImageManager() {
             pickImage: t('dashboard.appearance.profile.pick_image') || 'Pick an image',
             remove: t('dashboard.appearance.profile.remove_image') || 'Remove',
             altProfile: t('dashboard.appearance.profile.alt_profile') || 'Profile',
-            altLoading: t('dashboard.appearance.profile.alt_loading') || 'Loading',
             errorSelectImage: t('dashboard.appearance.profile.error_select_image') || 'Please select a valid image',
             errorImageTooLarge: t('dashboard.appearance.profile.error_image_too_large') || 'Image too large (max 5MB)',
             errorNotAuth: t('dashboard.appearance.profile.error_not_authenticated') || 'Not authenticated',
@@ -45,12 +44,12 @@ export default function ProfileImageManager() {
         };
     }, [t, isInitialized]);
 
-    // ✅ IMPROVED: Update profile picture element based on context data
+    // ✅ UPDATE PROFILE PICTURE ELEMENT BASED ON CONTEXT DATA
     const updateProfilePictureElement = useMemo(() => {
         if (!appearance) return null;
         
         const photoUrl = appearance.profilePhoto || '';
-        const name = appearance.displayName || '';
+        const name = appearance.displayName || appearance.username || '';
         
         if (photoUrl) {
             return (
@@ -64,17 +63,14 @@ export default function ProfileImageManager() {
                 />
             );
         } else {
-            const initial = name?.[0] || currentUser?.email?.[0] || 'U';
+            const initial = name?.[0] || 'U';
             return (
                 <div className="h-[95%] aspect-square w-[95%] rounded-full bg-gray-300 border grid place-items-center">
                     <span className="text-3xl font-semibold uppercase">{initial}</span>
                 </div>
             );
         }
-    }, [appearance?.profilePhoto, appearance?.displayName, currentUser?.email, translations.altProfile]);
-
-    // ✅ REMOVED: No more direct API data fetching
-    // The data now comes from the AppearanceContext
+    }, [appearance?.profilePhoto, appearance?.displayName, appearance?.username, translations.altProfile]);
 
     // Handle file selection
     const handleFileChange = (e) => {
@@ -97,19 +93,21 @@ export default function ProfileImageManager() {
         setPreviewing(true);
     };
 
-    // ✅ IMPROVED: Handle image upload with context updates
+    // ✅ HANDLE IMAGE UPLOAD WITH CONTEXT UPDATES
     const handleUploadPhoto = async () => {
-        if (!uploadedPhoto || !currentUser) {
-            throw new Error(translations.errorNotAuth);
+        if (!uploadedPhoto) {
+            toast.error(translations.errorSelectImage);
+            return;
         }
 
         setIsLoading(true);
         try {
-            const result = await uploadProfileImage(uploadedPhoto);
+            // ✅ CALL THE SERVICE
+            const result = await AppearanceService.uploadProfileImage(uploadedPhoto);
             
-            // ✅ NEW: Update context instead of local state
+            // ✅ UPDATE THE CONTEXT (which updates the whole page)
             updateAppearance('profilePhoto', result.downloadURL);
-            
+
             handleReset();
             toast.success(translations.toastSuccess);
             
@@ -121,17 +119,18 @@ export default function ProfileImageManager() {
         }
     };
 
-    // ✅ IMPROVED: Handle image removal with context updates
+    // ✅ HANDLE IMAGE REMOVAL WITH CONTEXT UPDATES
     const handleRemoveProfilePicture = async () => {
-        if (!currentUser || isRemoving) return;
+        if (isRemoving) return;
         
         setIsRemoving(true);
         try {
-            await removeProfileImage();
+            // ✅ CALL THE SERVICE
+            await AppearanceService.removeProfileImage();
             
-            // ✅ NEW: Update context instead of local state
+            // ✅ UPDATE THE CONTEXT
             updateAppearance('profilePhoto', '');
-            
+
             toast.success(translations.toastRemoveSuccess);
             
         } catch (error) {
@@ -156,9 +155,6 @@ export default function ProfileImageManager() {
         }
     };
 
-    // ✅ REMOVED: No more useEffect for data fetching
-    // Data comes from context automatically
-
     // Cleanup preview URL
     useEffect(() => {
         return () => {
@@ -168,8 +164,8 @@ export default function ProfileImageManager() {
         };
     }, [uploadedPhotoPreview]);
 
-    // ✅ IMPROVED: Loading skeleton based on context availability
-    if (!isInitialized || !currentUser || !appearance) {
+    // ✅ LOADING SKELETON BASED ON CONTEXT AVAILABILITY
+    if (!isInitialized || !appearance) {
         return (
             <div className="flex w-full p-6 items-center gap-4 animate-pulse">
                 <div className="h-[6rem] w-[6rem] rounded-full bg-gray-200"></div>
@@ -187,7 +183,7 @@ export default function ProfileImageManager() {
                 className="h-[6rem] w-[6rem] cursor-pointer rounded-full grid place-items-center border overflow-hidden hover:opacity-80 transition-opacity" 
                 onClick={() => inputRef.current?.click()}
             >
-                {/* ✅ NEW: Use memoized profile picture element */}
+                {/* ✅ USE MEMOIZED PROFILE PICTURE ELEMENT */}
                 {updateProfilePictureElement}
             </div>
             

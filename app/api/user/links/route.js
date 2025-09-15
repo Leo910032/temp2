@@ -4,7 +4,7 @@
 // app/api/user/links/route.js
 import { NextResponse } from 'next/server';
 import { createApiSession } from '@/lib/server/session';
-import { LinksService } from '@/lib/services/server/serviceLinks/linksService.js';
+import { LinksService } from '@/lib/services/serviceLinks/server/linksService.js';
 import { rateLimit } from '@/lib/rateLimiter';
 
 export async function GET(request) {

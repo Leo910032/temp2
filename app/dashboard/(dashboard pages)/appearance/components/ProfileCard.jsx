@@ -1,9 +1,13 @@
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
+// app/dashboard/(dashboard pages)/appearance/components/ProfileCard.jsx
 "use client"
 
 import { FaPlus } from "react-icons/fa6";
 import ProfileImageManager from "../elements/ProfileImageHandler";
 import TextDetails from "../elements/TextDetails";
-import CVManager from "../elements/CVManager"; // ADD THIS IMPORT
+import CVManager from "../elements/CVManager";
 import Link from "next/link";
 import { useTranslation } from "@/lib/translation/useTranslation";
 import { useMemo } from "react";

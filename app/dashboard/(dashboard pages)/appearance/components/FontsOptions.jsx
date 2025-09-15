@@ -1,4 +1,9 @@
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
+// app/dashboard/(dashboard pages)/appearance/components/FontsOptions.jsx
 "use client"
+
 import { useMemo, useContext } from "react";
 import { useTranslation } from "@/lib/translation/useTranslation";
 import SelectFonts from "../elements/SelectFonts";
@@ -16,6 +21,7 @@ export default function FontsOptions() {
     }, [t, isInitialized]);
 
     if (!isInitialized || !appearance) {
+        // Render a skeleton loader if the context isn't ready.
         return (
             <div className="w-full bg-white rounded-3xl my-3 flex flex-col p-6 animate-pulse">
                 <div className="h-5 w-12 bg-gray-200 rounded-md mb-2"></div>
@@ -27,7 +33,8 @@ export default function FontsOptions() {
     return (
         <div className="w-full bg-white rounded-3xl my-3 flex flex-col p-6">
             <h3 className="font-semibold text-sm mb-2">{translations.fontLabel}</h3>
+            {/* The SelectFonts component will handle its own logic via context */}
             <SelectFonts />
         </div>
     );
-}
+}   

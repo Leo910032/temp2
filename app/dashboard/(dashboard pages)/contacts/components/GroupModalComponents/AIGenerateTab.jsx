@@ -1,9 +1,12 @@
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
 // Updated AIGenerateTab.jsx - Remove local usage hook and use parent's data
 
 "use client"
 import { useState, useEffect } from 'react';
 import { ContactServiceFactory } from '@/lib/services/serviceContact/client/factories/ContactServiceFactory';
-import { getAIFeaturesForLevel } from '@/lib/services/serviceContact/client/services/constants/contactConstants';
+import { getAIFeaturesForLevel } from '@/lib/services/serviceContact/client/constants/contactConstants';
 
 export default function AIGenerateTab({
     contacts = [],

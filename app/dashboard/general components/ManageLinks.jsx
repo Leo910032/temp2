@@ -14,7 +14,7 @@ import DraggableList from "./Drag";
 
 // ✅ IMPORT THE NEW SERVICES AND CONTEXT
 import { useDashboard } from '@/app/dashboard/DashboardContext.js';
-import { LinksService } from '@/lib/services/client/link/serviceLinks/LinksService.js';
+import { LinksService } from '@/lib/services/serviceLinks/client/LinksService.js';
 
 export const ManageLinksContent = createContext(null);
 

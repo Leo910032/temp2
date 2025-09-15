@@ -1,183 +1,47 @@
-// app/dashboard/(dashboard pages)/appearance/elements/BackgroundCard.jsx - FIXED VERSION
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
 "use client"
-import { useAuth } from "@/contexts/AuthContext";
-import { 
-    updateThemeBackground, 
-    uploadBackgroundImage, 
-    uploadBackgroundVideo
-} from "@/lib/services/appearanceService";
+
+import React, { useContext, useEffect, useRef, useState, useMemo } from "react";
 import Image from "next/image";
-import { useContext, useEffect, useRef, useState, useMemo } from "react";
 import { FaCheck, FaX } from "react-icons/fa6";
-import { backgroundContext } from "../components/Backgrounds";
-import { AppearanceContext } from "../AppearanceContext";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "@/lib/translation/useTranslation";
 
+import { backgroundContext } from "../components/Backgrounds";
+import { AppearanceContext } from "../AppearanceContext";
+
+/**
+ * A "dumb" presentational component for displaying and selecting a single background option.
+ * It receives all its data and logic via context and props.
+ */
 export default function BackgroundCard({ text, identifier, colorValue, backImg }) {
-    const { t, isInitialized } = useTranslation();
-    const { currentUser } = useAuth();
+    const { t } = useTranslation();
+    
+    // --- CONTEXT CONSUMPTION ---
     const { setIsGradient } = useContext(backgroundContext);
-    const { appearance, updateAppearance } = useContext(AppearanceContext); // ✅ GET data from context
+    const { appearance, updateAppearance, isSaving, handleFileUpload } = useContext(AppearanceContext);
+
+    // --- LOCAL UI STATE ---
+    // State for managing the file preview modal
     const [uploadedFilePreview, setUploadedFilePreview] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
     const [uploadedFile, setUploadedFile] = useState(null);
     const [previewing, setPreviewing] = useState(false);
-    const formRef = useRef();
-    const inputRef = useRef();
+    const [isUploading, setIsUploading] = useState(false); // Local uploading state for this card's spinner
+    const fileInputRef = useRef(null);
+    
+    const isSelected = useMemo(() => appearance?.backgroundType === identifier, [appearance, identifier]);
 
-    const translations = useMemo(() => {
-        if (!isInitialized) return {};
-        return {
-            errorImageTooLarge: t('dashboard.appearance.background_card.error_image_too_large') || 'Image too large (max 10MB)',
-            errorVideoTooLarge: t('dashboard.appearance.background_card.error_video_too_large') || 'Video too large (max 50MB)',
-            errorNotAuth: t('dashboard.appearance.background_card.error_not_authenticated') || 'Please log in',
-            errorLoginRequired: t('dashboard.appearance.background_card.error_login_required') || 'Login required',
-            toastLoading: t('dashboard.appearance.background_card.toast_loading') || 'Uploading...',
-            toastSuccess: t('dashboard.appearance.background_card.toast_success') || 'Background updated!',
-            toastError: t('dashboard.appearance.background_card.toast_error') || 'Upload failed',
-            altUploadIcon: t('dashboard.appearance.background_card.alt_upload_icon') || 'Upload',
-            altPreview: t('dashboard.appearance.background_card.alt_preview') || 'Preview',
-            altLoading: t('dashboard.appearance.profile.alt_loading') || 'Loading',
-            videoFallback: t('dashboard.appearance.background_card.video_fallback') || 'Video not supported'
-        };
-    }, [t, isInitialized]);
-
-    // ✅ FIXED: Get selection state from context instead of API call
-    const isSelected = useMemo(() => {
-        if (!appearance) return false;
-        return appearance.backgroundType === identifier;
-    }, [appearance?.backgroundType, identifier]);
-
-    // ✅ FIXED: Update gradient state based on context data
+    // --- EFFECTS ---
     useEffect(() => {
-        if (appearance?.backgroundType === "Gradient") {
+        // Inform the parent <Backgrounds> component if the "Gradient" type is selected from the context
+        if (isSelected && identifier === "Gradient") {
             setIsGradient(true);
         }
-    }, [appearance?.backgroundType, setIsGradient]);
+    }, [isSelected, identifier, setIsGradient]);
 
-    const handleFileChange = (e) => {
-        const selectedFile = e.target.files[0];
-        if (!selectedFile) return;
-    
-        // Client-side validation
-        if (identifier === "Image" && selectedFile.size > 10 * 1024 * 1024) {
-            toast.error(translations.errorImageTooLarge);
-            return;
-        }
-        if (identifier === "Video" && selectedFile.size > 50 * 1024 * 1024) {
-            toast.error(translations.errorVideoTooLarge);
-            return;
-        }
-    
-        const previewImageURL = URL.createObjectURL(selectedFile);
-        setUploadedFilePreview(previewImageURL);
-        setUploadedFile(selectedFile);
-        setPreviewing(true);
-    };
-    
-    const handleUpdateTheme = async () => {
-        if (!currentUser) {
-            throw new Error(translations.errorNotAuth);
-        }
-        
-        try {
-            // ✅ FIXED: Update context immediately (optimistic update)
-            updateAppearance('backgroundType', identifier);
-            
-            // Then update server
-            await updateThemeBackground(identifier);
-            
-            console.log('✅ Background type updated:', identifier);
-        } catch (error) {
-            console.error('❌ Failed to update background:', error);
-            // ✅ FIXED: Revert optimistic update on error
-            updateAppearance('backgroundType', appearance?.backgroundType);
-            throw error;
-        }
-    };
-    
-    const handlePickingProcess = async () => {
-        if (!currentUser || !uploadedFile) {
-            throw new Error(translations.errorNotAuth);
-        }
-        
-        setIsLoading(true);
-        try {
-            // ✅ FIXED: Optimistic update first
-            updateAppearance('backgroundType', identifier);
-            
-            // Upload file and update background type
-            let result;
-            if (identifier === "Image") {
-                result = await uploadBackgroundImage(uploadedFile);
-                updateAppearance('backgroundImage', result.downloadURL);
-            } else if (identifier === "Video") {
-                result = await uploadBackgroundVideo(uploadedFile);
-                updateAppearance('backgroundVideo', result.downloadURL);
-            }
-            
-            handleReset();
-            console.log('✅ Background file uploaded successfully');
-            
-        } catch (error) {
-            console.error("Upload error:", error);
-            // ✅ FIXED: Revert optimistic update on error
-            updateAppearance('backgroundType', appearance?.backgroundType);
-            throw error;
-        } finally {
-            setIsLoading(false);
-        }
-    };
-    
-    const handleReset = () => {
-        if (isLoading) return;
-        if (formRef.current) formRef.current.reset();
-        setUploadedFile(null);
-        setPreviewing(false);
-        if (uploadedFilePreview) {
-            URL.revokeObjectURL(uploadedFilePreview);
-            setUploadedFilePreview('');
-        }
-    };
-    
-    function functionType() {
-        if (!currentUser) {
-            toast.error(translations.errorLoginRequired);
-            return;
-        }
-        
-        switch (identifier) {
-            case "Image":
-            case "Video":
-                inputRef.current?.click();
-                break;
-            default:
-                // For non-upload backgrounds, update immediately
-                toast.promise(handleUpdateTheme(), {
-                    loading: 'Updating background...',
-                    success: 'Background updated!',
-                    error: (err) => err.message || 'Failed to update background'
-                });
-                break;
-        }
-    }
-    
-    const toasthandler = () => {
-        if (!currentUser) {
-            toast.error(translations.errorLoginRequired);
-            return;
-        }
-        
-        const promise = handlePickingProcess();
-        toast.promise(promise, {
-            loading: translations.toastLoading,
-            success: translations.toastSuccess,
-            error: (err) => err.message || translations.toastError
-        });
-    };
-
-    // Cleanup preview URL
+    // Cleanup the object URL for the file preview to prevent memory leaks
     useEffect(() => {
         return () => {
             if (uploadedFilePreview) {
@@ -186,115 +50,205 @@ export default function BackgroundCard({ text, identifier, colorValue, backImg }
         };
     }, [uploadedFilePreview]);
 
-    // ✅ FIXED: Don't render if appearance data not loaded yet
-    if (!isInitialized || !currentUser || !appearance) return null;
 
-    return (
-        <div className="min-w-[8rem] flex-1 items-center flex flex-col">
-            <div 
-                className={`w-full h-[13rem] relative ${
-                    !colorValue && !backImg ? "border-dashed border-black" : ""
-                } border rounded-lg hover:scale-105 active:scale-90 grid place-items-center cursor-pointer overflow-hidden transition-transform duration-200`} 
-                onClick={functionType}
-            >
-                {isSelected && (
-                    <div className="h-full w-full absolute top-0 left-0 bg-black bg-opacity-[0.5] grid place-items-center z-10 text-white text-xl">
-                        <FaCheck />
-                    </div>
-                )}
-                
-                {colorValue ? (
-                    <div className="h-full w-full" style={{ backgroundColor: colorValue }}></div>
-                ) : backImg ? (
-                    <div className="h-full w-full bg-cover bg-no-repeat" style={{ backgroundImage: backImg }}></div>
-                ) : (
-                    <div className="h-full w-full grid place-items-center">
-                        {identifier === "Image" && (
-                            <input 
-                                type="file" 
-                                className="absolute opacity-0 pointer-events-none" 
-                                ref={inputRef} 
-                                accept="image/*" 
-                                onChange={handleFileChange} 
-                            />
-                        )}
-                        {identifier === "Video" && (
-                            <input 
-                                type="file" 
-                                className="absolute opacity-0 pointer-events-none" 
-                                ref={inputRef} 
-                                accept="video/*" 
-                                onChange={handleFileChange} 
-                            />
-                        )}
-                        <div className="bg-black bg-opacity-[0.1] rounded-lg p-1">
-                            <Image 
-                                src={"https://linktree.sirv.com/Images/icons/image.svg"} 
-                                alt={translations.altUploadIcon} 
-                                height={27} 
-                                width={27} 
-                            />
-                        </div>
-                    </div>
-                )}
+    // --- EVENT HANDLERS ---
+
+    /**
+     * Handles the user selecting a file from their computer.
+     * Validates the file and sets up the local state for the preview modal.
+     */
+    const handleFileChange = (e) => {
+        const selectedFile = e.target.files[0];
+        if (!selectedFile) return;
+
+        const isImage = identifier === "Image";
+        const maxSize = isImage ? 10 * 1024 * 1024 : 50 * 1024 * 1024; // 10MB for images, 50MB for videos
+        const acceptedTypes = isImage ? ['image/jpeg', 'image/png', 'image/gif'] : ['video/mp4', 'video/webm'];
+
+        if (selectedFile.size > maxSize) {
+            toast.error(`${identifier} is too large (max ${isImage ? 10 : 50}MB)`);
+            return;
+        }
+        if (!acceptedTypes.includes(selectedFile.type)) {
+            toast.error(`Invalid file type. Please select a valid ${identifier.toLowerCase()}.`);
+            return;
+        }
+
+        setUploadedFilePreview(URL.createObjectURL(selectedFile));
+        setUploadedFile(selectedFile);
+        setPreviewing(true);
+    };
+
+    /**
+     * Handles the click event on the main card.
+     * For file-based backgrounds, it triggers the file input.
+     * For simple backgrounds, it updates the context directly.
+     */
+    const handleCardClick = () => {
+        if (isSaving || isSelected) return;
+
+        switch (identifier) {
+            case "Image":
+            case "Video":
+                fileInputRef.current?.click();
+                break;
+            default:
+                // For simple types like "Flat Colour", update the context immediately.
+                // The parent AppearancePage will handle the debounced save.
+                updateAppearance('backgroundType', identifier);
+                break;
+        }
+    };
+
+    /**
+     * Called when the user confirms the upload in the preview modal.
+     * It uses the `handleFileUpload` function passed down from the parent context.
+     */
+    const handleConfirmUpload = async () => {
+        if (!uploadedFile) return;
+
+        setIsUploading(true);
+        const uploadType = identifier === 'Image' ? 'backgroundImage' : 'backgroundVideo';
+        
+        // This promise will be handled by react-hot-toast
+        const uploadPromise = handleFileUpload(uploadedFile, uploadType);
+
+        toast.promise(uploadPromise, {
+            loading: 'Uploading...',
+            success: (result) => {
+                if(result.success) {
+                    handleReset(); // Reset local state only on success
+                    return 'Background updated!';
+                } else {
+                    // This allows the error to be caught by the toast's error handler
+                    throw new Error(result.error?.message || 'Upload failed.');
+                }
+            },
+            error: (err) => err.message || 'Upload failed.',
+        });
+        
+        // We set isUploading to false after the promise settles, regardless of outcome
+        uploadPromise.finally(() => setIsUploading(false));
+    };
+
+    /**
+     * Resets the local state of the preview modal.
+     */
+    const handleReset = () => {
+        setUploadedFile(null);
+        setPreviewing(false);
+        if (uploadedFilePreview) {
+            URL.revokeObjectURL(uploadedFilePreview);
+            setUploadedFilePreview('');
+        }
+        if(fileInputRef.current) fileInputRef.current.value = "";
+    };
+
+    // --- RENDER LOGIC ---
+
+    // Show a skeleton loader if the parent context hasn't loaded the appearance data yet.
+    if (!appearance) {
+        return (
+            <div className="min-w-[8rem] flex-1 items-center flex flex-col animate-pulse">
+                <div className="w-full h-[13rem] bg-gray-200 rounded-lg"></div>
+                <div className="h-4 w-20 bg-gray-200 rounded-md mt-3"></div>
             </div>
-            <span className="py-3 text-sm">{text}</span>
+        );
+    }
+    
+    return (
+        <>
+            <div className={`min-w-[8rem] flex-1 items-center flex flex-col group ${isSaving ? 'pointer-events-none opacity-75' : ''}`}>
+                <div 
+                    className={`w-full h-[13rem] relative ${
+                        !colorValue && !backImg ? "border-dashed border-black" : ""
+                    } border rounded-lg hover:scale-105 active:scale-90 grid place-items-center cursor-pointer overflow-hidden transition-transform duration-200`} 
+                    onClick={handleCardClick}
+                >
+                    {isSelected && (
+                        <div className="h-full w-full absolute top-0 left-0 bg-black bg-opacity-50 grid place-items-center z-10 text-white text-3xl">
+                            <FaCheck />
+                        </div>
+                    )}
+                    
+                    {colorValue ? (
+                        <div className="h-full w-full" style={{ backgroundColor: colorValue }}></div>
+                    ) : backImg ? (
+                        <div className="h-full w-full bg-cover bg-no-repeat bg-center" style={{ backgroundImage: backImg }}></div>
+                    ) : (
+                        <div className="h-full w-full grid place-items-center">
+                            <input 
+                                type="file" 
+                                className="hidden" 
+                                ref={fileInputRef} 
+                                accept={identifier === 'Image' ? 'image/jpeg,image/png,image/gif' : 'video/mp4,video/webm'}
+                                onChange={handleFileChange} 
+                            />
+                            <div className="bg-black bg-opacity-10 rounded-lg p-2">
+                                <Image 
+                                    src={"https://linktree.sirv.com/Images/icons/image.svg"} 
+                                    alt={"Upload Icon"} 
+                                    height={27} 
+                                    width={27} 
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+                <span className="py-3 text-sm font-medium">{text}</span>
+            </div>
             
             {/* Preview Modal */}
             {previewing && (
                 <div className="fixed top-0 left-0 h-screen w-screen grid place-items-center z-[999999999999999]">
-                    <div 
-                        className="absolute h-full w-full bg-black bg-opacity-[0.25] backdrop-blur-[1px] top-0 left-0 p-2" 
-                        onClick={handleReset}
-                    ></div>
-                    <form ref={formRef} className="relative z-10 sm:max-w-[30rem] max-w-18 max-h-[80vh] overflow-hidden p-4">
-                        <div className="w-full scale-[0.95] relative overflow-hidden place-items-center grid aspect-square bg-white">
+                    <div className="absolute h-full w-full bg-black/25 backdrop-blur-sm" onClick={handleReset}></div>
+                    <div className="relative z-10 sm:max-w-[30rem] w-11/12 p-4">
+                        <div className="w-full scale-95 relative overflow-hidden place-items-center grid aspect-square bg-white rounded-lg shadow-2xl">
                             {identifier === "Image" && (
                                 <Image 
                                     src={uploadedFilePreview} 
-                                    alt={translations.altPreview} 
-                                    height={1000} 
-                                    width={1000} 
+                                    alt="Preview"
+                                    fill // ✅ REPLACES layout="fill"
+                                    style={{ objectFit: 'contain' }} // ✅ REPLACES objectFit="contain"
                                     priority 
-                                    className="min-w-[10rem] w-full object-contain min-h-full" 
                                 />
                             )}
                             {identifier === "Video" && (
                                 <video 
-                                    className="min-w-[10rem] w-full object-contain min-h-full" 
+                                    className="w-full h-full object-contain" 
                                     controls 
                                     autoPlay 
                                     loop
+                                    src={uploadedFilePreview}
                                 >
-                                    <source src={uploadedFilePreview} type={uploadedFile?.type || 'video/mp4'} />
-                                    {translations.videoFallback}
+                                    Your browser does not support the video tag.
                                 </video>
                             )}
-                            {isLoading && (
-                                <div className="absolute z-10 h-full w-full scale-110 grid place-items-center bg-black bg-opacity-[0.25] mix-blend-screen">
+                            {isUploading && (
+                                <div className="absolute z-10 h-full w-full grid place-items-center bg-black/25">
                                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
                                 </div>
                             )}
                         </div>
-                        {!isLoading && (
-                            <>
-                                <div 
-                                    className="absolute top-2 right-2 rounded-full p-2 hover:bg-red-500 active:scale-90 bg-black text-white text-sm cursor-pointer" 
+                        {!isUploading && (
+                            <div className="flex items-center justify-center gap-4 mt-4">
+                                <button 
+                                    className="p-3 text-lg text-white bg-red-500 w-fit rounded-full active:bg-red-600 active:scale-90 hover:scale-110 cursor-pointer" 
                                     onClick={handleReset}
                                 >
                                     <FaX />
-                                </div>
-                                <div 
-                                    className="p-3 text-lg text-white bg-btnPrimary w-fit rounded-full mx-auto active:bg-btnPrimaryAlt active:scale-90 hover:scale-110 cursor-pointer my-3" 
-                                    onClick={toasthandler}
+                                </button>
+                                <button
+                                    className="p-3 text-lg text-white bg-green-500 w-fit rounded-full active:bg-green-600 active:scale-90 hover:scale-110 cursor-pointer" 
+                                    onClick={handleConfirmUpload}
                                 >
                                     <FaCheck />
-                                </div>
-                            </>
+                                </button>
+                            </div>
                         )}
-                    </form>
+                    </div>
                 </div>
             )}
-        </div>
+        </>
     );
 }

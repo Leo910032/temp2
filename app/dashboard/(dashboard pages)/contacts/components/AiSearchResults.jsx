@@ -1,10 +1,13 @@
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
 // app/dashboard/(dashboard pages)/contacts/components/AiSearchResults.jsx - UPDATED WITH SMART ICEBREAKERS
 "use client"
 import React from 'react';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from "@/lib/translation/useTranslation";
 import SmartIcebreakerModal from './SmartIcebreakerModal';
-import { hasContactFeature, CONTACT_FEATURES } from '../../../../../lib/services/serviceContact/client/services/constants/contactConstants.js';
+import { hasContactFeature, CONTACT_FEATURES } from '../../../../../lib/services/serviceContact/client/constants/contactConstants.js';
 
 // Updated AiSearchResultCard with Smart Icebreaker integration
 const AiSearchResultCard = React.memo(function AiSearchResultCard({ 

@@ -1,3 +1,7 @@
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
+// //
 // app/api/user/contacts/groups/generate-rules-based/route.js
 // API endpoint for rules-based group generation (no AI, no cost tracking)
 

@@ -1,3 +1,7 @@
+
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
 // app/api/contacts/exchange/history/route.js
 import { NextResponse } from 'next/server';
 import { ExchangeService } from '@/lib/services/serviceContact/server/exchangeService';
@@ -5,7 +9,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth/authOptions';
 
 export async function GET(request) {
-  try {
+  /*try {
     console.log('📋 API: Getting exchange history');
 
     // Get user session for authentication
@@ -44,7 +48,7 @@ export async function GET(request) {
 
   } catch (error) {
     console.error('❌ API Error getting exchange history:', error);
-
+*/
     return NextResponse.json(
       { 
         error: 'Failed to get exchange history',
@@ -53,4 +57,3 @@ export async function GET(request) {
       { status: 500 }
     );
   }
-}

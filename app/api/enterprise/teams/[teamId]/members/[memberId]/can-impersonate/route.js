@@ -1,6 +1,10 @@
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
 // app/api/enterprise/teams/[teamId]/members/[memberId]/can-impersonate/route.js
 import { NextResponse } from 'next/server';
 import { adminAuth } from '@/lib/firebaseAdmin';
+
 
 // ✅ Import the specific helpers we need, including the new role function
 import { 
@@ -11,7 +15,7 @@ import {
 } from '@/lib/services/serviceEnterprise/server/enterprisePermissionService';
 import { 
     PERMISSIONS 
-} from '@/lib/services/serviceEnterprise/constants/enterpriseConstants';
+} from '@/lib/services/constants';
 
 /**
  * GET /api/enterprise/teams/[teamId]/members/[memberId]/can-impersonate

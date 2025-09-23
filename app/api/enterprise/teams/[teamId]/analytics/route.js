@@ -1,7 +1,10 @@
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { EnterprisePermissionService } from '@/lib/services/serviceEnterprise/server/enterprisePermissionService';
-import { PERMISSIONS } from '@/lib/services/serviceEnterprise/constants/enterpriseConstants';
+import { PERMISSIONS } from '@/lib/services/constants';
 
 export async function GET(request, { params }) {
     try {

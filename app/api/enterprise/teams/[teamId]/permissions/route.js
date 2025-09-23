@@ -1,3 +1,6 @@
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
 // app/api/enterprise/teams/[teamId]/permissions/route.js
 import { NextResponse } from 'next/server';
 import { adminAuth } from '@/lib/firebaseAdmin';
@@ -11,7 +14,7 @@ import {
   PERMISSIONS, 
   TEAM_ROLES,
   EMPLOYEE_RESTRICTED_PERMISSIONS 
-} from '@/lib/services/serviceEnterprise/constants/enterpriseConstants';
+}from '@/lib/services/constants';
 
 /**
  * GET /api/enterprise/teams/[teamId]/permissions

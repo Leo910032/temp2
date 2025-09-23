@@ -1,3 +1,7 @@
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
+// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // app/api/user/contacts/places/autocomplete/route.js
 import { NextResponse } from 'next/server';
 import { adminAuth } from '@/lib/firebaseAdmin';

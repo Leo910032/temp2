@@ -1,3 +1,7 @@
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
+//////////////////////////////////////////////
 // app/api/enterprise/teams/route.js
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
@@ -7,7 +11,7 @@ import {
   EnterpriseTeamService, 
   EnterprisePermissionService 
 } from '@serviceEnterprise/server';
-import { PERMISSIONS } from '@/lib/services/serviceEnterprise/constants/enterpriseConstants';
+import { PERMISSIONS }from '@/lib/services/constants';
 
 
 // app/api/enterprise/teams/route.js

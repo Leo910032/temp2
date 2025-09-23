@@ -1,3 +1,6 @@
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
 // app/api/admin/enterprise-tools/route.js - UPDATED VERSION
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
@@ -8,7 +11,7 @@ import {
     ORGANIZATION_ROLES, 
     TEAM_ROLES, 
     DEFAULT_PERMISSIONS_BY_ROLE 
-} from '@/lib/services/serviceEnterprise/constants/enterpriseConstants';
+}from '@/lib/services/constants';
 
 // ✅ UPDATED: Generate 6-character usernames without spaces
 function generateRandomUser(role = 'manager') {

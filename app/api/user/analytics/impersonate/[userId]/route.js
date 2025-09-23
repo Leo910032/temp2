@@ -1,3 +1,6 @@
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
 // app/api/user/analytics/impersonate/[userId]/route.js
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
@@ -12,7 +15,7 @@ import { createAuditLogEntry } from '@/lib/services/serviceEnterprise/server/ent
 import { 
     PERMISSIONS,
     TEAM_ROLES 
-} from '@/lib/services/serviceEnterprise/constants/enterpriseConstants';
+} from '@/lib/services/constants';
 
 // ✅ REUSE THE SAME HELPER FUNCTIONS FROM YOUR WORKING ANALYTICS API
 function getDateKeys() {

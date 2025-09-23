@@ -1,3 +1,8 @@
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
+
 // app/api/user/contacts/scan/route.js - FIXED API INTERFACE
 import { NextResponse } from 'next/server';
 import { adminAuth } from '@/lib/firebaseAdmin'; 

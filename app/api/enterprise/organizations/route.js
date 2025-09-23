@@ -1,8 +1,11 @@
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
 // app/api/enterprise/organizations/route.js
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { hasEnterpriseAccess } from '@/lib/services/enterpriseSubscriptionService';
+import { hasEnterpriseAccess } from '@/lib/services/serviceEnterprise/client/enterpriseSubscriptionService.js';
 
 // Rate limiting for organization operations
 const rateLimitMap = new Map();

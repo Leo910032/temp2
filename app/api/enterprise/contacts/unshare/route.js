@@ -1,8 +1,11 @@
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
 // app/api/enterprise/contacts/unshare/route.js
 import { NextResponse } from 'next/server';
 import { adminAuth } from '@/lib/firebaseAdmin';
-import { EnterpriseContactService } from '@/lib/services/enterpriseContactService';
-import { EnterprisePermissionService } from '@/lib/services/enterprisePermissionService';
+import { EnterpriseContactService } from '@/lib/services/serviceEnterprise/server/enterpriseContactService.js';
+import { EnterprisePermissionService } from '@/lib/services/serviceEnterprise/server/enterprisePermissionService.js';
 
 /**
  * POST /api/enterprise/contacts/unshare

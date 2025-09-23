@@ -1,3 +1,8 @@
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // File: app/api/user/contacts/[contactId]/route.js
 
 import { NextResponse } from 'next/server';

@@ -1,3 +1,8 @@
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
+
 // app/api/user/contacts/rerank/route.js
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';

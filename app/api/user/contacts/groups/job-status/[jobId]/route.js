@@ -1,3 +1,8 @@
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
+// //// /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // app/api/user/contacts/groups/job-status/[jobId]/route.js
 import { NextResponse } from 'next/server';
 import { adminAuth } from '@/lib/firebaseAdmin';

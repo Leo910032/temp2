@@ -1,3 +1,7 @@
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
+/**
+ * THIS FILE HAS BEEN REFRACTORED 
+ */
 // app/api/admin/generate-vector-contacts/route.js - Vector-Enabled Contact Generation API
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';

@@ -1,4 +1,5 @@
-// app/dashboard/(dashboard pages)/contacts/components/GroupModalComponents/RulesGenerateTab.jsx
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//app/dashboard/(dashboard pages)/contacts/components/GroupModalComponents/RulesGenerateTab.jsx
 // Rules-based group generation tab (fast, no cost tracking)
 
 "use client"

@@ -1,3 +1,5 @@
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
+
 // app/api/user/contacts/semantic-search/route.js - UPDATED WITH SEPARATED COST TRACKING
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';

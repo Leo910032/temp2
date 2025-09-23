@@ -1,4 +1,5 @@
-// app/dashboard/(dashboard pages)/contacts/components/GroupModalComponents/LocationSelector.jsx
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//app/dashboard/(dashboard pages)/contacts/components/GroupModalComponents/LocationSelector.jsx
 "use client"
 import EventLocationSearch from '../EventLocationSearch.jsx';
 

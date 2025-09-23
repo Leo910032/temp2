@@ -1,3 +1,4 @@
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // components/ContactsMap/GroupClusterManager.js - Enhanced Group Cluster Manager Class
 export default class GroupClusterManager {
     constructor(map, groups, contacts, options = {}) {

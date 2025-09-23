@@ -1,3 +1,5 @@
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
+
 "use client"
 import React, { useState, useEffect } from 'react';
 import { SemanticSearchService } from '@/lib/services/serviceContact/client/services/SemanticSearchService';

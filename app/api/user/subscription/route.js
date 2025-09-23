@@ -6,7 +6,7 @@ import {
     TEAM_ROLES, 
     PERMISSIONS, 
     DEFAULT_PERMISSIONS_BY_ROLE 
-} from '@/lib/services/serviceEnterprise/constants/enterpriseConstants';
+}from '@/lib/services/constants';
 
 /**
  * Helper function to determine feature access based on account type.

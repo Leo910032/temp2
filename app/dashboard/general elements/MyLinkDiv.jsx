@@ -1,11 +1,10 @@
 "use client"
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { fetchUserData } from "@/lib/fetch data/fetchUserData";
+import { useDashboard } from "@/app/dashboard/DashboardContext.js";
 
 export default function MyLinkDiv() {
-    const { currentUser } = useAuth(); // 1. Get user from the new Auth context
+    const { currentUser, isLoading } = useDashboard(); // Use your existing dashboard context
     const [myUrl, setMyUrl] = useState("");
     const [copied, setCopied] = useState(false);
 
@@ -18,27 +17,18 @@ export default function MyLinkDiv() {
     };
 
     useEffect(() => {
-        async function fetchUserLink() {
-            // 2. Only run the fetch if the user is authenticated
-            if (!currentUser) {
-                setMyUrl(""); // Clear URL if user logs out
-                return;
-            }
-
-            try {
-                // 3. Use currentUser.uid to fetch data
-                const userData = await fetchUserData(currentUser.uid); 
-                if (userData && userData.username) {
-                    setMyUrl(`https://mylinks.fabiconcept.online/${userData.username}`);
-                }
-            } catch (error) {
-                console.error("Failed to fetch user data for link:", error);
-                setMyUrl("");
-            }
+        // Use the user data that's already loaded in your dashboard context
+        if (!isLoading && currentUser && currentUser.username) {
+            setMyUrl(`https://mylinks.fabiconcept.online/${currentUser.username}`);
+        } else if (!isLoading && !currentUser) {
+            setMyUrl(""); // Clear URL if user logs out
         }
+    }, [currentUser, isLoading]);
 
-        fetchUserLink();
-    }, [currentUser]); // 4. Add currentUser as a dependency
+    // Show nothing while loading
+    if (isLoading) {
+        return null;
+    }
 
     // No changes to the JSX are needed, it will render when myUrl is set
     return (

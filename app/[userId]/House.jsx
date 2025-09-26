@@ -1,7 +1,8 @@
 /**
- * THIS FILE HAS BEEN REFRACTORED 
+ * THIS FILE HAS BEEN REFACTORED 
+ * Updated to work with the new user document structure in 'users' collection
  */
-// app/[userId]/House.jsx - Fixed with proper hook placement
+// app/[userId]/House.jsx - Updated for new document structure
 "use client"
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { fireApp } from "@/important/firebase";
@@ -14,7 +15,7 @@ import SupportBanner from "./components/SupportBanner";
 import PublicLanguageSwitcher from "./components/PublicLanguageSwitcher";
 import SensitiveWarning from "./components/SensitiveWarning";
 import { trackView } from '@/lib/services/analyticsService';
-import AssetLayer from "./components/AssetLayer"; // ✅ IMPORT THE NEW COMPONENT
+import AssetLayer from "./components/AssetLayer";
 
 // Import contact exchange components
 import ExchangeButton from "./components/ExchangeButton";
@@ -24,13 +25,13 @@ export const HouseContext = React.createContext(null);
 export default function House({ initialUserData, scanToken = null, scanAvailable = false }) {
     // Initialize state with server-fetched data
     const [userData, setUserData] = useState(initialUserData);
-    const [showSensitiveWarning, setShowSensitiveWarning] = useState(initialUserData?.sensitiveStatus || false);
+    const [showSensitiveWarning, setShowSensitiveWarning] = useState(false);
     const [isOnline, setIsOnline] = useState(true);
     const [retryCount, setRetryCount] = useState(0);
     const [viewTracked, setViewTracked] = useState(false);
     const updateInProgress = useRef(false);
 
-    // FIXED: Move the profileVerificationStatus state to the top level
+    // Profile verification status for contact exchange
     const [profileVerificationStatus, setProfileVerificationStatus] = useState({
         verified: false,
         loading: true,
@@ -46,60 +47,118 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
         return false;
     }, []);
 
-    // Check if contact exchange should be shown
+    // ✅ Updated to work with new document structure
     const shouldShowContactExchange = useMemo(() => {
         // Don't show in preview mode
         if (isPreviewMode) return false;
         
-        // Check if user has contact exchange enabled
-        const contactExchangeEnabled = userData?.contactExchangeEnabled !== false; // Default to true
+        // Check if user has contact exchange enabled (from settings object)
+        const settings = userData?.settings || {};
+        const contactExchangeEnabled = settings.contactExchangeEnabled !== false; // Default to true
         
-        // Check if user has basic contact info
-        const hasContactInfo = userData?.displayName || userData?.email;
+        // Check if user has basic contact info (from profile object)
+        const profile = userData?.profile || {};
+        const hasContactInfo = profile.displayName || userData?.email;
         
         return contactExchangeEnabled && hasContactInfo;
-    }, [isPreviewMode, userData?.contactExchangeEnabled, userData?.displayName, userData?.email]);
+    }, [isPreviewMode, userData?.settings?.contactExchangeEnabled, userData?.profile?.displayName, userData?.email]);
 
-    // Effect for real-time data listening
+    // ✅ Updated to check sensitive content from new structure
     useEffect(() => {
-        if (!userData?.uid) return;
+        // Check for sensitive content warning from settings
+        const settings = userData?.settings || {};
+        setShowSensitiveWarning(settings.sensitiveStatus || false);
+    }, [userData?.settings?.sensitiveStatus]);
 
-        console.log('🔄 Setting up real-time listener for user:', userData.uid);
-        
-        const docRef = doc(fireApp, "AccountData", userData.uid);
-        const unsubscribe = onSnapshot(docRef, 
-            (docSnap) => {
-                if (docSnap.exists()) {
-                    if (updateInProgress.current) {
-                        console.log('🔄 Update in progress, skipping real-time update');
-                        return;
-                    }
-                    const latestData = docSnap.data();
-                    setUserData(prevData => ({ ...prevData, ...latestData, uid: userData.uid }));
-                    if (retryCount > 0) {
-                        setRetryCount(0);
-                        setIsOnline(true);
-                    }
-                } else {
-                    console.warn('❌ User document not found in real-time update');
-                }
-            },
-            (error) => {
-                console.error('❌ Real-time listener error:', error);
-                if (error.code === 'unavailable') {
-                    setIsOnline(false);
-                    const retryDelay = Math.min(1000 * Math.pow(2, retryCount), 30000);
-                    setTimeout(() => setRetryCount(prev => prev + 1), retryDelay);
-                }
+  // app/[userId]/House.jsx
+
+// ... (imports and component setup) ...
+
+  // In your House.jsx, update the flattenedData object in the real-time listener:
+
+// ✅ Updated real-time listener to use 'users' collection and correct data structure
+useEffect(() => {
+    if (!userData?.uid) return;
+
+    console.log('🔄 Setting up real-time listener for user:', userData.uid);
+    
+    const docRef = doc(fireApp, "users", userData.uid);
+    const unsubscribe = onSnapshot(docRef, 
+        (docSnap) => {
+            if (docSnap.exists()) {
+                const latestData = docSnap.data();
+                
+                // ✅ THE FIX: Read from the new nested objects, just like on the server.
+                const profile = latestData.profile || {};
+                const appearance = latestData.appearance || {};
+                const settings = latestData.settings || {};
+
+                // This flattened structure is for backward compatibility with your child components.
+                const flattenedData = {
+                    uid: userData.uid,
+                    username: latestData.username,
+                    email: latestData.email,
+                    
+                    // Profile data
+                    displayName: profile.displayName || '',
+                    bio: profile.bio || '',
+                    profilePhoto: profile.avatarUrl || '', // Use avatarUrl from profile
+
+                    // Content arrays
+                    links: latestData.links || [],
+                    socials: latestData.socials || [],
+                    
+                    // ✅ FIXED: Appearance data with ALL gradient fields
+                    selectedTheme: appearance.selectedTheme || 'Lake White',
+                    themeFontColor: appearance.themeFontColor || '#000000',
+                    fontType: appearance.fontType || 0,
+                    backgroundColor: appearance.backgroundColor || '#FFFFFF',
+                    backgroundType: appearance.backgroundType || 'Color',
+                    
+                    // ✅ ADD THESE MISSING GRADIENT FIELDS:
+                    gradientDirection: appearance.gradientDirection || 0,
+                    gradientColorStart: appearance.gradientColorStart || '#FFFFFF',
+                    gradientColorEnd: appearance.gradientColorEnd || '#000000',
+                    
+                    btnColor: appearance.btnColor || '#000000',
+                    btnFontColor: appearance.btnFontColor || '#FFFFFF',
+                    btnShadowColor: appearance.btnShadowColor || '#dcdbdb',
+                    btnType: appearance.btnType || 0,
+                    cvDocument: appearance.cvDocument || null,
+                    christmasAccessory: appearance.christmasAccessory || null,
+
+                    // Settings data
+                    isPublic: settings.isPublic !== false,
+                    sensitiveStatus: settings.sensitiveStatus || false,
+                    sensitivetype: settings.sensitivetype || 0,
+                    supportBanner: settings.supportBanner || '',
+                    supportBannerStatus: settings.supportBannerStatus || false,
+                    socialPosition: settings.socialPosition || 0,
+                };
+                
+                console.log('🎨 House: Updated data with gradient fields:', {
+                    backgroundType: flattenedData.backgroundType,
+                    gradientDirection: flattenedData.gradientDirection,
+                    gradientColorStart: flattenedData.gradientColorStart,
+                    gradientColorEnd: flattenedData.gradientColorEnd
+                });
+                
+                setUserData(flattenedData);
+            } else {
+                console.warn('❌ User document not found in real-time update');
             }
-        );
+        },
+        (error) => {
+            console.error('❌ Real-time listener error:', error);
+        }
+    );
 
-        return () => {
-            console.log('🧹 Cleaning up real-time listener');
-            unsubscribe();
-        };
-    }, [userData?.uid, retryCount]);
-
+    return () => {
+        console.log('🧹 Cleaning up real-time listener');
+        unsubscribe();
+    };
+}, [userData?.uid]);
+// ... (rest of the House.jsx component) ...
     // Effect for tracking the profile view event
     useEffect(() => {
         if (viewTracked) return;
@@ -209,7 +268,7 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
             ) : (
                 <>
                     <BgDiv />
-                                        <AssetLayer />
+                    <AssetLayer />
 
                     <div className="relative z-20 md:w-[50rem] w-full flex flex-col items-center h-full mx-auto">
                         <div className="flex flex-col items-center flex-1 overflow-auto py-6">
@@ -246,7 +305,7 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
                                             username={userData.username}
                                             userInfo={{
                                                 userId: userData.uid,
-                                                displayName: userData.displayName,
+                                                displayName: userData.displayName || userData.profile?.displayName,
                                                 email: userData.email
                                             }}
                                             userId={userData.uid}

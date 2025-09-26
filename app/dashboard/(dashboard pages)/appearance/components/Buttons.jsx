@@ -1,24 +1,30 @@
+// Add this debug version of your Buttons component to see what's happening:
+
 /**
  * THIS FILE HAS BEEN REFRACTORED 
  */
 "use client"
 
-import React, { useContext, useMemo } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import Image from "next/image";
 import { useTranslation } from "@/lib/translation/useTranslation";
 import { AppearanceContext } from "../AppearanceContext";
 import Button from "../elements/Button";
-import ColorPicker from "../elements/ColorPicker";
+import ColorPickerFlat from "../elements/ColorPickerFlat.jsx";
 
-/**
- * A container component for selecting button styles and colors.
- * This is a "dumb" component that gets its state and update logic from AppearanceContext.
- */
 export default function Buttons() {
     const { t, isInitialized } = useTranslation();
     
     // Get all necessary data and functions from the centralized context.
     const { appearance, updateAppearance, isSaving } = useContext(AppearanceContext);
+    
+    // State to control visibility of color pickers
+    const [showColorPickers, setShowColorPickers] = useState({
+        theme: false,
+        button: false,
+        buttonFont: false,
+        shadow: false
+    });
 
     // Memoize translations for performance
     const translations = useMemo(() => {
@@ -38,11 +44,57 @@ export default function Buttons() {
     }, [t, isInitialized]);
 
     // This simplified handler just calls the update function from the context.
-    // The parent <AppearancePage> is responsible for the actual saving logic.
     const handleUpdateTheme = (type) => {
-        if (isSaving) return; // Prevent updates while a save is in progress
+        if (isSaving) return;
+        console.log('🔘 Button type update:', type);
         updateAppearance('btnType', type);
     };
+
+    // Toggle function for color picker visibility
+    const toggleColorPicker = (colorType) => {
+        setShowColorPickers(prev => ({
+            ...prev,
+            [colorType]: !prev[colorType]
+        }));
+    };
+
+    // ✅ ENHANCED: Color update handlers with detailed logging
+    const handleColorUpdate = (colorType, color) => {
+        if (isSaving) return;
+        
+        console.log('🎨 Color update attempt:', { colorType, color, isSaving });
+        
+        let fieldName;
+        switch(colorType) {
+            case 'theme':
+                fieldName = 'themeFontColor';
+                break;
+            case 'button':
+                fieldName = 'btnColor';
+                break;
+            case 'buttonFont':
+                fieldName = 'btnFontColor';
+                break;
+            case 'shadow':
+                fieldName = 'btnShadowColor';
+                break;
+            default:
+                console.warn('❌ Unknown color type:', colorType);
+                return;
+        }
+        
+        console.log(`🔄 Updating ${fieldName} to:`, color);
+        updateAppearance(fieldName, color);
+    };
+
+    // Debug: Log current appearance values
+    console.log('🎯 Current appearance values:', {
+        btnColor: appearance?.btnColor,
+        btnFontColor: appearance?.btnFontColor,
+        btnShadowColor: appearance?.btnShadowColor,
+        themeFontColor: appearance?.themeFontColor,
+        btnType: appearance?.btnType
+    });
 
     // Render a skeleton loader if the context data isn't ready yet.
     if (!appearance) {
@@ -64,6 +116,21 @@ export default function Buttons() {
 
     return (
         <div className={`w-full bg-white rounded-3xl my-3 flex flex-col p-6 transition-opacity ${isSaving ? 'opacity-75' : ''}`}>
+            
+            {/* ✅ DEBUG PANEL - Remove this after fixing */}
+            {process.env.NODE_ENV === 'development' && (
+                <div className="mb-4 p-4 bg-yellow-50 rounded-lg border">
+                    <h3 className="font-bold text-sm mb-2">🐛 Button Colors Debug</h3>
+                    <div className="text-xs space-y-1">
+                        <div><strong>Theme Font Color:</strong> {appearance.themeFontColor || 'undefined'}</div>
+                        <div><strong>Button Color:</strong> {appearance.btnColor || 'undefined'}</div>
+                        <div><strong>Button Font Color:</strong> {appearance.btnFontColor || 'undefined'}</div>
+                        <div><strong>Button Shadow Color:</strong> {appearance.btnShadowColor || 'undefined'}</div>
+                        <div><strong>Button Type:</strong> {appearance.btnType ?? 'undefined'}</div>
+                        <div><strong>Is Saving:</strong> {isSaving ? 'YES' : 'NO'}</div>
+                    </div>
+                </div>
+            )}
             
             <section className="flex gap-5 text-sm flex-col mb-10">
                 <span className="font-semibold">{translations.fill}</span>
@@ -141,21 +208,133 @@ export default function Buttons() {
                 </div>
             </section>
 
+            {/* Color Selection Sections - Initially Hidden */}
             <section className="flex text-sm flex-col mb-10">
-                <span className="font-semibold mb-[-10px]">{translations.themeTextColour}</span>
-                <ColorPicker colorFor={4} disabled={isSaving} />
+                <div className="flex items-center justify-between mb-3">
+                    <span className="font-semibold">{translations.themeTextColour}</span>
+                    <div className="flex items-center gap-3">
+                        <div 
+                            className="w-8 h-8 rounded border-2 cursor-pointer"
+                            style={{ backgroundColor: appearance.themeFontColor || '#000000' }}
+                            title={appearance.themeFontColor || '#000000'}
+                        ></div>
+                        <button
+                            className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                            onClick={() => toggleColorPicker('theme')}
+                        >
+                            {showColorPickers.theme ? 'Hide' : 'Customize'}
+                        </button>
+                    </div>
+                </div>
+                {showColorPickers.theme && (
+                    <div className="mt-2">
+                        <ColorPickerFlat 
+                            currentColor={appearance.themeFontColor || '#000000'}
+                            onColorChange={(color) => {
+                                console.log('🎨 Theme color picker callback:', color);
+                                handleColorUpdate('theme', color);
+                            }}
+                            disabled={isSaving}
+                            fieldName="Theme Font Color"
+                        />
+                    </div>
+                )}
             </section>
+
             <section className="flex text-sm flex-col mb-10">
-                <span className="font-semibold mb-[-10px]">{translations.buttonColour}</span>
-                <ColorPicker colorFor={1} disabled={isSaving} />
+                <div className="flex items-center justify-between mb-3">
+                    <span className="font-semibold">{translations.buttonColour}</span>
+                    <div className="flex items-center gap-3">
+                        <div 
+                            className="w-8 h-8 rounded border-2 cursor-pointer"
+                            style={{ backgroundColor: appearance.btnColor || '#000000' }}
+                            title={appearance.btnColor || '#000000'}
+                        ></div>
+                        <button
+                            className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                            onClick={() => toggleColorPicker('button')}
+                        >
+                            {showColorPickers.button ? 'Hide' : 'Customize'}
+                        </button>
+                    </div>
+                </div>
+                {showColorPickers.button && (
+                    <div className="mt-2">
+                        <ColorPickerFlat 
+                            currentColor={appearance.btnColor || '#000000'}
+                            onColorChange={(color) => {
+                                console.log('🎨 Button color picker callback:', color);
+                                handleColorUpdate('button', color);
+                            }}
+                            disabled={isSaving}
+                            fieldName="Button Color"
+                        />
+                    </div>
+                )}
             </section>
+
             <section className="flex text-sm flex-col mb-10">
-                <span className="font-semibold mb-[-10px]">{translations.buttonFontColour}</span>
-                <ColorPicker colorFor={2} disabled={isSaving} />
+                <div className="flex items-center justify-between mb-3">
+                    <span className="font-semibold">{translations.buttonFontColour}</span>
+                    <div className="flex items-center gap-3">
+                        <div 
+                            className="w-8 h-8 rounded border-2 cursor-pointer"
+                            style={{ backgroundColor: appearance.btnFontColor || '#FFFFFF' }}
+                            title={appearance.btnFontColor || '#FFFFFF'}
+                        ></div>
+                        <button
+                            className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                            onClick={() => toggleColorPicker('buttonFont')}
+                        >
+                            {showColorPickers.buttonFont ? 'Hide' : 'Customize'}
+                        </button>
+                    </div>
+                </div>
+                {showColorPickers.buttonFont && (
+                    <div className="mt-2">
+                        <ColorPickerFlat 
+                            currentColor={appearance.btnFontColor || '#FFFFFF'}
+                            onColorChange={(color) => {
+                                console.log('🎨 Button font color picker callback:', color);
+                                handleColorUpdate('buttonFont', color);
+                            }}
+                            disabled={isSaving}
+                            fieldName="Button Font Color"
+                        />
+                    </div>
+                )}
             </section>
+
             <section className="flex text-sm flex-col">
-                <span className="font-semibold mb-[-10px]">{translations.shadowColour}</span>
-                <ColorPicker colorFor={3} disabled={isSaving} />
+                <div className="flex items-center justify-between mb-3">
+                    <span className="font-semibold">{translations.shadowColour}</span>
+                    <div className="flex items-center gap-3">
+                        <div 
+                            className="w-8 h-8 rounded border-2 cursor-pointer"
+                            style={{ backgroundColor: appearance.btnShadowColor || '#dcdbdb' }}
+                            title={appearance.btnShadowColor || '#dcdbdb'}
+                        ></div>
+                        <button
+                            className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                            onClick={() => toggleColorPicker('shadow')}
+                        >
+                            {showColorPickers.shadow ? 'Hide' : 'Customize'}
+                        </button>
+                    </div>
+                </div>
+                {showColorPickers.shadow && (
+                    <div className="mt-2">
+                        <ColorPickerFlat 
+                            currentColor={appearance.btnShadowColor || '#dcdbdb'}
+                            onColorChange={(color) => {
+                                console.log('🎨 Shadow color picker callback:', color);
+                                handleColorUpdate('shadow', color);
+                            }}
+                            disabled={isSaving}
+                            fieldName="Button Shadow Color"
+                        />
+                    </div>
+                )}
             </section>
         </div>
     );

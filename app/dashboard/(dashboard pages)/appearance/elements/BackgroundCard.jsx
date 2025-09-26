@@ -18,7 +18,7 @@ import { AppearanceContext } from "../AppearanceContext";
  */
 export default function BackgroundCard({ text, identifier, colorValue, backImg }) {
     const { t } = useTranslation();
-    
+  
     // --- CONTEXT CONSUMPTION ---
     const { setIsGradient } = useContext(backgroundContext);
     const { appearance, updateAppearance, isSaving, handleFileUpload } = useContext(AppearanceContext);
@@ -171,11 +171,18 @@ export default function BackgroundCard({ text, identifier, colorValue, backImg }
                         </div>
                     )}
                     
-                    {colorValue ? (
-                        <div className="h-full w-full" style={{ backgroundColor: colorValue }}></div>
-                    ) : backImg ? (
-                        <div className="h-full w-full bg-cover bg-no-repeat bg-center" style={{ backgroundImage: backImg }}></div>
-                    ) : (
+                   {colorValue ? (
+    <div 
+        className="h-full w-full" 
+        style={{ 
+            backgroundColor: identifier === "Color" && appearance?.backgroundColor 
+                ? appearance.backgroundColor 
+                : colorValue 
+        }}
+    ></div>
+) : backImg ? (
+    <div className="h-full w-full bg-cover bg-no-repeat bg-center" style={{ backgroundImage: backImg }}></div>
+) : (
                         <div className="h-full w-full grid place-items-center">
                             <input 
                                 type="file" 

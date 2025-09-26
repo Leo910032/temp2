@@ -1,15 +1,20 @@
+// Fixed Backgrounds.jsx - Now passes correct props to ColorPickerFlat
+
 "use client"
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useContext } from "react";
 import BackgroundCard from "../elements/BackgroundCard";
-import ColorPicker from "../elements/ColorPicker";
-import GradientPicker from "../elements/GradientPicker";
+import ColorPickerFlat from "../elements/ColorPickerFlat.jsx";
+import GradientPicker from "../elements/GradientPicker.jsx";
 import { useTranslation } from "@/lib/translation/useTranslation";
+import { AppearanceContext } from "../AppearanceContext";
 
 export const backgroundContext = React.createContext();
 
 export default function Backgrounds() {
     const { t, isInitialized } = useTranslation();
+    const { appearance, updateAppearance, isSaving } = useContext(AppearanceContext);
     const [isGradient, setIsGradient] = useState(false);
+    const [isColor, setIsColor] = useState(false);
 
     const translations = useMemo(() => {
         if (!isInitialized) return {};
@@ -24,6 +29,39 @@ export default function Backgrounds() {
             zigZag: t('dashboard.appearance.backgrounds.zig_zag'),
         };
     }, [t, isInitialized]);
+
+    // Generate dynamic gradient from user's appearance data
+    const dynamicGradient = useMemo(() => {
+        if (!appearance) {
+            console.log("🔍 Backgrounds: No appearance data yet, using fallback gradient");
+            return "linear-gradient(to top, #3d444b, #686d73)";
+        }
+        
+        const gradientColorStart = appearance.gradientColorStart || '#FFFFFF';
+        const gradientColorEnd = appearance.gradientColorEnd || '#000000';
+        const gradientDirection = appearance.gradientDirection || 0;
+        
+        const direction = gradientDirection === 0 ? 'to bottom' : 'to top';
+        const gradient = `linear-gradient(${direction}, ${gradientColorStart}, ${gradientColorEnd})`;
+        
+        console.log("🎨 Backgrounds: Generated dynamic gradient:", gradient);
+        console.log("🎨 Appearance data:", { gradientColorStart, gradientColorEnd, gradientDirection });
+        
+        return gradient;
+    }, [appearance]);
+
+    // Check what background type is currently selected
+    const selectedBackgroundType = appearance?.backgroundType;
+
+    // Show appropriate picker based on selection
+    const showGradientPicker = selectedBackgroundType === 'Gradient';
+    const showColorPicker = selectedBackgroundType === 'Color';
+
+    // Handle background color change
+    const handleBackgroundColorChange = (color) => {
+        console.log('🎨 Backgrounds: Updating backgroundColor to:', color);
+        updateAppearance('backgroundColor', color);
+    };
 
     if (!isInitialized) {
         return (
@@ -41,11 +79,22 @@ export default function Backgrounds() {
     }
 
     return (
-        <backgroundContext.Provider value={{ setIsGradient }}>
+        <backgroundContext.Provider value={{ setIsGradient, setIsColor }}>
             <div className="w-full bg-white rounded-3xl my-3 flex flex-col p-6">
+                {/* Debug info in development */}
+                {process.env.NODE_ENV === 'development' && (
+                    <div className="text-xs text-gray-500 mb-2 p-2 bg-yellow-50 rounded">
+                        Debug - Current gradient: {dynamicGradient} | Selected: {selectedBackgroundType}
+                    </div>
+                )}
+                
                 <div className="grid sm:grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] grid-cols-[repeat(auto-fill,minmax(8rem,1fr))] sm:gap-4 gap-2 w-full">
-                    <BackgroundCard identifier={"Flat Colour"} text={translations.flatColour} colorValue={"#3d444b"} />
-                    <BackgroundCard identifier={"Gradient"} text={translations.gradient} backImg={"linear-gradient(to top, #3d444b, #686d73)"} />
+                    <BackgroundCard identifier={"Color"} text={translations.flatColour} colorValue={appearance?.backgroundColor || "#3d444b"} />
+                    <BackgroundCard 
+                        identifier={"Gradient"} 
+                        text={translations.gradient} 
+                        backImg={dynamicGradient} 
+                    />
                     <BackgroundCard identifier={"Image"} text={translations.image} />
                     <BackgroundCard identifier={"Video"} text={translations.video} />
                     <BackgroundCard identifier={"Polka"} text={translations.polka} backImg={'url("https://linktree.sirv.com/Images/gif/selector-polka.51162b39945eaa9c181a.gif")'} />
@@ -53,9 +102,17 @@ export default function Backgrounds() {
                     <BackgroundCard identifier={"Waves"} text={translations.waves} backImg={'url("https://linktree.sirv.com/Images/gif/selector-waves.5cf0a8a65908cd433192.gif")'} />
                     <BackgroundCard identifier={"Zig Zag"} text={translations.zigZag} backImg={'url("https://linktree.sirv.com/Images/gif/selector-zigzag.0bfe34b10dd92cad79b9.gif")'} />
                 </div>
-                {isGradient && <GradientPicker />}
-                {/* ✅ FIXED: Always pass valid colorFor prop for background color */}
-                <ColorPicker colorFor={0} />
+                
+                {/* Show appropriate picker based on selected background type */}
+                {showGradientPicker && <GradientPicker />}
+                {showColorPicker && (
+                    <ColorPickerFlat 
+                        currentColor={appearance?.backgroundColor || '#FFFFFF'}
+                        onColorChange={handleBackgroundColorChange}
+                        disabled={isSaving}
+                        fieldName="Background Color"
+                    />
+                )}
             </div>
         </backgroundContext.Provider>
     );

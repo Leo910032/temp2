@@ -1,6 +1,4 @@
-/**
- * Simplified AppearancePage - Now uses AppearanceProvider for all logic
- */
+// app/dashboard/(dashboard pages)/appearance/page.jsx - Updated with Banner Feature
 "use client"
 import React, { useMemo } from 'react';
 import { useTranslation } from "@/lib/translation/useTranslation";
@@ -12,6 +10,7 @@ import { AppearanceProvider, useAppearance } from './AppearanceContext';
 // Import components
 import ProfileCard from './components/ProfileCard';
 import Themes from './components/Themes';
+import Banners from './components/Banners'; // 🆕 New Banner component
 import Backgrounds from './components/Backgrounds';
 import Buttons from './components/Buttons';
 import FontsOptions from './components/FontsOptions';
@@ -72,15 +71,16 @@ function AppearanceContent() {
     const translations = useMemo(() => {
         if (!isInitialized) return {};
         return {
-            profile: t('dashboard.appearance.headings.profile'),
-            themes: t('dashboard.appearance.headings.themes'),
-            customAppearance: t('dashboard.appearance.headings.custom_appearance'),
-            customAppearanceDesc: t('dashboard.appearance.custom_appearance_description'),
-            backgrounds: t('dashboard.appearance.headings.backgrounds'),
-            christmas: t('dashboard.appearance.headings.christmas'),
-            buttons: t('dashboard.appearance.headings.buttons'),
-            fonts: t('dashboard.appearance.headings.fonts'),
-            newBadge: t('dashboard.appearance.new_badge'),
+            profile: t('dashboard.appearance.headings.profile') || 'Profile',
+            themes: t('dashboard.appearance.headings.themes') || 'Themes',
+            customAppearance: t('dashboard.appearance.headings.custom_appearance') || 'Custom Appearance',
+            customAppearanceDesc: t('dashboard.appearance.custom_appearance_description') || 'Customize your contact card with these advanced options.',
+            banners: t('dashboard.appearance.headings.banners') || 'Banner', // 🆕 New banner heading
+            backgrounds: t('dashboard.appearance.headings.backgrounds') || 'Backgrounds',
+            christmas: t('dashboard.appearance.headings.christmas') || 'Christmas Accessories',
+            buttons: t('dashboard.appearance.headings.buttons') || 'Buttons',
+            fonts: t('dashboard.appearance.headings.fonts') || 'Fonts',
+            newBadge: t('dashboard.appearance.new_badge') || 'NEW',
             saving: t('common.saving') || "Saving...",
         };
     }, [t, isInitialized]);
@@ -88,6 +88,7 @@ function AppearanceContent() {
     const canUseCustomButtons = permissions[APPEARANCE_FEATURES.CUSTOM_BUTTONS];
     const canUseCustomFonts = permissions[APPEARANCE_FEATURES.CUSTOM_FONTS];
     const canUseCustomBackground = permissions[APPEARANCE_FEATURES.CUSTOM_BACKGROUND];
+    const canUseCustomBanner = permissions[APPEARANCE_FEATURES.CUSTOM_BACKGROUND]; // 🆕 Reuse background permission for banners
 
     // Loading states
     if (!isInitialized) {
@@ -180,6 +181,20 @@ function AppearanceContent() {
                 <p className="py-3 sm:text-base text-sm text-gray-600">
                     {translations.customAppearanceDesc}
                 </p>
+            </div>
+
+            {/* 🆕 NEW BANNER SECTION */}
+            <div className="py-4">
+                <h2 className="text-lg font-semibold my-4">
+                    {translations.banners}
+                    <span className="py-1 px-3 rounded bg-blue-500 text-white font-medium text-sm ml-2">
+                        {translations.newBadge}
+                    </span>
+                </h2>
+                <p className="py-3 sm:text-base text-sm text-gray-600">
+                    Add a professional banner to the top of your contact card. Choose from colors, gradients, images, or videos.
+                </p>
+                {canUseCustomBanner ? <Banners /> : <UpgradePrompt feature="Custom Banners" requiredTier="Premium" />}
             </div>
             
             <div className="py-4">

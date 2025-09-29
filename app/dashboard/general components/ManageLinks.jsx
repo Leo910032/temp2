@@ -1,5 +1,5 @@
 /**
- * THIS FILE HAS BEEN REFRACTORED 
+ * THIS FILE HAS BEEN REFACTORED 
  */
 "use client";
 
@@ -26,10 +26,12 @@ export default function ManageLinks() {
     const [data, setData] = useState([]);
     const [isSaving, setIsSaving] = useState(false);
     const [isLoadingLinks, setIsLoadingLinks] = useState(true);
-    
+    const [syncState, setSyncState] = useState('idle'); // 'idle', 'loading_cache', 'syncing_server'
+
     const hasInitiallyLoaded = useRef(false);
     const lastSavedData = useRef(null);
     const isServerUpdate = useRef(false);
+    const unsubscribeRef = useRef(null);
     const debouncedData = useDebounce(data, 1500);
 
     const translations = useMemo(() => {
@@ -50,7 +52,7 @@ export default function ManageLinks() {
             title: "", 
             url: "", 
             urlKind: "", 
-            isActive: true, 
+            isActive: false, // ✅ Start as inactive to avoid validation issues
             type: 1 
         };
         setData(prevData => [newLink, ...prevData]);
@@ -66,26 +68,27 @@ export default function ManageLinks() {
         setData(prevData => [newHeader, ...prevData]);
     }, []);
 
-    // ✅ REFACTORED API CALLS to use the client-side service
-    const fetchLinksFromServer = useCallback(async () => {
-        if (!currentUser) return;
-        
-        setIsLoadingLinks(true);
-        try {
-            const result = await LinksService.getLinks();
-            isServerUpdate.current = true;
-            setData(result.links || []);
-            lastSavedData.current = JSON.stringify(result.links || []);
-        } catch (error) {
-            console.error("Error fetching links:", error);
-            toast.error(translations.loadingError);
-        } finally {
-            setIsLoadingLinks(false);
-            hasInitiallyLoaded.current = true;
-            setTimeout(() => { isServerUpdate.current = false; }, 100);
-        }
-    }, [currentUser, translations.loadingError]);
-
+    // ✅ ENHANCED API CALLS with caching and sync
+   
+// ✅ ENHANCED API CALLS with proper caching
+const fetchLinksFromServer = useCallback(async (forceRefresh = false) => {
+    if (!currentUser) return;
+    
+    setIsLoadingLinks(true);
+    try {
+        const result = await LinksService.getLinks(forceRefresh);
+        isServerUpdate.current = true;
+        setData(result.links || []);
+        lastSavedData.current = JSON.stringify(result.links || []);
+    } catch (error) {
+        console.error("Error fetching links:", error);
+        toast.error(translations.loadingError);
+    } finally {
+        setIsLoadingLinks(false);
+        hasInitiallyLoaded.current = true;
+        setTimeout(() => { isServerUpdate.current = false; }, 100);
+    }
+}, [currentUser, translations.loadingError]);
     const saveLinksToServer = useCallback(async (linksToSave) => {
         if (!currentUser) return;
         
@@ -102,25 +105,81 @@ export default function ManageLinks() {
         }
     }, [currentUser, translations.linksSaved, translations.savingError]);
 
+    
+useEffect(() => {
+    if (!currentUser || !isInitialized) return;
+
+    // Subscribe to links updates from LinksService
+    const unsubscribe = LinksService.subscribe((updatedLinks) => {
+        console.log('📡 ManageLinks: Received links update from service', updatedLinks.length, 'links');
+        console.log('📡 ManageLinks: Updated links data:', updatedLinks);
+        
+        // Always update with fresh server data
+        isServerUpdate.current = true;
+        setData(updatedLinks);
+        lastSavedData.current = JSON.stringify(updatedLinks);
+        setTimeout(() => { isServerUpdate.current = false; }, 100);
+    });
+
+    unsubscribeRef.current = unsubscribe;
+
+    // ✅ FIXED: Try to load from cache first, only fetch if no cache
+    console.log('🔄 ManageLinks: Initializing - checking cache first');
+    const cachedLinks = LinksService.getCachedLinks();
+    
+    if (cachedLinks) {
+        console.log('📦 ManageLinks: Found cached links, using cache');
+        isServerUpdate.current = true;
+        setData(cachedLinks);
+        lastSavedData.current = JSON.stringify(cachedLinks);
+        hasInitiallyLoaded.current = true;
+        setIsLoadingLinks(false);
+        setTimeout(() => { isServerUpdate.current = false; }, 100);
+    } else {
+        console.log('🌐 ManageLinks: No cache found, fetching from server');
+        fetchLinksFromServer(false); // Don't force refresh, use normal cache logic
+    }
+
+    // Cleanup subscription on unmount
+    return () => {
+        if (unsubscribeRef.current) {
+            unsubscribeRef.current();
+            unsubscribeRef.current = null;
+        }
+    };
+}, [currentUser, isInitialized, fetchLinksFromServer]);
+
     // Context value for child components
     const contextValue = useMemo(() => ({
         setData,
         data,
         refreshData: fetchLinksFromServer,
-        isSaving
+        isSaving,
+        // Add helper methods for child components
+        updateSingleLink: async (linkId, updates) => {
+            try {
+                await LinksService.updateLink(linkId, updates);
+            } catch (error) {
+                console.error("Error updating single link:", error);
+                toast.error("Failed to update link");
+            }
+        },
+        // Add force refresh helper for debugging
+        forceRefresh: async () => {
+            console.log('🔄 ManageLinks: Force refreshing from database');
+            LinksService.invalidateCache();
+            await fetchLinksFromServer();
+        }
     }), [data, fetchLinksFromServer, isSaving]);
 
-    // Effects
-    useEffect(() => {
-        if (currentUser && isInitialized) {
-            fetchLinksFromServer();
-        }
-    }, [currentUser, isInitialized, fetchLinksFromServer]);
-
+    // ✅ ENHANCED DEBOUNCED SAVE with better sync
     useEffect(() => {
         if (!hasInitiallyLoaded.current || isServerUpdate.current) return;
+        
         const currentDataString = JSON.stringify(debouncedData);
         if (currentDataString === lastSavedData.current) return;
+        
+        // Optimistic update - immediately mark as saving
         saveLinksToServer(debouncedData);
     }, [debouncedData, saveLinksToServer]);
 
@@ -152,6 +211,14 @@ export default function ManageLinks() {
                     </div>
                 )}
 
+                {/* ✅ Add sync indicator for when data is being updated from server */}
+                {isServerUpdate.current && (
+                    <div className="text-center text-xs text-green-600 opacity-70">
+                        Syncing with server...
+                    </div>
+                )}
+
+          
                 {/* Links list */}
                 {hasInitiallyLoaded.current && data.length > 0 && (
                     <DraggableList array={data} />

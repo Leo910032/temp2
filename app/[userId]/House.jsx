@@ -1,8 +1,4 @@
-/**
- * THIS FILE HAS BEEN REFACTORED 
- * Updated to work with the new user document structure in 'users' collection
- */
-// app/[userId]/House.jsx - Updated for new document structure
+// app/[userId]/House.jsx - Updated with Banner Support
 "use client"
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { fireApp } from "@/important/firebase";
@@ -10,6 +6,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 import ProfilePic from "./components/ProfilePic";
 import UserInfo from "./components/UserInfo";
 import BgDiv from "./components/BgDiv";
+import Banner from "./components/Banner"; // 🆕 Import Banner component
 import MyLinks from "./components/MyLinks";
 import SupportBanner from "./components/SupportBanner";
 import PublicLanguageSwitcher from "./components/PublicLanguageSwitcher";
@@ -47,7 +44,7 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
         return false;
     }, []);
 
-    // ✅ Updated to work with new document structure
+    // Updated to work with new document structure
     const shouldShowContactExchange = useMemo(() => {
         // Don't show in preview mode
         if (isPreviewMode) return false;
@@ -63,102 +60,104 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
         return contactExchangeEnabled && hasContactInfo;
     }, [isPreviewMode, userData?.settings?.contactExchangeEnabled, userData?.profile?.displayName, userData?.email]);
 
-    // ✅ Updated to check sensitive content from new structure
+    // Updated to check sensitive content from new structure
     useEffect(() => {
         // Check for sensitive content warning from settings
         const settings = userData?.settings || {};
         setShowSensitiveWarning(settings.sensitiveStatus || false);
     }, [userData?.settings?.sensitiveStatus]);
 
-  // app/[userId]/House.jsx
+    // Updated real-time listener to use 'users' collection and include banner data
+    useEffect(() => {
+        if (!userData?.uid) return;
 
-// ... (imports and component setup) ...
-
-  // In your House.jsx, update the flattenedData object in the real-time listener:
-
-// ✅ Updated real-time listener to use 'users' collection and correct data structure
-useEffect(() => {
-    if (!userData?.uid) return;
-
-    console.log('🔄 Setting up real-time listener for user:', userData.uid);
-    
-    const docRef = doc(fireApp, "users", userData.uid);
-    const unsubscribe = onSnapshot(docRef, 
-        (docSnap) => {
-            if (docSnap.exists()) {
-                const latestData = docSnap.data();
-                
-                // ✅ THE FIX: Read from the new nested objects, just like on the server.
-                const profile = latestData.profile || {};
-                const appearance = latestData.appearance || {};
-                const settings = latestData.settings || {};
-
-                // This flattened structure is for backward compatibility with your child components.
-                const flattenedData = {
-                    uid: userData.uid,
-                    username: latestData.username,
-                    email: latestData.email,
+        console.log('🔄 Setting up real-time listener for user:', userData.uid);
+        
+        const docRef = doc(fireApp, "users", userData.uid);
+        const unsubscribe = onSnapshot(docRef, 
+            (docSnap) => {
+                if (docSnap.exists()) {
+                    const latestData = docSnap.data();
                     
-                    // Profile data
-                    displayName: profile.displayName || '',
-                    bio: profile.bio || '',
-                    profilePhoto: profile.avatarUrl || '', // Use avatarUrl from profile
+                    // Read from the new nested objects
+                    const profile = latestData.profile || {};
+                    const appearance = latestData.appearance || {};
+                    const settings = latestData.settings || {};
 
-                    // Content arrays
-                    links: latestData.links || [],
-                    socials: latestData.socials || [],
-                    
-                    // ✅ FIXED: Appearance data with ALL gradient fields
-                    selectedTheme: appearance.selectedTheme || 'Lake White',
-                    themeFontColor: appearance.themeFontColor || '#000000',
-                    fontType: appearance.fontType || 0,
-                    backgroundColor: appearance.backgroundColor || '#FFFFFF',
-                    backgroundType: appearance.backgroundType || 'Color',
-                    
-                    // ✅ ADD THESE MISSING GRADIENT FIELDS:
-                    gradientDirection: appearance.gradientDirection || 0,
-                    gradientColorStart: appearance.gradientColorStart || '#FFFFFF',
-                    gradientColorEnd: appearance.gradientColorEnd || '#000000',
-                    
-                    btnColor: appearance.btnColor || '#000000',
-                    btnFontColor: appearance.btnFontColor || '#FFFFFF',
-                    btnShadowColor: appearance.btnShadowColor || '#dcdbdb',
-                    btnType: appearance.btnType || 0,
-                    cvDocument: appearance.cvDocument || null,
-                    christmasAccessory: appearance.christmasAccessory || null,
+                    // This flattened structure is for backward compatibility with your child components.
+                    const flattenedData = {
+                        uid: userData.uid,
+                        username: latestData.username,
+                        email: latestData.email,
+                        
+                        // Profile data
+                        displayName: profile.displayName || '',
+                        bio: profile.bio || '',
+                        profilePhoto: profile.avatarUrl || '',
 
-                    // Settings data
-                    isPublic: settings.isPublic !== false,
-                    sensitiveStatus: settings.sensitiveStatus || false,
-                    sensitivetype: settings.sensitivetype || 0,
-                    supportBanner: settings.supportBanner || '',
-                    supportBannerStatus: settings.supportBannerStatus || false,
-                    socialPosition: settings.socialPosition || 0,
-                };
-                
-                console.log('🎨 House: Updated data with gradient fields:', {
-                    backgroundType: flattenedData.backgroundType,
-                    gradientDirection: flattenedData.gradientDirection,
-                    gradientColorStart: flattenedData.gradientColorStart,
-                    gradientColorEnd: flattenedData.gradientColorEnd
-                });
-                
-                setUserData(flattenedData);
-            } else {
-                console.warn('❌ User document not found in real-time update');
+                        // Content arrays
+                        links: latestData.links || [],
+                        socials: latestData.socials || [],
+                        
+                        // Appearance data with ALL fields including banner
+                        selectedTheme: appearance.selectedTheme || 'Lake White',
+                        themeFontColor: appearance.themeFontColor || '#000000',
+                        fontType: appearance.fontType || 0,
+                        backgroundColor: appearance.backgroundColor || '#FFFFFF',
+                        backgroundType: appearance.backgroundType || 'Color',
+                        
+                        // Background gradient fields
+                        gradientDirection: appearance.gradientDirection || 0,
+                        gradientColorStart: appearance.gradientColorStart || '#FFFFFF',
+                        gradientColorEnd: appearance.gradientColorEnd || '#000000',
+                        
+                        // 🆕 Banner fields
+                        bannerType: appearance.bannerType || 'None',
+                        bannerColor: appearance.bannerColor || '#3B82F6',
+                        bannerGradientStart: appearance.bannerGradientStart || '#667eea',
+                        bannerGradientEnd: appearance.bannerGradientEnd || '#764ba2',
+                        bannerGradientDirection: appearance.bannerGradientDirection || 'to right',
+                        bannerImage: appearance.bannerImage || null,
+                        bannerVideo: appearance.bannerVideo || null,
+                        
+                        btnColor: appearance.btnColor || '#000000',
+                        btnFontColor: appearance.btnFontColor || '#FFFFFF',
+                        btnShadowColor: appearance.btnShadowColor || '#dcdbdb',
+                        btnType: appearance.btnType || 0,
+                        cvDocument: appearance.cvDocument || null,
+                        christmasAccessory: appearance.christmasAccessory || null,
+
+                        // Settings data
+                        isPublic: settings.isPublic !== false,
+                        sensitiveStatus: settings.sensitiveStatus || false,
+                        sensitivetype: settings.sensitivetype || 0,
+                        supportBanner: settings.supportBanner || '',
+                        supportBannerStatus: settings.supportBannerStatus || false,
+                        socialPosition: settings.socialPosition || 0,
+                    };
+                    
+                    console.log('🎨 House: Updated data with banner fields:', {
+                        bannerType: flattenedData.bannerType,
+                        bannerColor: flattenedData.bannerColor,
+                        bannerImage: !!flattenedData.bannerImage
+                    });
+                    
+                    setUserData(flattenedData);
+                } else {
+                    console.warn('❌ User document not found in real-time update');
+                }
+            },
+            (error) => {
+                console.error('❌ Real-time listener error:', error);
             }
-        },
-        (error) => {
-            console.error('❌ Real-time listener error:', error);
-        }
-    );
+        );
 
-    return () => {
-        console.log('🧹 Cleaning up real-time listener');
-        unsubscribe();
-    };
-}, [userData?.uid]);
-// ... (rest of the House.jsx component) ...
+        return () => {
+            console.log('🧹 Cleaning up real-time listener');
+            unsubscribe();
+        };
+    }, [userData?.uid]);
+
     // Effect for tracking the profile view event
     useEffect(() => {
         if (viewTracked) return;
@@ -267,11 +266,21 @@ useEffect(() => {
                 <SensitiveWarning />
             ) : (
                 <>
+                    {/* Layer 1: Background - BgDiv (z-index: 10) */}
                     <BgDiv />
+                    
+                    {/* Layer 2: Banner Background - No text overlay (z-index: 15) */}
+                    <Banner />
+                    
+                    {/* Layer 3: Assets/Effects (z-index: 18) */}
                     <AssetLayer />
 
+                    {/* Layer 4: Main Content - Profile + Links (z-index: 20) */}
                     <div className="relative z-20 md:w-[50rem] w-full flex flex-col items-center h-full mx-auto">
-                        <div className="flex flex-col items-center flex-1 overflow-auto py-6">
+                        <div className="flex flex-col items-center flex-1 overflow-auto py-6" 
+                             style={{ 
+                                 paddingTop: userData?.bannerType !== 'None' ? '25px' : '24px' 
+                             }}>
                             <ProfilePic />
                             <UserInfo />
                             <MyLinks />
@@ -340,7 +349,8 @@ useEffect(() => {
                             )}
                         </div>
                     </div>
-                    <SupportBanner />
+                    
+                 
                 </>
             )}
         </HouseContext.Provider>

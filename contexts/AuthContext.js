@@ -173,19 +173,20 @@
     /**
      * Logs in a user via a secure server-side API route.
      */
-    const login = async (usernameOrEmail, password) => {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: usernameOrEmail, password }),
-      });
+// In contexts/AuthContext.js - replace the login function:
+const login = async (usernameOrEmail, password) => {
+  const response = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: usernameOrEmail, password }),
+  });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Login failed');
-      
-      // Use the custom token from the server to complete the sign-in
-      await signInWithCustomToken(auth, data.customToken);
-    };
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Login failed');
+  
+  // Use the custom token from the server to complete the sign-in
+  await signInWithCustomToken(auth, data.customToken);
+};
 
     /**
      * Logs out the current user.

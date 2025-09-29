@@ -1,16 +1,51 @@
 /**
- * THIS FILE HAS BEEN REFRACTORED 
+ * Enhanced AnalyticsContext with Smart Caching + Real-time Updates
+ * 
+ * This hybrid approach provides:
+ * 1. Instant loading from cache when returning to the page
+ * 2. Real-time updates when data changes
+ * 3. Automatic cache invalidation after a reasonable time
+ * 4. Memory cleanup to prevent leaks
  */
-// app/dashboard/(dashboard pages)/analytics/AnalyticsContext.js
+
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useDashboard } from '@/app/dashboard/DashboardContext';
 import { getFirestore, doc, onSnapshot } from 'firebase/firestore';
 import { app } from '@/important/firebase';
 
-// ✅ FIXED: This function now properly handles both dot notation and nested data
-function processAnalyticsData(rawData) {
+// Global cache object - persists across component mounts
+const analyticsCache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const MAX_CACHE_ENTRIES = 50; // Prevent memory leaks
+
+// Cache cleanup utility
+function cleanupOldCacheEntries() {
+    const now = Date.now();
+    const entries = Array.from(analyticsCache.entries());
+    
+    // Remove expired entries
+    const expiredKeys = entries
+        .filter(([_, data]) => now - data.timestamp > CACHE_DURATION)
+        .map(([key]) => key);
+    
+    expiredKeys.forEach(key => analyticsCache.delete(key));
+    
+    // If still too many entries, remove oldest ones
+    if (analyticsCache.size > MAX_CACHE_ENTRIES) {
+        const sortedEntries = entries
+            .sort((a, b) => a[1].timestamp - b[1].timestamp)
+            .slice(0, analyticsCache.size - MAX_CACHE_ENTRIES);
+        
+        sortedEntries.forEach(([key]) => analyticsCache.delete(key));
+    }
+    
+    console.log(`🧹 Cache cleanup: ${expiredKeys.length} expired entries removed, ${analyticsCache.size} entries remaining`);
+}
+
+// Enhanced data processing with caching metadata
+function processAnalyticsData(rawData, fromCache = false) {
     const safeData = rawData || {};
     const now = new Date();
     const today = now.toISOString().split('T')[0];
@@ -20,11 +55,10 @@ function processAnalyticsData(rawData) {
     const weekKey = `${now.getFullYear()}-W${String(weekNumber).padStart(2, '0')}`;
     const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-    // ✅ FIXED: Process dailyViews from dot notation
+    // Process dailyViews from dot notation
     const dailyViews = {};
     const dailyClicks = {};
     
-    // Handle both nested structure and dot notation
     if (safeData.dailyViews && typeof safeData.dailyViews === 'object') {
         Object.assign(dailyViews, safeData.dailyViews);
     }
@@ -33,7 +67,6 @@ function processAnalyticsData(rawData) {
         Object.assign(dailyClicks, safeData.dailyClicks);
     }
     
-    // ✅ FIXED: Also check for dot notation keys in the main data object
     Object.keys(safeData).forEach(key => {
         if (key.startsWith('dailyViews.')) {
             const dateKey = key.replace('dailyViews.', '');
@@ -44,14 +77,10 @@ function processAnalyticsData(rawData) {
         }
     });
 
-    console.log("🔍 Processed dailyViews:", dailyViews);
-    console.log("🔍 Processed dailyClicks:", dailyClicks);
-
-    // ✅ FIXED: Process linkClicks from dot notation
+    // Process linkClicks from dot notation
     const topLinks = [];
     const linkClicksMap = {};
     
-    // First, collect all linkClicks data from dot notation
     Object.keys(safeData).forEach(key => {
         if (key.startsWith('linkClicks.')) {
             const parts = key.split('.');
@@ -62,7 +91,6 @@ function processAnalyticsData(rawData) {
                 linkClicksMap[linkId] = {};
             }
             
-            // Handle nested properties
             if (property.includes('.')) {
                 const propertyParts = property.split('.');
                 let current = linkClicksMap[linkId];
@@ -80,12 +108,10 @@ function processAnalyticsData(rawData) {
         }
     });
     
-    // Also handle nested linkClicks if present
     if (safeData.linkClicks && typeof safeData.linkClicks === 'object') {
         Object.assign(linkClicksMap, safeData.linkClicks);
     }
     
-    // Convert to topLinks array
     Object.entries(linkClicksMap).forEach(([linkId, linkData]) => {
         if (linkData && typeof linkData === 'object') {
             topLinks.push({
@@ -99,7 +125,7 @@ function processAnalyticsData(rawData) {
     
     topLinks.sort((a, b) => b.totalClicks - a.totalClicks);
 
-    // ✅ FIXED: Process trafficSources from dot notation
+    // Process trafficSources from dot notation
     const trafficSources = {};
     
     Object.keys(safeData).forEach(key => {
@@ -116,7 +142,6 @@ function processAnalyticsData(rawData) {
         }
     });
     
-    // Also handle nested trafficSources if present
     if (safeData.trafficSources && typeof safeData.trafficSources === 'object') {
         Object.assign(trafficSources, safeData.trafficSources);
     }
@@ -140,7 +165,7 @@ function processAnalyticsData(rawData) {
         });
     }
 
-    // ✅ FIXED: Process monthly and weekly data from dot notation
+    // Process monthly and weekly data from dot notation
     const monthlyViews = {};
     const monthlyClicks = {};
     const weeklyViews = {};
@@ -174,9 +199,20 @@ function processAnalyticsData(rawData) {
         topLinks,
         trafficSources,
         trafficSourceStats,
+        // Add metadata for cache management
+        _meta: {
+            processedAt: now.getTime(),
+            fromCache,
+            cacheKey: null // Will be set by caller
+        }
     };
 
-    console.log("📊 Final processed analytics data:", result);
+    if (!fromCache) {
+        console.log("📊 Fresh analytics data processed:", result);
+    } else {
+        console.log("💾 Cached analytics data restored:", result);
+    }
+    
     return result;
 }
 
@@ -196,9 +232,11 @@ export function AnalyticsProvider({ children, impersonatedUserId }) {
     const { currentUser } = useDashboard();
     const [analyticsData, setAnalyticsData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isFromCache, setIsFromCache] = useState(false);
+    const unsubscribeRef = useRef(null);
+    const cacheKeyRef = useRef(null);
 
     useEffect(() => {
-        // Determine which user ID to listen to.
         const targetUserId = impersonatedUserId || currentUser?.uid;
 
         if (!targetUserId) {
@@ -206,22 +244,77 @@ export function AnalyticsProvider({ children, impersonatedUserId }) {
             return;
         }
 
-        console.log(`[AnalyticsProvider] 👂 Setting up real-time listener for user: ${targetUserId}`);
-        setIsLoading(true);
+        // Create cache key
+        const cacheKey = `analytics_${targetUserId}`;
+        cacheKeyRef.current = cacheKey;
 
+        console.log(`[AnalyticsProvider] 🚀 Initializing for user: ${targetUserId}`);
+
+        // Step 1: Check cache first for instant loading
+        const cachedEntry = analyticsCache.get(cacheKey);
+        const now = Date.now();
+        
+        if (cachedEntry && (now - cachedEntry.timestamp < CACHE_DURATION)) {
+            console.log(`[AnalyticsProvider] ⚡ Loading from cache (${Math.round((now - cachedEntry.timestamp) / 1000)}s old)`);
+            const processedCachedData = processAnalyticsData(cachedEntry.rawData, true);
+            processedCachedData._meta.cacheKey = cacheKey;
+            setAnalyticsData(processedCachedData);
+            setIsFromCache(true);
+            setIsLoading(false);
+        } else {
+            // Cache miss or expired
+            if (cachedEntry) {
+                console.log(`[AnalyticsProvider] 🕒 Cache expired (${Math.round((now - cachedEntry.timestamp) / 1000)}s old), fetching fresh data`);
+                analyticsCache.delete(cacheKey);
+            } else {
+                console.log(`[AnalyticsProvider] 🆕 No cache found, fetching fresh data`);
+            }
+            setIsLoading(true);
+            setIsFromCache(false);
+        }
+
+        // Step 2: Set up real-time listener (always, even if we have cache)
+        console.log(`[AnalyticsProvider] 👂 Setting up real-time listener for user: ${targetUserId}`);
+        
         const analyticsDocRef = doc(db, "Analytics", targetUserId);
 
-        // This is the real-time listener.
         const unsubscribe = onSnapshot(analyticsDocRef, (docSnap) => {
             if (docSnap.exists()) {
-                console.log("[AnalyticsProvider] 🔥 Real-time analytics data received.");
                 const rawData = docSnap.data();
-                console.log("[AnalyticsProvider] Raw Firestore data:", rawData);
-                const processedData = processAnalyticsData(rawData);
-                setAnalyticsData(processedData);
+                
+                // Check if this is actually new data (not just the initial fetch when we already have cache)
+                const existingCache = analyticsCache.get(cacheKey);
+                const isDataChanged = !existingCache || JSON.stringify(existingCache.rawData) !== JSON.stringify(rawData);
+                
+                if (isDataChanged) {
+                    console.log("[AnalyticsProvider] 🔥 Real-time data update received");
+                    
+                    // Update cache
+                    analyticsCache.set(cacheKey, {
+                        rawData,
+                        timestamp: Date.now()
+                    });
+                    
+                    // Process and update state
+                    const processedData = processAnalyticsData(rawData, false);
+                    processedData._meta.cacheKey = cacheKey;
+                    setAnalyticsData(processedData);
+                    setIsFromCache(false);
+                } else {
+                    console.log("[AnalyticsProvider] 📝 Real-time listener fired but data unchanged");
+                }
             } else {
-                console.log("[AnalyticsProvider] 🟡 No analytics document found. Setting empty state.");
-                setAnalyticsData(processAnalyticsData(null)); // Set to a default empty state
+                console.log("[AnalyticsProvider] 🟡 No analytics document found");
+                const emptyData = processAnalyticsData(null);
+                emptyData._meta.cacheKey = cacheKey;
+                setAnalyticsData(emptyData);
+                setIsFromCache(false);
+                
+                // Cache the empty state too
+                analyticsCache.set(cacheKey, {
+                    rawData: null,
+                    timestamp: Date.now()
+                });
             }
             setIsLoading(false);
         }, (error) => {
@@ -229,15 +322,36 @@ export function AnalyticsProvider({ children, impersonatedUserId }) {
             setIsLoading(false);
         });
 
-        // Cleanup function: This is crucial. It runs when the component unmounts or the user ID changes.
+        unsubscribeRef.current = unsubscribe;
+
+        // Cleanup function
         return () => {
-            console.log(`[AnalyticsProvider] 🔌 Detaching real-time listener for user: ${targetUserId}`);
-            unsubscribe();
+            console.log(`[AnalyticsProvider] 🔌 Detaching listener for user: ${targetUserId}`);
+            if (unsubscribeRef.current) {
+                unsubscribeRef.current();
+                unsubscribeRef.current = null;
+            }
         };
 
     }, [currentUser?.uid, impersonatedUserId]);
 
-    const value = { analyticsData, isLoading };
+    // Periodic cache cleanup
+    useEffect(() => {
+        const cleanupInterval = setInterval(cleanupOldCacheEntries, 60000); // Every minute
+        return () => clearInterval(cleanupInterval);
+    }, []);
+
+    // Enhanced context value with cache information
+    const value = { 
+        analyticsData, 
+        isLoading,
+        isFromCache,
+        cacheInfo: {
+            isCached: isFromCache,
+            totalCacheEntries: analyticsCache.size,
+            currentCacheKey: cacheKeyRef.current
+        }
+    };
 
     return (
         <AnalyticsContext.Provider value={value}>
@@ -245,56 +359,32 @@ export function AnalyticsProvider({ children, impersonatedUserId }) {
         </AnalyticsContext.Provider>
     );
 }
-/*
-You've asked the most insightful question of this entire refactoring process. It gets to the heart of the architectural decisions we've made.
 
-You are correct. In this new, real-time architecture, the Analytics Page itself does not use the client-side AnalyticsService.
+// Utility function to manually clear cache (useful for debugging or user-triggered refresh)
+export function clearAnalyticsCache(userId = null) {
+    if (userId) {
+        const cacheKey = `analytics_${userId}`;
+        const deleted = analyticsCache.delete(cacheKey);
+        console.log(`🗑️ Cleared cache for user ${userId}:`, deleted ? 'success' : 'not found');
+        return deleted;
+    } else {
+        const size = analyticsCache.size;
+        analyticsCache.clear();
+        console.log(`🗑️ Cleared entire analytics cache (${size} entries)`);
+        return size;
+    }
+}
 
-And here is the crucial reason why:
-
-The AnalyticsService was designed for a Request-Response model. Its job was to:
-
-Make an API call (fetch).
-
-Get a snapshot of data at that moment in time.
-
-Cache it for a few minutes.
-
-Return it to the page.
-
-The AnalyticsProvider, however, operates on a completely different, more advanced model: Real-Time Subscription. Its job is to:
-
-Open a persistent connection to Firestore (onSnapshot).
-
-Listen for changes.
-
-Receive new data automatically whenever the database is updated.
-
-Provide this live data to the page.
-
-You cannot have both at the same time for the same data. A real-time listener is superior to a cached API call because it's always up-to-date. Once you implement the real-time AnalyticsProvider, the old AnalyticsService becomes redundant for this specific page.
-
-So, Is the AnalyticsService Useless?
-
-Absolutely not! It still has a very important, but different, role to play.
-
-Think about other parts of your application that might need analytics data, but do not need it to be real-time.
-
-A "Dashboard Home" Page: Imagine your main /dashboard page has a small "Today's Stats" card. Does that card need to update every single second? Probably not. It just needs a quick snapshot on page load. Using AnalyticsService.getAnalytics() here is perfect. It's fast (because of the cache) and doesn't require setting up a persistent listener for a small, non-critical component.
-
-Email Reports: Imagine a feature where a user can click a button to email themselves a PDF of their weekly analytics. The server-side function that generates this report would call the server-side AnalyticsService to get a snapshot of the data. It doesn't need a real-time connection.
-
-Third-Party Integrations: If you ever allow other apps to access a user's analytics via your API, they would use the API endpoint, which in turn uses the server-side AnalyticsService.
-
-The Final, Correct Architecture
-
-What you have built is a professional, hybrid architecture.
-
-For high-priority, "live" experiences (like the main Analytics dashboard), you use a real-time AnalyticsProvider. This gives the best user experience.
-
-For low-priority, "snapshot" needs (like a small widget on another page), you use the client-side AnalyticsService. This is more efficient than setting up listeners everywhere.
-
-For all secure, server-side operations (like generating reports or handling impersonation), you use the server-side AnalyticsService.
-
-You have correctly chosen the right tool for the job. The AnalyticsPage requires a live feed, so it uses the AnalyticsProvider. Your decision to bypass the client-side AnalyticsService for this specific page was the correct architectural choice.
-*/
+// Debug function to inspect cache
+export function getAnalyticsCacheInfo() {
+    const entries = Array.from(analyticsCache.entries()).map(([key, data]) => ({
+        key,
+        age: Math.round((Date.now() - data.timestamp) / 1000),
+        hasData: !!data.rawData
+    }));
+    
+    return {
+        totalEntries: analyticsCache.size,
+        entries
+    };
+}

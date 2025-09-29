@@ -130,14 +130,32 @@ export default function Special({ item, itemRef, style, listeners, attributes, i
         }
     };
 
-    useEffect(() => {
-        if (editingUrl) urlRef.current?.focus();
-        if (editingTitle) titleRef.current?.focus();
-    }, [editingTitle, editingUrl]);
 
-    useEffect(() => {
-        setContentFilled(urlIsValid === 2);
-    }, [urlIsValid]);
+
+useEffect(() => {
+        const wasContentFilled = contentFilled;
+        const isContentNowFilled = urlIsValid === 2;
+        setContentFilled(isContentNowFilled);
+        
+        // ✅ TEMPORARILY DISABLE AUTO-DEACTIVATION FOR DEBUGGING
+        // Only auto-deactivate if URL was valid before but is now invalid (user deleted/corrupted URL)
+        if (wasContentFilled && !isContentNowFilled && checkboxChecked) {
+            console.log('Auto-deactivating link due to invalid URL:', titleText || 'Untitled');
+            console.log('URL validation details:', { urlText, urlIsValid });
+            setCheckboxChecked(false);
+        }
+        
+        // ✅ LOG VALIDATION STATE CHANGES
+        if (wasContentFilled !== isContentNowFilled) {
+            console.log(`Content filled changed for "${titleText}":`, { 
+                from: wasContentFilled, 
+                to: isContentNowFilled, 
+                url: urlText, 
+                validationCode: urlIsValid 
+            });
+        }
+    }, [urlIsValid, checkboxChecked, titleText, contentFilled, urlText]);
+
 
     const containerClasses = `rounded-3xl border flex flex-col bg-white ${urlText === '' ? 'border-themeYellow' : ''} ${isOverlay ? 'shadow-lg' : ''}`;
 

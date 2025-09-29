@@ -1,110 +1,120 @@
+// app/[userId]/components/SupportBanner.jsx - FIXED
+
 "use client"
-
-import { useContext, useMemo, useState, useEffect } from "react";
-import Image from "next/image";
-import Link from "next/link";
+import React, { useContext, useMemo } from "react";
 import { HouseContext } from "../House";
-import { useTranslatedSupportGroups } from "@/lib/SupportGroups";
-import { useTranslation } from "@/lib/translation/useTranslation";
 
-/**
- * Renders the support banner at the bottom of the public profile page.
- * This component is now "presentational" - it receives all its data from the
- * parent `House` component via context, and does not perform its own data fetching.
- */
-export default function SupportBanner() {
-    // 1. Get all necessary data and functions from context and hooks.
+export default function Banner() {
+    // HOOK #1: Always called first
     const { userData } = useContext(HouseContext);
-    const { t, isInitialized } = useTranslation();
-    const translatedSupportGroups = useTranslatedSupportGroups();
     
-    // 2. Manage local UI state (the banner's expanded/collapsed view).
-    const [expanded, setExpanded] = useState(false);
-
-    // 3. Destructure data from the context with default fallbacks to prevent errors.
+    // Destructure with a fallback to prevent errors if userData is null
     const {
-        supportBanner = 0,
-        supportBannerStatus = false,
-        selectedTheme = "",
-        themeTextColour = ""
-    } = userData || {}; // Use `|| {}` as a safeguard if context is ever null.
+        bannerType = 'None',
+        bannerColor = '#3B82F6',
+        bannerGradientStart = '#667eea',
+        bannerGradientEnd = '#764ba2',
+        bannerGradientDirection = 'to right',
+        bannerImage = null,
+        bannerVideo = null,
+        displayName = '',
+        bio = '',
+        themeFontColor = '#FFFFFF'
+    } = userData || {};
 
-    // 4. Pre-compute translations for performance.
-    const translations = useMemo(() => ({
-        actNow: isInitialized ? t('public.support_banner.act_now') : 'Act Now'
-    }), [t, isInitialized]);
-    
-    // 5. Use an effect for UI animations, like the initial expansion.
-    // This effect now depends on `supportBannerStatus` from the context.
-    useEffect(() => {
-        if (supportBannerStatus) {
-            // Wait 1 second before expanding the banner for a smooth entrance.
-            const timer = setTimeout(() => {
-                setExpanded(true);
-            }, 1000);
-            
-            // Cleanup the timer if the component unmounts.
-            return () => clearTimeout(timer);
+    // HOOK #2: Always called second
+    const bannerStyles = useMemo(() => {
+        const baseStyles = {
+            position: 'relative',
+            width: '100%',
+            height: '200px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '0 0 24px 24px',
+            overflow: 'hidden',
+            marginBottom: '20px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)'
+        };
+
+        switch (bannerType) {
+            case 'Color':
+                return { ...baseStyles, backgroundColor: bannerColor };
+            case 'Gradient':
+                return { ...baseStyles, backgroundImage: `linear-gradient(${bannerGradientDirection}, ${bannerGradientStart}, ${bannerGradientEnd})` };
+            case 'Image':
+                return { ...baseStyles, backgroundImage: bannerImage ? `url(${bannerImage})` : `linear-gradient(${bannerGradientDirection}, ${bannerGradientStart}, ${bannerGradientEnd})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' };
+            case 'Video':
+                return baseStyles;
+            case 'Corporate':
+                return { ...baseStyles, backgroundImage: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' };
+            case 'Creative':
+                return { ...baseStyles, backgroundImage: 'linear-gradient(45deg, #f093fb 0%, #f5576c 100%)' };
+            case 'Minimal':
+                return { ...baseStyles, backgroundImage: 'linear-gradient(to right, #ffecd2 0%, #fcb69f 100%)' };
+            default:
+                return { ...baseStyles, backgroundColor: bannerColor };
         }
-    }, [supportBannerStatus]);
+    }, [bannerType, bannerColor, bannerGradientStart, bannerGradientEnd, bannerGradientDirection, bannerImage]);
 
-    // 6. Derive computed values based on the data.
-    const currentSupportGroup = translatedSupportGroups[supportBanner] || translatedSupportGroups[0];
-    const bannerStyle = {
-        color: selectedTheme === "Matrix" ? themeTextColour : "",
-        backgroundColor: selectedTheme === "Matrix" ? '#000905' : "",
+    // ✅ CONDITIONAL RETURN: This happens AFTER all hooks are called
+    if (!userData || bannerType === 'None') {
+        return <BannerPlaceholder />; // Render placeholder or null
+    }
+
+    const getContrastColor = (backgroundColor) => {
+        if (!backgroundColor || ['Gradient', 'Image', 'Video'].includes(bannerType)) {
+            return themeFontColor || '#FFFFFF'; // Use theme font color or default to white
+        }
+        const hex = backgroundColor.replace('#', '');
+        const r = parseInt(hex.substr(0, 2), 16);
+        const g = parseInt(hex.substr(2, 2), 16);
+        const b = parseInt(hex.substr(4, 2), 16);
+        const brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+        return brightness > 128 ? '#000000' : '#FFFFFF';
     };
 
-    // 7. Render Guard: If the banner is disabled or translations are not ready, render nothing.
-    // This prevents layout shifts and unnecessary rendering.
-    if (!supportBannerStatus || !isInitialized) {
-        return null;
-    }
+    const textColor = getContrastColor(bannerColor);
     
-    // 8. Render the component JSX with the processed data.
-    return (
-        <div className="fixed bottom-0 w-screen left-0 z-[100]">
-            <div 
-                className="py-4 px-6 bg-black absolute left-0 w-full bottom-0 text-white banner flex flex-col items-center border-t border-t-green-400/50 shadow-xl" 
-                style={bannerStyle}
-            >
-                <div 
-                    className={`filter invert ${expanded ? "" : "rotate-180"} top-6 absolute right-6 cursor-pointer transition-transform duration-300`}
-                    onClick={() => setExpanded(!expanded)}
-                >
-                    <Image
-                        src={"https://linktree.sirv.com/Images/icons/arr.svg"}
-                        alt="Toggle banner"
-                        height={15}
-                        width={15}
-                    />
-                </div>
+    console.log('🎯 Banner rendering:', { bannerType, bannerColor, bannerImage: !!bannerImage, bannerVideo: !!bannerVideo });
 
-                {/* Collapsed View */}
-                {!expanded && (
-                    <div onClick={() => setExpanded(true)} className="w-full text-center cursor-pointer">
-                        <span className="font-semibold max-w-[20rem]">{currentSupportGroup.title}</span>
+    return (
+        <div className="w-full max-w-4xl mx-auto">
+            <div style={bannerStyles}>
+                {bannerType === 'Video' && bannerVideo && (
+                    <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" style={{ zIndex: 1 }}>
+                        <source src={bannerVideo} type="video/mp4" />
+                        <source src={bannerVideo} type="video/webm" />
+                    </video>
+                )}
+                {(bannerType === 'Image' || bannerType === 'Video') && (
+                    <div className="absolute inset-0 bg-black bg-opacity-30" style={{ zIndex: 1 }} />
+                )}
+                {(displayName || bio) && (
+                    <div className="absolute bottom-5 left-5 right-5 z-10" style={{ color: textColor, textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)' }}>
+                        {displayName && (
+                            <h1 className="text-2xl md:text-3xl font-bold mb-2 leading-tight">{displayName}</h1>
+                        )}
+                        {bio && (
+                            <p className="text-sm md:text-base opacity-90 max-w-lg leading-relaxed">
+                                {bio.length > 120 ? `${bio.substring(0, 120)}...` : bio}
+                            </p>
+                        )}
                     </div>
                 )}
-                
-                {/* Expanded View */}
-                <div className={`flex flex-col text-center w-full gap-5 pt-2 items-center overflow-hidden transition-all duration-500 ease-in-out ${
-                    expanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
-                }`}>
-                    <div className="h-fit aspect-square rounded-full overflow-hidden">
-                        <Image src={"https://linktree.sirv.com/Images/icons/logo.gif"} alt="logo" height={60} width={60} />
-                    </div>
-                    <span className="font-semibold max-w-[20rem]">{currentSupportGroup.title}</span>
-                    <span className="text-sm max-w-[20rem]">{currentSupportGroup.message}</span>
-                    <Link
-                        href={currentSupportGroup.linkTo}
-                        target="_blank"
-                        className="sm:max-w-[30rem] w-full p-3 bg-white text-black font-semibold rounded-2xl uppercase hover:scale-105 active:scale-95 mt-2 transition-transform"
-                    >
-                        {translations.actNow}
-                    </Link>
-                </div>
+                {(bannerType === 'Corporate' || bannerType === 'Creative' || bannerType === 'Minimal') && (
+                    <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.4"%3E%3Ccircle cx="12" cy="12" r="1"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")', zIndex: 1 }} />
+                )}
             </div>
+        </div>
+    );
+}
+
+// Optional: Banner placeholder component for profiles without banners
+export function BannerPlaceholder() {
+    return (
+        <div className="w-full max-w-4xl mx-auto mb-5">
+            <div className="w-full h-24 bg-gradient-to-r from-gray-100 to-gray-200 rounded-b-3xl opacity-30" />
         </div>
     );
 }

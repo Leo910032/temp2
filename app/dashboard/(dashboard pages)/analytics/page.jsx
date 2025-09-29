@@ -1,6 +1,5 @@
-/**
- * THIS FILE HAS BEEN REFRACTORED 
- */
+// Enhanced AnalyticsContent component with cache status display
+
 "use client";
 
 import React, { Suspense, useState, useMemo, useCallback } from "react";
@@ -8,8 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "@/lib/translation/useTranslation";
 import { useSearchParams, useRouter } from 'next/navigation';
 
-// ✅ STEP 1: Import the new Provider and Context Hooks
-import { AnalyticsProvider, useAnalytics } from "./AnalyticsContext";
+import { AnalyticsProvider, useAnalytics, clearAnalyticsCache, getAnalyticsCacheInfo } from "./AnalyticsContext";
 import { useDashboard } from '../../DashboardContext';
 import { ANALYTICS_FEATURES } from '@/lib/services/constants';
 
@@ -20,8 +18,6 @@ import OverviewCards from "./components/OverviewCards";
 import PerformanceChart from "./components/PerformanceChart";
 import TopClickedLinks from "./components/TopClickedLinks";
 import TrafficSourcesChart from "./components/TrafficSourcesChart";
-
-// --- Reusable Sub-components for UI states ---
 
 const LoadingState = ({ message }) => (
     <div className="flex-1 flex items-center justify-center h-full">
@@ -60,13 +56,74 @@ const SubscriptionUpgradeRequired = () => {
     );
 };
 
-// --- Main Page Content ---
+// Development-only cache debug panel
+const CacheDebugPanel = ({ analyticsData, cacheInfo, isFromCache }) => {
+    const [showDetails, setShowDetails] = useState(false);
+    const [cacheDetails, setCacheDetails] = useState(null);
+
+    const handleClearCache = () => {
+        if (cacheInfo.currentCacheKey) {
+            const userId = cacheInfo.currentCacheKey.replace('analytics_', '');
+            clearAnalyticsCache(userId);
+            alert('Cache cleared for current user!');
+        }
+    };
+
+    const handleShowCacheDetails = () => {
+        setCacheDetails(getAnalyticsCacheInfo());
+        setShowDetails(!showDetails);
+    };
+
+    if (process.env.NODE_ENV !== 'development') return null;
+
+    return (
+        <div className="fixed bottom-4 right-4 bg-white border border-gray-300 rounded-lg shadow-lg p-3 text-xs z-50 max-w-xs">
+            <div className="font-bold mb-2 text-gray-800">Cache Status</div>
+            <div className="space-y-1 text-gray-600">
+                <div>Source: {isFromCache ? '💾 Cache' : '🔥 Real-time'}</div>
+                <div>Total Entries: {cacheInfo.totalCacheEntries}</div>
+                <div>Key: {cacheInfo.currentCacheKey?.replace('analytics_', '...') || 'None'}</div>
+                {analyticsData?._meta && (
+                    <div>Age: {Math.round((Date.now() - analyticsData._meta.processedAt) / 1000)}s</div>
+                )}
+            </div>
+            
+            <div className="flex gap-1 mt-2">
+                <button
+                    onClick={handleClearCache}
+                    className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200"
+                >
+                    Clear
+                </button>
+                <button
+                    onClick={handleShowCacheDetails}
+                    className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200"
+                >
+                    {showDetails ? 'Hide' : 'Details'}
+                </button>
+            </div>
+
+            {showDetails && cacheDetails && (
+                <div className="mt-2 p-2 bg-gray-50 rounded text-xs max-h-32 overflow-y-auto">
+                    <div className="font-semibold mb-1">All Cache Entries:</div>
+                    {cacheDetails.entries.map((entry, index) => (
+                        <div key={index} className="text-xs">
+                            {entry.key.replace('analytics_', '...')}: {entry.age}s old
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+// Main Page Content
 function AnalyticsContent() {
     const { currentUser } = useAuth();
     const router = useRouter();
 
     const { permissions, isLoading: isSessionLoading } = useDashboard();
-    const { analyticsData, isLoading: isAnalyticsLoading } = useAnalytics();
+    const { analyticsData, isLoading: isAnalyticsLoading, isFromCache, cacheInfo } = useAnalytics();
 
     const [selectedPeriod, setSelectedPeriod] = useState('all');
     
@@ -86,7 +143,7 @@ function AnalyticsContent() {
         router.push('/dashboard/enterprise'); 
     }, [router]);
 
-    // --- RENDER LOGIC ---
+    // Render logic
     if (isSessionLoading) {
         return <LoadingState message="Loading your session..." />;
     }
@@ -126,6 +183,15 @@ function AnalyticsContent() {
                         </div>
                     </div>
                 )}
+
+                {/* Cache status indicator in development */}
+                {process.env.NODE_ENV === 'development' && isFromCache && (
+                    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded-r-lg">
+                        <div className="text-sm text-yellow-800">
+                            📊 Showing cached data - real-time updates will appear automatically
+                        </div>
+                    </div>
+                )}
                 
                 <AnalyticsHeader 
                     analytics={analyticsData}
@@ -151,11 +217,18 @@ function AnalyticsContent() {
                     analytics={analyticsData} 
                 />
             </div>
+
+            {/* Development cache debug panel */}
+            <CacheDebugPanel 
+                analyticsData={analyticsData}
+                cacheInfo={cacheInfo}
+                isFromCache={isFromCache}
+            />
         </div>
     );
 }
 
-// --- Main Page Component (The Wrapper) ---
+// Main Page Component (The Wrapper)
 function AnalyticsPageWrapper() {
     const searchParams = useSearchParams();
     const isImpersonating = searchParams.get('impersonate') === 'true';

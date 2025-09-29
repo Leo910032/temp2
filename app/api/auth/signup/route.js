@@ -1,319 +1,311 @@
-// app/api/auth/signup/route.js - FIXED VERSION with Admin SDK
+// app/api/auth/signup/route.js
 import { NextResponse } from 'next/server';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { validateEmail, validatePassword } from '@/lib/utilities';
+import { AuthService } from '@/lib/services/server/authService';
+import { 
+    logSecurityEvent,
+    logSuspiciousActivity, 
+    checkSuspiciousActivity 
+} from '@/lib/services/serviceEnterprise/server/enterpriseSecurityService';
 
-// Initialize Firebase Admin SDK (only once)
-if (!getApps().length) {
-    initializeApp({
-        credential: cert({
-            projectId: process.env.FIREBASE_PROJECT_ID,
-            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-        }),
-    });
+/**
+ * Helper function to extract IP address from request
+ */
+function getClientIP(request) {
+    const forwardedFor = request.headers.get('x-forwarded-for');
+    const realIP = request.headers.get('x-real-ip');
+    const cfConnectingIP = request.headers.get('cf-connecting-ip');
+    
+    if (forwardedFor) {
+        return forwardedFor.split(',')[0].trim();
+    }
+    
+    return realIP || cfConnectingIP || request.ip || '127.0.0.1';
 }
 
-// Get Admin SDK instances
-const adminAuth = getAuth();
-const adminDb = getFirestore();
-
-// Rate limiting
+/**
+ * Simple rate limiting for signup attempts
+ */
 const rateLimitMap = new Map();
 
-function getRateLimitKey(request) {
-    const forwarded = request.headers.get('x-forwarded-for');
-    const ip = forwarded ? forwarded.split(',')[0] : 
-               request.headers.get('x-real-ip') || 'unknown';
-    return `signup:${ip}`;
-}
-
-function isRateLimited(key) {
+function checkRateLimit(ip) {
+    const key = `signup:${ip}`;
     const now = Date.now();
     const windowMs = 60 * 1000; // 1 minute
     const maxRequests = 3; // Max 3 signup attempts per minute
     
-    if (!rateLimitMap.has(key)) {
-        rateLimitMap.set(key, { count: 1, lastReset: now });
-        return false;
+    const requestData = rateLimitMap.get(key) || { count: 0, lastReset: now };
+    
+    if (now - requestData.lastReset > windowMs) {
+        requestData.count = 0;
+        requestData.lastReset = now;
     }
     
-    const data = rateLimitMap.get(key);
-    
-    if (now - data.lastReset > windowMs) {
-        data.count = 1;
-        data.lastReset = now;
-        return false;
+    if (requestData.count >= maxRequests) {
+        return false; // Rate limited
     }
     
-    if (data.count >= maxRequests) {
-        return true;
-    }
-    
-    data.count++;
-    return false;
-}
-
-// Helper functions using Admin SDK
-async function checkUsernameExists(username) {
-    try {
-        const snapshot = await adminDb.collection('AccountData')
-            .where('username', '==', username.toLowerCase())
-            .limit(1)
-            .get();
-        return !snapshot.empty;
-    } catch (error) {
-        console.error('Error checking username with Admin SDK:', error);
-        throw error;
-    }
-}
-
-async function checkEmailExists(email) {
-    try {
-        const user = await adminAuth.getUserByEmail(email);
-        return !!user;
-    } catch (error) {
-        if (error.code === 'auth/user-not-found') {
-            return false;
-        }
-        throw error;
-    }
-}
-
-function validateUsername(username) {
-    if (!username || typeof username !== 'string') {
-        throw new Error("Username is required");
-    }
-    
-    const clean = username.trim();
-    
-    if (clean.length < 3) {
-        throw new Error("Username must be at least 3 characters long");
-    }
-    
-    if (clean.length > 30) {
-        throw new Error("Username must be less than 30 characters");
-    }
-    
-    if (!/^[a-zA-Z0-9_-]+$/.test(clean)) {
-        throw new Error("Username can only contain letters, numbers, underscores, and hyphens");
-    }
-    
-    if (clean.includes(' ')) {
-        throw new Error("Username cannot contain spaces");
-    }
-    
-    return clean;
-}
-
-async function createUserDocument(uid, userData) {
-    try {
-        const userDoc = {
-            displayName: userData.username,
-            username: userData.username.toLowerCase(),
-            email: userData.email.toLowerCase(),
-            links: [],
-            socials: [],
-            profilePhoto: "",
-            selectedTheme: "Lake White",
-            createdAt: new Date(),
-            emailVerified: false,
-            onboardingCompleted: false,
-            uid: uid // Add UID for reference
-        };
-        
-        // Use Admin SDK to write to Firestore (bypasses security rules)
-        await adminDb.collection('AccountData').doc(uid).set(userDoc);
-        return userDoc;
-    } catch (error) {
-        console.error('Error creating user document with Admin SDK:', error);
-        throw error;
-    }
+    requestData.count++;
+    rateLimitMap.set(key, requestData);
+    return true;
 }
 
 export async function POST(request) {
     const startTime = Date.now();
     const requestId = Math.random().toString(36).substring(7);
-    
+    const clientIP = getClientIP(request);
+    const userAgent = request.headers.get('user-agent') || 'Unknown';
+
+    console.log(`🟢 [${requestId}] Starting signup request from ${clientIP}`);
+
     try {
-        console.log(`🟢 SERVER-SIDE SIGNUP [${requestId}] - Request received`);
-        
-        // Rate limiting
-        const rateLimitKey = getRateLimitKey(request);
-        if (isRateLimited(rateLimitKey)) {
-            console.log(`🟢 SERVER-SIDE SIGNUP [${requestId}] - RATE LIMITED`);
+        // Check for suspicious activity patterns before processing
+        const suspiciousCheck = await checkSuspiciousActivity(
+            null, // No user ID yet
+            'ACCOUNT_CREATION', 
+            clientIP
+        );
+
+        if (suspiciousCheck.shouldBlock) {
+            console.log(`🔴 [${requestId}] Signup blocked due to suspicious activity: ${suspiciousCheck.reason}`);
+            
+            await logSecurityEvent({
+                action: 'SIGNUP_BLOCKED',
+                details: {
+                    endpoint: '/api/auth/signup',
+                    reason: suspiciousCheck.reason,
+                    requestId
+                },
+                severity: 'HIGH',
+                ipAddress: clientIP,
+                userAgent
+            });
+
             return NextResponse.json(
                 { 
-                    error: 'Too many signup attempts. Please wait a moment.',
-                    code: 'RATE_LIMITED'
+                    error: 'Account creation temporarily blocked. Please try again later.',
+                    code: 'BLOCKED_SUSPICIOUS_ACTIVITY',
+                    requestId
                 }, 
                 { status: 429 }
             );
         }
-        
+
+        // Rate limiting check
+        if (!checkRateLimit(clientIP)) {
+            console.log(`🔴 [${requestId}] Rate limit exceeded for IP: ${clientIP}`);
+            
+            await logSecurityEvent({
+                action: 'SIGNUP_RATE_LIMITED',
+                details: {
+                    endpoint: '/api/auth/signup',
+                    requestId
+                },
+                severity: 'MEDIUM',
+                ipAddress: clientIP,
+                userAgent
+            });
+
+            return NextResponse.json(
+                { 
+                    error: 'Too many signup attempts. Please wait a moment.',
+                    code: 'RATE_LIMITED',
+                    requestId
+                }, 
+                { status: 429 }
+            );
+        }
+
         // Parse request body
-        const body = await request.json();
-        const { username, email, password } = body;
-        
-        console.log(`🟢 SERVER-SIDE SIGNUP [${requestId}] - Processing signup for: ${email}`);
-        
-        // ====================================================================
-        // VALIDATION
-        // ====================================================================
-        
-        // Validate username
-        let cleanUsername;
+        let body;
         try {
-            cleanUsername = validateUsername(username);
+            body = await request.json();
         } catch (error) {
+            console.log(`🔴 [${requestId}] Invalid JSON in request body`);
+            
+            await logSuspiciousActivity({
+                activity: 'INVALID_SIGNUP_REQUEST',
+                details: {
+                    error: 'Invalid JSON',
+                    endpoint: '/api/auth/signup',
+                    requestId
+                },
+                ipAddress: clientIP,
+                userAgent
+            });
+
             return NextResponse.json(
-                { error: error.message, code: 'INVALID_USERNAME' },
+                { 
+                    error: 'Invalid request format',
+                    code: 'INVALID_JSON',
+                    requestId
+                }, 
                 { status: 400 }
             );
         }
-        
-        // Validate email
-        if (!email || !validateEmail(email)) {
+
+        const { username, email, password } = body;
+
+        // Validate required fields
+        if (!username || !email || !password) {
+            console.log(`🔴 [${requestId}] Missing required fields`);
+            
+            await logSuspiciousActivity({
+                activity: 'INCOMPLETE_SIGNUP_DATA',
+                details: {
+                    missingFields: {
+                        username: !username,
+                        email: !email,
+                        password: !password
+                    },
+                    endpoint: '/api/auth/signup',
+                    requestId
+                },
+                ipAddress: clientIP,
+                userAgent
+            });
+
             return NextResponse.json(
-                { error: 'Please enter a valid email address', code: 'INVALID_EMAIL' },
+                { 
+                    error: 'Username, email, and password are required',
+                    code: 'MISSING_FIELDS',
+                    requestId
+                }, 
                 { status: 400 }
             );
         }
-        
-        // Validate password
-        const passwordValidation = validatePassword(password);
-        if (passwordValidation !== true) {
-            return NextResponse.json(
-                { error: passwordValidation, code: 'WEAK_PASSWORD' },
-                { status: 400 }
-            );
+
+        console.log(`🟢 [${requestId}] Processing signup for: ${email}`);
+
+        // Log warning for suspicious activity (but don't block)
+        if (suspiciousCheck.isSuspicious) {
+            await logSuspiciousActivity({
+                activity: 'FREQUENT_SIGNUP_ATTEMPTS',
+                details: {
+                    reason: suspiciousCheck.reason,
+                    endpoint: '/api/auth/signup',
+                    email: email.substring(0, 3) + '***', // Partial email for privacy
+                    requestId
+                },
+                ipAddress: clientIP,
+                userAgent
+            });
         }
-        
-        // ====================================================================
-        // CHECK FOR EXISTING USERS
-        // ====================================================================
-        
-        console.log(`🟢 SERVER-SIDE SIGNUP [${requestId}] - Checking for existing username/email`);
-        
-        // Check if username already exists (using Admin SDK)
-        const usernameExists = await checkUsernameExists(cleanUsername);
-        if (usernameExists) {
-            return NextResponse.json(
-                { error: 'Username is already taken', code: 'USERNAME_EXISTS' },
-                { status: 409 }
-            );
-        }
-        
-        // Check if email already exists
-        const emailExists = await checkEmailExists(email);
-        if (emailExists) {
-            return NextResponse.json(
-                { error: 'An account with this email already exists', code: 'EMAIL_EXISTS' },
-                { status: 409 }
-            );
-        }
-        
-        // ====================================================================
-        // CREATE FIREBASE AUTH USER
-        // ====================================================================
-        
-        console.log(`🟢 SERVER-SIDE SIGNUP [${requestId}] - Creating Firebase Auth user`);
-        
-        const userRecord = await adminAuth.createUser({
-            email: email.toLowerCase(),
-            password: password,
-            displayName: cleanUsername,
-            emailVerified: false
+
+        // Delegate all business logic to the AuthService
+        const result = await AuthService.createStandardUser({
+            username: username.trim(),
+            email: email.trim(),
+            password
         });
-        
-        console.log(`🟢 SERVER-SIDE SIGNUP [${requestId}] - Firebase user created: ${userRecord.uid}`);
-        
-        // ====================================================================
-        // CREATE FIRESTORE DOCUMENT (Using Admin SDK)
-        // ====================================================================
-        
-        console.log(`🟢 SERVER-SIDE SIGNUP [${requestId}] - Creating Firestore document with Admin SDK`);
-        
-        const userDocument = await createUserDocument(userRecord.uid, {
-            username: cleanUsername,
-            email: email.toLowerCase()
+
+        const processingTime = Date.now() - startTime;
+
+        // Log successful account creation
+        await logSecurityEvent({
+            userId: result.uid,
+            action: 'ACCOUNT_CREATED',
+            details: {
+                username: result.user.username,
+                email: result.user.email,
+                accountType: result.user.accountType,
+                processingTime,
+                endpoint: '/api/auth/signup',
+                requestId
+            },
+            severity: 'LOW',
+            ipAddress: clientIP,
+            userAgent
         });
-        
-        console.log(`🟢 SERVER-SIDE SIGNUP [${requestId}] - Firestore document created successfully`);
-        
-        // ====================================================================
-        // GENERATE CUSTOM TOKEN FOR CLIENT
-        // ====================================================================
-        
-        const customToken = await adminAuth.createCustomToken(userRecord.uid);
-        
-        const totalTime = Date.now() - startTime;
-        
-        console.log(`🟢 SERVER-SIDE SIGNUP [${requestId}] - SUCCESS`);
-        console.log(`   UID: ${userRecord.uid}`);
-        console.log(`   Username: ${cleanUsername}`);
-        console.log(`   Email: ${email}`);
-        console.log(`   Processing time: ${totalTime}ms`);
-        
-        // ====================================================================
-        // RETURN SUCCESS RESPONSE
-        // ====================================================================
-        
+
+        console.log(`🟢 [${requestId}] Signup successful:`);
+        console.log(`   - UID: ${result.uid}`);
+        console.log(`   - Username: ${result.user.username}`);
+        console.log(`   - Email: ${result.user.email}`);
+        console.log(`   - Processing time: ${processingTime}ms`);
+
         return NextResponse.json({
             success: true,
+            customToken: result.customToken,
+            uid: result.uid,
             user: {
-                uid: userRecord.uid,
-                email: userRecord.email,
-                username: cleanUsername,
-                displayName: cleanUsername,
-                emailVerified: false
+                uid: result.uid,
+                email: result.user.email,
+                username: result.user.username,
+                displayName: result.user.displayName,
+                emailVerified: result.user.emailVerified
             },
-            customToken,
             message: 'Account created successfully',
-            processingTime: totalTime,
+            processingTime,
             requestId
         });
-        
+
     } catch (error) {
-        const errorTime = Date.now() - startTime;
+        const processingTime = Date.now() - startTime;
         
-        console.error(`🟢 SERVER-SIDE SIGNUP [${requestId}] - ERROR`);
-        console.error(`   Error: ${error.message}`);
-        console.error(`   Code: ${error.code}`);
-        console.error(`   Time: ${errorTime}ms`);
-        console.error(`   Stack: ${error.stack}`);
-        
-        // Handle specific Firebase errors
+        console.error(`🔴 [${requestId}] Signup error:`, error);
+
+        // Log the error for security monitoring
+        await logSecurityEvent({
+            action: 'SIGNUP_ERROR',
+            details: {
+                error: error.message,
+                stack: error.stack?.substring(0, 500),
+                processingTime,
+                endpoint: '/api/auth/signup',
+                requestId
+            },
+            severity: 'MEDIUM',
+            ipAddress: clientIP,
+            userAgent
+        });
+
+        // Handle specific error types with appropriate status codes
         let errorMessage = 'Failed to create account';
         let errorCode = 'SERVER_ERROR';
         let statusCode = 500;
-        
-        if (error.code === 'auth/email-already-exists') {
+
+        if (error.message.includes('Username is already taken')) {
+            errorMessage = 'Username is already taken';
+            errorCode = 'USERNAME_EXISTS';
+            statusCode = 400; // Bad Request
+        } else if (error.message.includes('Too many requests')) {
+            errorMessage = 'Too many requests. Please wait a moment.';
+            errorCode = 'RATE_LIMITED';
+            statusCode = 429; // Too Many Requests
+        } else if (error.code === 'auth/email-already-exists') {
             errorMessage = 'An account with this email already exists';
             errorCode = 'EMAIL_EXISTS';
-            statusCode = 409;
+            statusCode = 409; // Conflict
         } else if (error.code === 'auth/invalid-email') {
             errorMessage = 'Invalid email address';
             errorCode = 'INVALID_EMAIL';
-            statusCode = 400;
+            statusCode = 400; // Bad Request
         } else if (error.code === 'auth/weak-password') {
             errorMessage = 'Password is too weak';
             errorCode = 'WEAK_PASSWORD';
-            statusCode = 400;
-        } else if (error.message.includes('permission') || error.message.includes('PERMISSION_DENIED')) {
-            errorMessage = 'Database configuration error. Please contact support.';
-            errorCode = 'CONFIG_ERROR';
-            console.error(`🟢 IMPORTANT: Firestore permissions error. Check your security rules or Admin SDK setup.`);
+            statusCode = 400; // Bad Request
         }
-        
+
+        // Log specific error types for pattern analysis
+        if (statusCode === 409) {
+            await logSuspiciousActivity({
+                activity: 'DUPLICATE_ACCOUNT_ATTEMPT',
+                details: {
+                    errorCode,
+                    endpoint: '/api/auth/signup',
+                    requestId
+                },
+                ipAddress: clientIP,
+                userAgent
+            });
+        }
+
         return NextResponse.json(
             { 
                 error: errorMessage,
                 code: errorCode,
                 requestId,
-                timestamp: new Date().toISOString()
+                processingTime
             }, 
             { status: statusCode }
         );
@@ -325,8 +317,17 @@ export async function GET() {
     return NextResponse.json(
         { 
             error: 'Method not allowed. Use POST.',
-            requiredBody: { username: 'string', email: 'string', password: 'string' },
-            rateLimits: { maxAttempts: 3, windowMs: 60000 }
+            endpoint: '/api/auth/signup',
+            requiredBody: { 
+                username: 'string', 
+                email: 'string', 
+                password: 'string' 
+            },
+            rateLimits: { 
+                maxAttempts: 3, 
+                windowMs: 60000 
+            },
+            timestamp: new Date().toISOString()
         }, 
         { status: 405 }
     );

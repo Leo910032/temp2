@@ -29,7 +29,7 @@ export async function POST(request) {
             return NextResponse.json({ error: 'No file provided' }, { status: 400 });
         }
 
-        if (!uploadType || !['profile', 'backgroundImage', 'backgroundVideo', 'cv'].includes(uploadType)) {
+        if (!uploadType || !['profile', 'backgroundImage', 'backgroundVideo', 'bannerImage', 'bannerVideo', 'cv'].includes(uploadType)) {
             return NextResponse.json({ error: 'Invalid upload type' }, { status: 400 });
         }
 
@@ -81,7 +81,7 @@ export async function DELETE(request) {
         const { deleteType } = await request.json();
 
         // Basic validation
-        if (!deleteType || !['profile', 'backgroundImage', 'backgroundVideo', 'cv'].includes(deleteType)) {
+        if (!deleteType || !['profile', 'backgroundImage', 'backgroundVideo', 'bannerImage', 'bannerVideo', 'cv'].includes(deleteType)) {
             return NextResponse.json({ error: 'Invalid delete type' }, { status: 400 });
         }
 

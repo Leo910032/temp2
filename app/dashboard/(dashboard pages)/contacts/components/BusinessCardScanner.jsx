@@ -179,7 +179,7 @@ export default function BusinessCardScanner({ isOpen, onClose, onContactParsed }
         setScanMode('single');
         setCurrentSide('front');
         onClose();
-    };
+    };//
 
     const handleRetake = () => {
         if (scanMode === 'single' || currentSide === 'front') {

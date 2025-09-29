@@ -6,7 +6,7 @@
 // app/api/user/contacts/groups/export/route.js
 import { NextResponse } from 'next/server';
 import { adminAuth } from '@/lib/firebaseAdmin';
-import { ContactGroupService } from '@/lib/services/serviceContact/server/contactService';
+import { ContactGroupService } from '@/lib/services/serviceContact/server/ContactCRUDService';
 
 /**
  * GET /api/user/contacts/groups/export - Export contact groups to a file

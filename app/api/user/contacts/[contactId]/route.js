@@ -6,7 +6,7 @@
 // File: app/api/user/contacts/[contactId]/route.js
 
 import { NextResponse } from 'next/server';
-import { ContactService } from '@/lib/services/serviceContact/server/contactService';
+import { ContactService } from '@/lib/services/serviceContact/server/ContactCRUDService';
 import { adminAuth } from '@/lib/firebaseAdmin';
 
 // --- Your existing PUT function is here ---

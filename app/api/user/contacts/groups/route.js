@@ -2,7 +2,7 @@
 // Enhanced with proper cache invalidation and debugging
 
 import { NextResponse } from 'next/server';
-import { ContactGroupService } from '@/lib/services/serviceContact/server/contactService';
+import { ContactGroupService } from '@/lib/services/serviceContact/server/ContactCRUDService';
 import { adminAuth } from '@/lib/firebaseAdmin';
 
 export async function GET(request) {

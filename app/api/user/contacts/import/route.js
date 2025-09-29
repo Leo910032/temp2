@@ -9,7 +9,7 @@
 import { NextResponse } from 'next/server';
 // ✅ CHANGED: Using adminAuth directly from your firebaseAdmin setup
 import { adminAuth } from '@/lib/firebaseAdmin'; 
-import { ContactService } from '@/lib/services/serviceContact/server/contactService';
+import { ContactService } from '@/lib/services/serviceContact/server/ContactCRUDService';
 import Papa from 'papaparse';
 
 /**

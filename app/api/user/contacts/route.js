@@ -1,169 +1,138 @@
-/**
- * THIS FILE HAS BEEN REFRACTORED 
- */
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
-
 // app/api/user/contacts/route.js
+
 import { NextResponse } from 'next/server';
-import { ContactService } from '@/lib/services/serviceContact/server/contactService';
-import { adminAuth } from '@/lib/firebaseAdmin';
+import { createApiSession } from '@/lib/server/session';
+import { ContactCRUDService } from '@/lib/services/serviceContact/server/ContactCRUDService.js'; // ❌ WRONG PATH
+import { CONTACT_FEATURES } from '@/lib/services/constants';
 
+/**
+ * Handles GET requests to fetch all contacts for the authenticated user.
+ */
 export async function GET(request) {
+  console.log('🔍 GET /api/user/contacts - Request received');
+  
   try {
-    console.log('📋 API: Getting contacts');
+    // 1. Authenticate and build the session object
+    console.log('🔐 Creating API session...');
+    const session = await createApiSession(request);
+    console.log('✅ Session created for user:', session.userId);
+    console.log('📋 User permissions:', session.permissions);
 
-    // Get the authorization header
-    const authHeader = request.headers.get('authorization');
+    // 2. Perform a high-level permission check
+    console.log('🔍 Checking BASIC_CONTACTS permission:', CONTACT_FEATURES.BASIC_CONTACTS);
+    console.log('👤 Has permission:', session.permissions[CONTACT_FEATURES.BASIC_CONTACTS]);
     
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('❌ API: No valid authorization header');
-      return NextResponse.json(
-        { error: 'Authentication required', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+    if (!session.permissions[CONTACT_FEATURES.BASIC_CONTACTS]) {
+      console.log('❌ Permission denied for user:', session.userId);
+      return NextResponse.json({ error: 'Subscription does not include contacts access' }, { status: 403 });
     }
 
-    // Extract and verify the token
-    const idToken = authHeader.replace('Bearer ', '');
+    // 3. Fetch contacts from service
+    console.log('📥 Fetching contacts for user:', session.userId);
+    const contacts = await ContactCRUDService.getAllContacts({ session });
+    console.log('✅ Contacts fetched. Count:', contacts?.length || 0);
     
-    let decodedToken;
-    try {
-      decodedToken = await adminAuth.verifyIdToken(idToken);
-    } catch (error) {
-      console.log('❌ API: Invalid token:', error.message);
-      return NextResponse.json(
-        { error: 'Invalid authentication token', code: 'INVALID_TOKEN' },
-        { status: 401 }
-      );
+    if (contacts && contacts.length > 0) {
+      console.log('📊 First contact sample:', {
+        id: contacts[0].id,
+        name: contacts[0].name,
+        email: contacts[0].email,
+        status: contacts[0].status
+      });
+    } else {
+      console.log('⚠️ No contacts found for user:', session.userId);
     }
 
-    const userId = decodedToken.uid;
-    const { searchParams } = new URL(request.url);
-
-    // Extract query parameters
-    const filters = {
-      status: searchParams.get('status'),
-      search: searchParams.get('search'),
-      limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')) : 100,
-      offset: searchParams.get('offset') ? parseInt(searchParams.get('offset')) : 0
+    // 4. Return response
+    const response = {
+      success: true,
+      contacts: contacts || [],
+      stats: {
+        total: contacts?.length || 0,
+        new: contacts?.filter(c => c.status === 'new').length || 0,
+        viewed: contacts?.filter(c => c.status === 'viewed').length || 0,
+        withLocation: contacts?.filter(c => c.location?.latitude).length || 0
+      },
+      groups: [], // Add empty groups array for now
+      pagination: {
+        hasMore: false,
+        lastDoc: null
+      }
     };
 
-    console.log('🔍 API: Filters:', filters);
-
-    // Get contacts from service
-    const result = await ContactService.getUserContacts(userId, filters);
-
-    console.log('✅ API: Contacts retrieved successfully');
-    
-    return NextResponse.json({
-      success: true,
-      ...result
-    });
+    console.log('📤 Sending response with stats:', response.stats);
+    return NextResponse.json(response);
 
   } catch (error) {
-    console.error('❌ API Error getting contacts:', error);
-
-    // Handle specific error types
-    if (error.message?.includes('User not found')) {
-      return NextResponse.json(
-        { error: 'User not found', code: 'USER_NOT_FOUND' },
-        { status: 404 }
-      );
+    console.error('❌ API Error in GET /api/user/contacts:', error);
+    console.error('❌ Error stack:', error.stack);
+    
+    if (error.message.includes('Authorization') || error.message.includes('token') || error.message.includes('User account not found')) {
+      console.log('🚫 Unauthorized access attempt');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    if (error.message?.includes('subscription') || error.message?.includes('plan')) {
-      return NextResponse.json(
-        { error: 'Subscription required', code: 'SUBSCRIPTION_REQUIRED' },
-        { status: 402 }
-      );
-    }
-
-    // Generic server error
-    return NextResponse.json(
-      { 
-        error: 'Failed to get contacts', 
-        code: 'SERVER_ERROR',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      },
-      { status: 500 }
-    );
+    
+    return NextResponse.json({ 
+      error: 'Failed to get contacts',
+      details: error.message // Add error details in development
+    }, { status: 500 });
   }
 }
 
+/**
+ * Handles POST requests to create a new contact
+ */
 export async function POST(request) {
+  console.log('🔍 POST /api/user/contacts - Request received');
+  
   try {
-    console.log('📝 API: Creating contact');
-
-    // Get the authorization header
-    const authHeader = request.headers.get('authorization');
+    const session = await createApiSession(request);
+    console.log('✅ Session created for user:', session.userId);
     
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Authentication required', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+    if (!session.permissions[CONTACT_FEATURES.BASIC_CONTACTS]) {
+      console.log('❌ Permission denied for user:', session.userId);
+      return NextResponse.json({ error: 'Subscription does not include contacts access' }, { status: 403 });
     }
 
-    // Extract and verify the token
-    const idToken = authHeader.replace('Bearer ', '');
-    
-    let decodedToken;
-    try {
-      decodedToken = await adminAuth.verifyIdToken(idToken);
-    } catch (error) {
-      return NextResponse.json(
-        { error: 'Invalid authentication token', code: 'INVALID_TOKEN' },
-        { status: 401 }
-      );
-    }
-
-    const userId = decodedToken.uid;
-
-    // Parse request body
     const body = await request.json();
-    const { action, contact } = body;
-
-    if (action !== 'create' || !contact) {
-      return NextResponse.json(
-        { error: 'Invalid request format', code: 'INVALID_REQUEST' },
-        { status: 400 }
-      );
-    }
-
-    // Create contact
-    const result = await ContactService.createContact(userId, contact);
-
-    console.log('✅ API: Contact created successfully');
+    console.log('📥 Request body received:', Object.keys(body));
     
+    // Handle both { contact: {...} } and direct contact data
+    const contactData = body.contact || body;
+    
+    if (!contactData || !contactData.name) {
+      console.log('❌ Invalid contact data:', contactData);
+      return NextResponse.json({ error: 'Missing required contact data (name)' }, { status: 400 });
+    }
+    
+    console.log('📝 Creating contact:', contactData.name);
+    const newContact = await ContactCRUDService.createContact({
+      contactData,
+      session
+    });
+    
+    console.log('✅ Contact created:', newContact.id);
+
     return NextResponse.json({
       success: true,
-      ...result
-    });
+      contact: newContact
+    }, { status: 201 });
 
   } catch (error) {
-    console.error('❌ API Error creating contact:', error);
+    console.error('❌ API Error in POST /api/user/contacts:', error);
+    console.error('❌ Error stack:', error.stack);
 
-    if (error.message?.includes('Invalid contact data')) {
-      return NextResponse.json(
-        { error: error.message, code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      );
+    if (error.message.includes('Invalid contact data')) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    if (error.message?.includes('limit') || error.message?.includes('subscription')) {
-      return NextResponse.json(
-        { error: error.message, code: 'SUBSCRIPTION_REQUIRED' },
-        { status: 402 }
-      );
+    if (error.message.includes('Authorization') || error.message.includes('token')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    return NextResponse.json(
-      { 
-        error: 'Failed to create contact', 
-        code: 'SERVER_ERROR',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ 
+      error: 'Failed to create contact',
+      details: error.message 
+    }, { status: 500 });
   }
 }

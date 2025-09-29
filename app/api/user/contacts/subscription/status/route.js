@@ -1,7 +1,7 @@
 // app/api/user/contacts/subscription/status/route.js
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
-import { ContactService } from '@/lib/services/serviceContact/server/contactService';
+import { ContactService } from '@/lib/services/serviceContact/server/ContactCRUDService';
 
 export async function GET(request) {
   try {

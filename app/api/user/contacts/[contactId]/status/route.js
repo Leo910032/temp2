@@ -1,7 +1,7 @@
 // File: app/api/user/contacts/[contactId]/status/route.js
 
 import { NextResponse } from 'next/server';
-import { ContactService } from '@/lib/services/serviceContact/server/contactService';
+import { ContactService } from '@/lib/services/serviceContact/server/ContactCRUDService';
 import { adminAuth } from '@/lib/firebaseAdmin';
 
 // This function will handle PATCH requests to /api/user/contacts/{contactId}/status

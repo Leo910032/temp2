@@ -1,6 +1,6 @@
 // app/api/user/contacts/groups/[groupId]/route.js
 import { NextResponse } from 'next/server';
-import { ContactGroupService } from '@/lib/services/serviceContact/server/contactService';
+import { ContactGroupService } from '@/lib/services/serviceContact/server/ContactCRUDService';
 import { adminAuth } from '@/lib/firebaseAdmin';
 
 // GET - Get specific contact group details

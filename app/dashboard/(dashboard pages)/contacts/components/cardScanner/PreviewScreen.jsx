@@ -52,6 +52,7 @@ export function PreviewScreen({
                 
                 {getCurrentImage().previewUrl && (
                     <div className="bg-gray-100 rounded-lg sm:rounded-xl p-2 sm:p-4 mb-3 sm:mb-4">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                             src={getCurrentImage().previewUrl}
                             alt={`Business card ${currentSide} side`}

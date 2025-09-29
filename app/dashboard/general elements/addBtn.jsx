@@ -105,7 +105,7 @@ export default function AddBtn() {
         }
 
         setUrlValid(isValidURL(url));
-    }, [debounceUrl]);
+    }, [debounceUrl, url]);
 
     // LOADING STATE WHILE TRANSLATIONS LOAD
     if (!isInitialized) {

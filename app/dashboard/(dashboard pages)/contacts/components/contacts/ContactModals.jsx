@@ -88,13 +88,13 @@ export default function ContactModals({
            
 
             {/* Contact Review Modal (after scanning) */}
-            <ContactReviewModal
-                isOpen={showReviewModal}
-                onClose={onCloseReview}
-                parsedFields={scannedFields}
-                onSave={onSaveScanned}
-            />
-
+          <ContactReviewModal
+    isOpen={showReviewModal}
+    onClose={onCloseReview}
+    parsedFields={scannedFields}
+    onSave={onSaveScanned}
+    hasFeature={hasFeature}  // Add this prop
+/>
             {/* Group Manager Modal 
             <GroupManagerModal
                 isOpen={showGroupManager}

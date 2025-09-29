@@ -73,7 +73,7 @@ export default function Form() {
             setHasError(0);
             setCanProceed(false);
         }
-    }, [debouncedUsername, existingUsernames, translations]);
+    }, [debouncedUsername, existingUsernames, translations, username]);
 
     const handleSumbit = (e) => { 
         e.preventDefault();

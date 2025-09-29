@@ -44,34 +44,32 @@ export default function ProfileImageManager() {
         };
     }, [t, isInitialized]);
 
-    // ✅ UPDATE PROFILE PICTURE ELEMENT BASED ON CONTEXT DATA
-    const updateProfilePictureElement = useMemo(() => {
-        if (!appearance) return null;
-        
-        const photoUrl = appearance.profilePhoto || '';
-        const name = appearance.displayName || appearance.username || '';
-        
-        if (photoUrl) {
-            return (
-                <Image
-                    src={photoUrl}
-                    alt={translations.altProfile}
-                    height={1000}
-                    width={1000}
-                    className="min-w-full h-full object-cover"
-                    priority
-                />
-            );
-        } else {
-            const initial = name?.[0] || 'U';
-            return (
-                <div className="h-[95%] aspect-square w-[95%] rounded-full bg-gray-300 border grid place-items-center">
-                    <span className="text-3xl font-semibold uppercase">{initial}</span>
-                </div>
-            );
-        }
-    }, [appearance?.profilePhoto, appearance?.displayName, appearance?.username, translations.altProfile]);
-
+const updateProfilePictureElement = useMemo(() => {
+    if (!appearance) return null;
+    
+    const photoUrl = appearance.profilePhoto || '';
+    const name = appearance.displayName || appearance.username || '';
+    
+    if (photoUrl) {
+        return (
+            <Image
+                src={photoUrl}
+                alt={translations.altProfile}
+                height={1000}
+                width={1000}
+                className="min-w-full h-full object-cover"
+                priority
+            />
+        );
+    } else {
+        const initial = name?.[0] || 'U';
+        return (
+            <div className="h-[95%] aspect-square w-[95%] rounded-full bg-gray-300 border grid place-items-center">
+                <span className="text-3xl font-semibold uppercase">{initial}</span>
+            </div>
+        );
+    }
+}, [appearance, translations.altProfile]);
     // Handle file selection
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];

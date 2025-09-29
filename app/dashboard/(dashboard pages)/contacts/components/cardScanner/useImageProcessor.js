@@ -71,183 +71,182 @@ export function useImageProcessor({
         });
     };
 
-    const processImages = async () => {
-        if (!currentUser) {
-            toast.error('Please log in to use the business card scanner');
+  const processImages = async () => {
+    if (!currentUser) {
+        toast.error('Please log in to use the business card scanner');
+        return;
+    }
+
+    const imagesToProcess = {};
+    
+    if (scanMode === 'single') {
+        if (!cardData.front.image) {
+            toast.error('Please capture or upload a card image first');
             return;
         }
-
-        const imagesToProcess = {};
-        
-        if (scanMode === 'single') {
-            if (!cardData.front.image) {
-                toast.error('Please capture or upload a card image first');
-                return;
-            }
-            imagesToProcess.front = cardData.front.image;
-        } else {
-            if (!cardData.front.image || !cardData.back.image) {
-                toast.error('Please capture or upload both front and back images');
-                return;
-            }
-            imagesToProcess.front = cardData.front.image;
-            imagesToProcess.back = cardData.back.image;
+        imagesToProcess.front = cardData.front.image;
+    } else {
+        if (!cardData.front.image || !cardData.back.image) {
+            toast.error('Please capture or upload both front and back images');
+            return;
         }
-        
-        setIsProcessing(true);
-        
-        try {
-            // Show cost warning if available
-            if (costEstimate && costEstimate.estimated) {
-                const totalCost = scanMode === 'double' 
-                    ? costEstimate.estimated * 2 
-                    : costEstimate.estimated;
-                const costMessage = `This will cost approximately $${totalCost.toFixed(4)} for scanning.`;
-                
-                toast(costMessage, { 
-                    duration: 3000,
-                    icon: '💰',
-                    style: {
-                        background: '#3b82f6',
-                        color: 'white',
-                    }
-                });            
-            }
+        imagesToProcess.front = cardData.front.image;
+        imagesToProcess.back = cardData.back.image;
+    }
+    
+    setIsProcessing(true);
+    
+    try {
+        if (costEstimate && costEstimate.estimated) {
+            const totalCost = scanMode === 'double' 
+                ? costEstimate.estimated * 2 
+                : costEstimate.estimated;
+            toast(`This will cost approximately $${totalCost.toFixed(4)} for scanning.`, { 
+                duration: 3000,
+                icon: '💰',
+                style: { background: '#3b82f6', color: 'white' }
+            });            
+        }
 
-            // Get authentication token
-            const token = await currentUser.getIdToken();
-            const results = [];
+        const token = await currentUser.getIdToken();
+        let result;
+
+        // ✅ NEW: Send both images together for double-sided mode
+        if (scanMode === 'double') {
+            setProcessingStatus('Compressing images...');
             
-            // Process each side separately using YOUR backend API
-            for (const [side, file] of Object.entries(imagesToProcess)) {
-                setProcessingStatus(`Compressing image (${side})...`);
-                console.log(`Processing ${side} side - Original size: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
-                
-                // Compress image
-                const options = {
-                    maxSizeMB: 1.5,
-                    maxWidthOrHeight: 1920,
-                    useWebWorker: true,
-                    initialQuality: 0.8
-                };
-                const compressedFile = await imageCompression(file, options);
-                console.log(`${side} compressed size: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
-
-                // Convert to base64
-                const base64 = await convertFileToBase64(compressedFile);
-
-                setProcessingStatus(`Scanning business card (${side} side)...`);
-                toast.loading(`Scanning ${side} side...`, { id: `scanning-${side}` });
-
-                // ✅ CRITICAL: Call YOUR backend API, not Google directly
-                const response = await fetch('/api/user/contacts/scan', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        imageBase64: base64,
-                        side: side
-                    })
-                });
-
-                toast.dismiss(`scanning-${side}`);
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-                }
-
-                const scanResult = await response.json();
-
-                if (scanResult.success) {
-                    results.push({
-                        side,
-                        success: true,
-                        fields: scanResult.standardFields || [],
-                        dynamicFields: scanResult.dynamicFields || [],
-                        metadata: scanResult.metadata || {}
-                    });
-                    
-                    toast.success(`${side} side scanned successfully!`);
-                } else {
-                    throw new Error(scanResult.error || `${side} side scan failed`);
-                }
-            }
-
-            // Merge results from both sides if double-sided
-            let finalStandardFields, finalDynamicFields;
-            if (results.length === 1) {
-                finalStandardFields = results[0].fields;
-                finalDynamicFields = results[0].dynamicFields || [];
-            } else {
-                const mergedResult = mergeCardSideResults(results);
-                finalStandardFields = mergedResult.standardFields || [];
-                finalDynamicFields = mergedResult.dynamicFields || [];
-            }
-
-            const enhancedFields = {
-                standardFields: finalStandardFields,
-                dynamicFields: finalDynamicFields,
-                metadata: {
-                    ...results[0]?.metadata,
-                    totalFields: finalStandardFields.length + finalDynamicFields.length,
-                    enhancedProcessing: true
-                }
+            // Compress both images
+            const options = {
+                maxSizeMB: 1.5,
+                maxWidthOrHeight: 1920,
+                useWebWorker: true,
+                initialQuality: 0.8
             };
+            
+            const [compressedFront, compressedBack] = await Promise.all([
+                imageCompression(imagesToProcess.front, options),
+                imageCompression(imagesToProcess.back, options)
+            ]);
 
-            setDynamicFields(finalDynamicFields);
-            setScanMetadata(enhancedFields.metadata);
+            // Convert both to base64
+            const [frontBase64, backBase64] = await Promise.all([
+                convertFileToBase64(compressedFront),
+                convertFileToBase64(compressedBack)
+            ]);
 
-            onContactParsed(enhancedFields);
+            setProcessingStatus('Scanning both sides together...');
+            toast.loading('Processing both sides...', { id: 'scanning-both' });
 
-            toast.success(`Card scanning complete! Found ${finalStandardFields.length} standard fields and ${finalDynamicFields.length} dynamic fields.`);
-
-            // Show cost summary if available
-            let totalCost = 0;
-            results.forEach(result => {
-                if (result.metadata?.cost) {
-                    totalCost += result.metadata.cost;
-                }
+            // Single API call with both images
+            const response = await fetch('/api/user/contacts/scan', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    frontImage: frontBase64,
+                    backImage: backBase64,
+                    scanMode: 'double'
+                })
             });
-            
-            if (totalCost > 0) {
-                toast(`Total cost: $${totalCost.toFixed(4)}`, { 
-                    duration: 4000,
-                    icon: '💰',
-                    style: {
-                        background: '#3b82f6',
-                        color: 'white',
-                    }
-                });
+
+            toast.dismiss('scanning-both');
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP ${response.status}`);
             }
 
-            // Show QR code detection if found
-            const hasQRCode = results.some(result => result.metadata?.hasQRCode);
-            if (hasQRCode) {
-                toast.success('QR Code detected and processed!', { duration: 3000 });
+            result = await response.json();
+
+        } else {
+            // Single side processing (existing logic)
+            setProcessingStatus('Compressing image...');
+            
+            const options = {
+                maxSizeMB: 1.5,
+                maxWidthOrHeight: 1920,
+                useWebWorker: true,
+                initialQuality: 0.8
+            };
+            const compressedFile = await imageCompression(imagesToProcess.front, options);
+            const base64 = await convertFileToBase64(compressedFile);
+
+            setProcessingStatus('Scanning card...');
+            toast.loading('Scanning...', { id: 'scanning-single' });
+
+            const response = await fetch('/api/user/contacts/scan', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    imageBase64: base64,
+                    side: 'front'
+                })
+            });
+
+            toast.dismiss('scanning-single');
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP ${response.status}`);
             }
 
-        } catch (error) {
-            console.error('Image processing error:', error);
-            
-            if (error.message.includes('subscription') || error.message.includes('budget') || error.message.includes('PLAN_LIMIT_EXCEEDED')) {
-                toast.error('Business card scanning requires a valid subscription or you have exceeded your plan limits', { duration: 4000 });
-            } else if (error.message.includes('rate limit')) {
-                toast.error('Too many scan requests. Please try again later.', { duration: 4000 });
-            } else if (error.message.includes('Unauthorized') || error.message.includes('Authorization')) {
-                toast.error('Please log in again to continue', { duration: 4000 });
-            } else if (error.message.includes('This feature requires')) {
-                toast.error(error.message, { duration: 4000 });
-            } else {
-                toast.error(error.message || 'Processing failed. Please try again.');
-            }
-        } finally {
-            setIsProcessing(false);
-            setProcessingStatus('');
+            result = await response.json();
         }
-    };
+
+        // Process result
+        const finalStandardFields = result.standardFields || [];
+        const finalDynamicFields = result.dynamicFields || [];
+
+        const enhancedFields = {
+            standardFields: finalStandardFields,
+            dynamicFields: finalDynamicFields,
+            metadata: {
+                ...result.metadata,
+                totalFields: finalStandardFields.length + finalDynamicFields.length,
+                enhancedProcessing: true
+            }
+        };
+
+        setDynamicFields(finalDynamicFields);
+        setScanMetadata(enhancedFields.metadata);
+        onContactParsed(enhancedFields);
+
+        toast.success(`Card scanning complete! Found ${finalStandardFields.length} standard fields and ${finalDynamicFields.length} dynamic fields.`);
+
+        if (result.metadata?.cost > 0) {
+            toast(`Total cost: $${result.metadata.cost.toFixed(4)}`, { 
+                duration: 4000,
+                icon: '💰',
+                style: { background: '#3b82f6', color: 'white' }
+            });
+        }
+
+        if (result.metadata?.hasQRCode) {
+            toast.success('QR Code detected and processed!', { duration: 3000 });
+        }
+
+    } catch (error) {
+        console.error('Image processing error:', error);
+        
+        if (error.message.includes('subscription') || error.message.includes('PLAN_LIMIT_EXCEEDED')) {
+            toast.error('Business card scanning requires a valid subscription or you have exceeded your plan limits', { duration: 4000 });
+        } else if (error.message.includes('rate limit')) {
+            toast.error('Too many scan requests. Please try again later.', { duration: 4000 });
+        } else if (error.message.includes('Unauthorized')) {
+            toast.error('Please log in again to continue', { duration: 4000 });
+        } else {
+            toast.error(error.message || 'Processing failed. Please try again.');
+        }
+    } finally {
+        setIsProcessing(false);
+        setProcessingStatus('');
+    }
+};
 
     return { processImages };
 }

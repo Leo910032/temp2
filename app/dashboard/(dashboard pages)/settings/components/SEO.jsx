@@ -50,7 +50,7 @@ export default function SEO() {
                 description: metaDescription,
             });
         }
-    }, [debounceMetaTitle, debounceMetaDescription, updateSettings]);
+    }, [debounceMetaTitle, debounceMetaDescription, updateSettings, metaTitle, metaDescription]);
 
     if (!isInitialized || !currentUser || !settings) {
         return (

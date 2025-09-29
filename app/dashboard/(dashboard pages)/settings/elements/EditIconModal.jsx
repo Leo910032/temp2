@@ -88,7 +88,7 @@ export default function EditIconModal() {
                 setValidInput(2);
                 break;
         }
-    }, [debouceValueText]);
+    }, [debouceValueText, defaultData.valueType, valueText]);
 
     const handleBack = () =>{
         handleClose();

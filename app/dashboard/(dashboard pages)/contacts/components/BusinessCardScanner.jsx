@@ -3,7 +3,7 @@
 
 import { useTranslation } from '@/lib/translation/useTranslation';
 import { toast } from 'react-hot-toast';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from "@/contexts/AuthContext";
 import { useCameraCapture } from './cardScanner/useCameraCapture';
 import { useImageProcessor } from './cardScanner/useImageProcessor';
@@ -89,7 +89,7 @@ export default function BusinessCardScanner({ isOpen, onClose, onContactParsed }
             setScanMode('single');
             setCurrentSide('front');
         }
-    }, [isOpen]);
+    }, [isOpen, stopCamera, resetCardData]);
 
     // Get cost estimate when component mounts
     useEffect(() => {
@@ -98,7 +98,7 @@ export default function BusinessCardScanner({ isOpen, onClose, onContactParsed }
         }
     }, [isOpen]);
 
-    const resetCardData = () => {
+    const resetCardData = useCallback(() => {
         Object.values(cardData).forEach(side => {
             if (side.previewUrl && side.previewUrl.startsWith('blob:')) {
                 URL.revokeObjectURL(side.previewUrl);
@@ -108,7 +108,7 @@ export default function BusinessCardScanner({ isOpen, onClose, onContactParsed }
             front: { image: null, previewUrl: null },
             back: { image: null, previewUrl: null }
         });
-    };
+    }, [cardData]);
 
     const handleFileSelect = async (event) => {
         const files = Array.from(event.target.files);

@@ -76,7 +76,7 @@ export default function ContactCard({ contact, onEdit, onStatusUpdate, onDelete,
                                 
                                 {taglines.length > 0 && (
                                     <p className="text-xs text-blue-600 italic mt-1 truncate">
-                                        "{taglines[0].value}"
+                                        &quot;{taglines[0].value}&quot;
                                     </p>
                                 )}
                                 

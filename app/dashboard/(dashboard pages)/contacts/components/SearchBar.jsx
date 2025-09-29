@@ -153,7 +153,7 @@ export default function SearchBar({
                                             }}
                                             className="px-2 py-1 text-xs bg-white border border-purple-300 rounded-full hover:bg-purple-50 text-purple-700 transition-colors"
                                         >
-                                            "{example}"
+                                            &quot;{example}&quot;
                                         </button>
                                     ))}
                                 </div>

@@ -48,24 +48,24 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
     const shouldShowContactExchange = useMemo(() => {
         // Don't show in preview mode
         if (isPreviewMode) return false;
-        
+
         // Check if user has contact exchange enabled (from settings object)
         const settings = userData?.settings || {};
         const contactExchangeEnabled = settings.contactExchangeEnabled !== false; // Default to true
-        
+
         // Check if user has basic contact info (from profile object)
         const profile = userData?.profile || {};
         const hasContactInfo = profile.displayName || userData?.email;
-        
+
         return contactExchangeEnabled && hasContactInfo;
-    }, [isPreviewMode, userData?.settings?.contactExchangeEnabled, userData?.profile?.displayName, userData?.email]);
+    }, [isPreviewMode, userData?.profile, userData?.settings, userData?.email]);
 
     // Updated to check sensitive content from new structure
     useEffect(() => {
         // Check for sensitive content warning from settings
         const settings = userData?.settings || {};
         setShowSensitiveWarning(settings.sensitiveStatus || false);
-    }, [userData?.settings?.sensitiveStatus]);
+    }, [userData?.settings?.sensitiveStatus, userData?.settings]);
 
     // Updated real-time listener to use 'users' collection and include banner data
     useEffect(() => {

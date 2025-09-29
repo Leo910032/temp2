@@ -30,7 +30,7 @@ export default function AddIconModal() {
         });
 
         setShowSocials(tempArr);
-    }, [debouceSearchParam]);
+    }, [debouceSearchParam, searchParam]);
 
     const handleSelect = (item) =>{
         const selectedItem = item;

@@ -1,10 +1,10 @@
-// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
-
-//app/dashboard/(dashboard pages)/contacts/components/ContactReviewModal.jsx - FIXED
+// app/dashboard/(dashboard pages)/contacts/components/ContactReviewModal.jsx
 "use client"
 import { useState, useEffect } from 'react';
 import { useTranslation } from "@/lib/translation/useTranslation";
 import { toast } from 'react-hot-toast';
+import PhoneNumberField from './cardScanner/PhoneNumberField';
+import { CONTACT_FEATURES } from '@/lib/services/constants';
 
 // Enhanced field icon component with more categories
 const FieldIcon = ({ label, category }) => {
@@ -44,12 +44,19 @@ const FieldIcon = ({ label, category }) => {
     return <span className="text-gray-400">📄</span>;
 };
 
-export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSave }) {
+export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSave, hasFeature }) {
     const { t } = useTranslation();
     const [fields, setFields] = useState([]);
+    const [phoneNumbers, setPhoneNumbers] = useState(['']);
     const [isSaving, setIsSaving] = useState(false);
     const [fieldCategories, setFieldCategories] = useState({});
     const [activeCategory, setActiveCategory] = useState('all');
+
+    // Check if user has premium features for phone country detection
+    const isPremium = hasFeature && (
+        hasFeature(CONTACT_FEATURES.AI_ENHANCED_CARD_SCANNER) ||
+        hasFeature(CONTACT_FEATURES.PREMIUM_SEMANTIC_SEARCH)
+    );
 
     useEffect(() => {
         if (parsedFields) {
@@ -67,7 +74,26 @@ export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSa
                 allFields = Array.isArray(parsedFields) ? parsedFields : [];
             }
             
-            // Process fields and categorize them
+            // Extract and handle phone numbers separately
+            const phoneField = allFields.find(f => 
+                f.label.toLowerCase().includes('phone')
+            );
+            
+            if (phoneField && phoneField.value) {
+                // Split by semicolon for multiple phones
+                const phones = phoneField.value.includes(';') 
+                    ? phoneField.value.split(';').map(p => p.trim()).filter(p => p)
+                    : [phoneField.value];
+                
+                setPhoneNumbers(phones.length > 0 ? phones : ['']);
+                
+                // Remove phone from regular fields (we'll handle it separately)
+                allFields = allFields.filter(f => !f.label.toLowerCase().includes('phone'));
+            } else {
+                setPhoneNumbers(['']); // Default empty phone
+            }
+            
+            // Process remaining fields and categorize them
             const processedFields = allFields.map((field, index) => ({
                 id: field.id || `field_${index}`,
                 label: field.label || '',
@@ -125,6 +151,23 @@ export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSa
         setFields(newFields);
     };
 
+    // Phone number handlers
+    const handlePhoneChange = (index, value) => {
+        const newPhones = [...phoneNumbers];
+        newPhones[index] = value;
+        setPhoneNumbers(newPhones);
+    };
+
+    const addPhoneNumber = () => {
+        setPhoneNumbers([...phoneNumbers, '']);
+    };
+
+    const removePhoneNumber = (index) => {
+        if (phoneNumbers.length > 1) {
+            setPhoneNumbers(phoneNumbers.filter((_, i) => i !== index));
+        }
+    };
+
     // Add a new, empty field
     const addNewField = () => {
         const newField = {
@@ -159,50 +202,65 @@ export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSa
         if (activeCategory === 'all') return fields;
         return fields.filter(field => field.category === activeCategory);
     };
-const handleSave = async () => {
-    // Enhanced validation
-    const hasNameOrEmail = fields.some(f => 
-        (f.label.toLowerCase().includes('name') || f.label.toLowerCase().includes('email')) && 
-        f.value.trim() !== ''
-    );
 
-    if (!hasNameOrEmail) {
-        toast.error('Please ensure the contact has at least a Name or Email.');
-        return;
-    }
+    const handleSave = async () => {
+        // Enhanced validation
+        const hasNameOrEmail = fields.some(f => 
+            (f.label.toLowerCase().includes('name') || f.label.toLowerCase().includes('email')) && 
+            f.value.trim() !== ''
+        );
 
-    // Remove empty fields before saving
-    const fieldsToSave = fields.filter(f => f.value && f.value.trim().length > 0);
+        if (!hasNameOrEmail) {
+            toast.error('Please ensure the contact has at least a Name or Email.');
+            return;
+        }
 
-    if (fieldsToSave.length === 0) {
-        toast.error('Please add at least one field with a value.');
-        return;
-    }
+        // Remove empty fields before saving
+        const fieldsToSave = fields.filter(f => f.value && f.value.trim().length > 0);
 
-    setIsSaving(true);
-    try {
-        // ✅ STRUCTURE THE DATA PROPERLY FOR THE CONTACT SERVICE
-        const structuredContactData = {
-            // Separate standard and dynamic fields
-            standardFields: fieldsToSave.filter(f => !f.isDynamic),
-            dynamicFields: fieldsToSave.filter(f => f.isDynamic),
-            metadata: {
-                totalFields: fieldsToSave.length,
-                source: 'business_card_scan_review',
-                processedAt: new Date().toISOString()
-            }
-        };
+        // Add phone numbers back as a field
+        const validPhones = phoneNumbers.filter(p => p && p.trim());
+        if (validPhones.length > 0) {
+            fieldsToSave.push({
+                label: 'Phone',
+                value: validPhones.join('; '),
+                type: 'standard',
+                confidence: 0.9,
+                isDynamic: false,
+                source: 'phone_field',
+                category: 'contact'
+            });
+        }
 
-        await onSave(structuredContactData);
-        toast.success(`Contact saved with ${fieldsToSave.length} fields!`);
-        onClose();
-    } catch (error) {
-        console.error('Error saving enhanced contact:', error);
-        toast.error('Failed to save contact.');
-    } finally {
-        setIsSaving(false);
-    }
-};
+        if (fieldsToSave.length === 0) {
+            toast.error('Please add at least one field with a value.');
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            // Structure the data properly for the contact service
+            const structuredContactData = {
+                // Separate standard and dynamic fields
+                standardFields: fieldsToSave.filter(f => !f.isDynamic),
+                dynamicFields: fieldsToSave.filter(f => f.isDynamic),
+                metadata: {
+                    totalFields: fieldsToSave.length,
+                    source: 'business_card_scan_review',
+                    processedAt: new Date().toISOString()
+                }
+            };
+
+            await onSave(structuredContactData);
+            toast.success(`Contact saved with ${fieldsToSave.length} fields!`);
+            onClose();
+        } catch (error) {
+            console.error('Error saving enhanced contact:', error);
+            toast.error('Failed to save contact.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     const getCategoryCount = (category) => fieldCategories[category] || 0;
     const getTotalFields = () => Object.values(fieldCategories).reduce((sum, count) => sum + count, 0);
@@ -219,7 +277,7 @@ const handleSave = async () => {
                     <div>
                         <h3 className="text-lg font-semibold text-gray-900">Review & Refine Contact</h3>
                         <p className="text-sm text-gray-500 mt-1">
-                            {getTotalFields()} fields detected • {Object.keys(fieldCategories).length} categories
+                            {getTotalFields() + (phoneNumbers.filter(p => p.trim()).length > 0 ? 1 : 0)} fields detected • {Object.keys(fieldCategories).length} categories
                         </p>
                     </div>
                     <button onClick={onClose} className="p-2 text-gray-400 rounded-lg hover:bg-gray-100">
@@ -261,10 +319,55 @@ const handleSave = async () => {
 
                 {/* Fields List */}
                 <div className="p-6 space-y-4 overflow-y-auto flex-1">
+                    {/* Phone Numbers Section */}
+                    <div className="space-y-3 pb-4 border-b border-gray-200">
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                <span className="text-green-500">📞</span>
+                                Phone Numbers
+                                {isPremium && (
+                                    <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
+                                        Premium: Country Detection
+                                    </span>
+                                )}
+                            </h4>
+                            <button
+                                onClick={addPhoneNumber}
+                                className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                                Add Phone
+                            </button>
+                        </div>
+                        
+                        <div className="space-y-2">
+                            {phoneNumbers.map((phone, index) => (
+                                <PhoneNumberField
+                                    key={index}
+                                    value={phone}
+                                    onChange={handlePhoneChange}
+                                    index={index}
+                                    onRemove={removePhoneNumber}
+                                    isPremium={isPremium}
+                                />
+                            ))}
+                        </div>
+                        
+                        {isPremium && (
+                            <p className="text-xs text-gray-500 italic flex items-start gap-1">
+                                <span>💡</span>
+                                <span>Tip: Include country code (e.g., +33 for France, +1 for US/Canada) for automatic flag detection</span>
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Other Fields */}
                     {filteredFields.length === 0 ? (
                         <div className="text-center py-8 text-gray-500">
                             {activeCategory === 'all' 
-                                ? 'No fields detected. Click "Add Custom Field" to start.'
+                                ? 'No other fields detected. Click "Add Custom Field" to add more.'
                                 : `No ${activeCategory} fields found.`
                             }
                         </div>
@@ -361,7 +464,7 @@ const handleSave = async () => {
                     <div className="mb-4 flex flex-wrap gap-4 text-sm text-gray-600">
                         <div className="flex items-center gap-1">
                             <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                            <span>Standard: {fields.filter(f => !f.isDynamic).length}</span>
+                            <span>Standard: {fields.filter(f => !f.isDynamic).length + (phoneNumbers.filter(p => p.trim()).length > 0 ? 1 : 0)}</span>
                         </div>
                         <div className="flex items-center gap-1">
                             <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
@@ -369,7 +472,7 @@ const handleSave = async () => {
                         </div>
                         <div className="flex items-center gap-1">
                             <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                            <span>With Values: {fields.filter(f => f.value && f.value.trim()).length}</span>
+                            <span>With Values: {fields.filter(f => f.value && f.value.trim()).length + phoneNumbers.filter(p => p.trim()).length}</span>
                         </div>
                     </div>
                     
@@ -388,7 +491,7 @@ const handleSave = async () => {
                             className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
                         >
                             {isSaving && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
-                            {isSaving ? 'Saving...' : `Save Contact (${fields.filter(f => f.value && f.value.trim()).length} fields)`}
+                            {isSaving ? 'Saving...' : `Save Contact (${fields.filter(f => f.value && f.value.trim()).length + phoneNumbers.filter(p => p.trim()).length} fields)`}
                         </button>
                     </div>
                 </div>

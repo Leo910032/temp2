@@ -62,6 +62,7 @@ function JoinTeamContent() {
         if (code && currentUser && !verifiedInvitation && !error) {
             handleVerify();
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentUser, code]);
 
     // ✅ ADDED: Better input validation
@@ -285,7 +286,7 @@ function JoinTeamContent() {
                                 </svg>
                             </div>
                             <h1 className="text-2xl font-bold text-gray-900 mb-2">Confirm Invitation</h1>
-                            <p className="text-gray-600">You're invited to join an amazing team!</p>
+                            <p className="text-gray-600">You&apos;re invited to join an amazing team!</p>
                         </div>
                         
                         <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-lg border mb-6">
@@ -445,7 +446,7 @@ function JoinTeamContent() {
                         </form>
                         
                         <div className="mt-6 text-center text-sm text-gray-500 space-y-2">
-                            <p>Don't have an invitation code?</p>
+                            <p>Don&apos;t have an invitation code?</p>
                             <button 
                                 onClick={() => router.push('/dashboard')}
                                 className="text-purple-600 hover:text-purple-700 hover:underline font-medium"

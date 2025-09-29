@@ -1,6 +1,6 @@
 // app/admin/components/AdminVectorContactTestPanel.jsx - FIXED VERSION
 "use client"
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext'; // ✅ FIXED: Added missing import
 
 export default function AdminVectorContactTestPanel({ targetUser, onGenerate, onCleanup, loading }) {
@@ -151,57 +151,56 @@ export default function AdminVectorContactTestPanel({ targetUser, onGenerate, on
         }
     };
 
-    useEffect(() => {
-        if (targetUser && currentUser) { // ✅ FIXED: Check currentUser instead of authToken
-            loadGenerationAndVectorInfo();
+useEffect(() => {
+    if (targetUser && currentUser) {
+        loadGenerationAndVectorInfo();
+    }
+}, [targetUser, currentUser, loadGenerationAndVectorInfo]);
+   // Inside the component, wrap loadGenerationAndVectorInfo in useCallback
+const loadGenerationAndVectorInfo = useCallback(async () => {
+    if (!targetUser || !currentUser) return;
+
+    try {
+        setIsLoadingInfo(true);
+        
+        const token = await currentUser.getIdToken();
+        
+        const [generationResponse, vectorResponse] = await Promise.all([
+            fetch(`/api/admin/generate-contacts?userId=${targetUser.id}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                }
+            }),
+            fetch(`/api/admin/vector-info?userId=${targetUser.id}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                }
+            })
+        ]);
+
+        if (generationResponse.ok) {
+            const info = await generationResponse.json();
+            setGenerationInfo(info);
+        } else {
+            console.error('Generation info failed:', await generationResponse.text());
         }
-    }, [targetUser, currentUser]); // ✅ FIXED: Depend on currentUser
 
-    const loadGenerationAndVectorInfo = async () => {
-        if (!targetUser || !currentUser) return;
-
-        try {
-            setIsLoadingInfo(true);
-            
-            // ✅ FIXED: Get auth token and add headers
-            const token = await currentUser.getIdToken();
-            
-            // Load both regular generation info and vector info in parallel
-            const [generationResponse, vectorResponse] = await Promise.all([
-                fetch(`/api/admin/generate-contacts?userId=${targetUser.id}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    }
-                }),
-                fetch(`/api/admin/vector-info?userId=${targetUser.id}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    }
-                })
-            ]);
-
-            if (generationResponse.ok) {
-                const info = await generationResponse.json();
-                setGenerationInfo(info);
-            } else {
-                console.error('Generation info failed:', await generationResponse.text());
-            }
-
-            if (vectorResponse.ok) {
-                const vInfo = await vectorResponse.json();
-                setVectorInfo(vInfo);
-            } else {
-                console.error('Vector info failed:', await vectorResponse.text());
-            }
-
-        } catch (error) {
-            console.error('Error loading info:', error);
-        } finally {
-            setIsLoadingInfo(false);
+        if (vectorResponse.ok) {
+            const vInfo = await vectorResponse.json();
+            setVectorInfo(vInfo);
+        } else {
+            console.error('Vector info failed:', await vectorResponse.text());
         }
-    };
+
+    } catch (error) {
+        console.error('Error loading info:', error);
+    } finally {
+        setIsLoadingInfo(false);
+    }
+}, [targetUser, currentUser]);
+
 
     const handleQuickGenerate = async (scenario) => {
         setIsGenerating(true);
@@ -702,8 +701,8 @@ export default function AdminVectorContactTestPanel({ targetUser, onGenerate, on
                                 
                                 {customOptions.enableVectorStorage && !hasVectorSupport && (
                                     <div className="mt-3 p-2 bg-yellow-100 border border-yellow-300 rounded text-xs text-yellow-800">
-                                        <strong>Note:</strong> Vector storage is enabled but user's tier ({subscriptionTier}) doesn't support it. 
-                                        Contacts will be created but vectors will be skipped.
+                                       <strong>Note:</strong> Vector storage is enabled but user&apos;s tier ({subscriptionTier}) doesn&apos;t support it. 
+Contacts will be created but vectors will be skipped.
                                     </div>
                                 )}
                             </div>

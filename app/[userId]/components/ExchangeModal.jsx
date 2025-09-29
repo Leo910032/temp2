@@ -1,6 +1,6 @@
 // app/[userId]/components/ExchangeModal.jsx - Updated with pre-verified props
 "use client"
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { useTranslation } from '@/lib/translation/useTranslation';
 import { toast } from 'react-hot-toast';
@@ -80,21 +80,50 @@ export default function ExchangeModal({
         };
     }, [mediaStream]);
 
-    useEffect(() => {
-        if (isOpen) {
-            console.log("Enhanced exchange modal opened for:", profileOwnerUsername);
-            console.log("Pre-verified:", preVerified, "Scan available:", scanAvailable);
-            initializeModal();
-        } else {
-            resetModalState();
-        }
-    }, [isOpen, profileOwnerUsername, profileOwnerId, preVerified, scanAvailable]);
-
+  useEffect(() => {
+    if (isOpen) {
+        console.log("Enhanced exchange modal opened for:", profileOwnerUsername);
+        console.log("Pre-verified:", preVerified, "Scan available:", scanAvailable);
+        initializeModal();
+    } else {
+        resetModalState();
+    }
+}, [isOpen, profileOwnerUsername, profileOwnerId, preVerified, scanAvailable, initializeModal, resetModalState]);
   // Replace the initializeModal function in ExchangeModal.jsx
 
-const initializeModal = async () => {
+    const requestLocation = useCallback(async () => {
+        try {
+            console.log("Requesting location...");
+
+            const userLocation = await exchangeService.current.getCurrentLocation({
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 300000
+            });
+
+            setLocation(userLocation);
+            setLocationPermission(prev => ({ ...prev, state: 'granted' }));
+
+            toast.success(t('exchange.location_obtained') || 'Location obtained successfully!');
+
+            return userLocation;
+
+        } catch (error) {
+            console.error("Error getting location:", error);
+
+            if (error.message.includes('denied')) {
+                setLocationPermission(prev => ({ ...prev, state: 'denied' }));
+                toast.error(t('exchange.location_permission_denied') || 'Location permission denied');
+            } else {
+                toast.error(t('exchange.location_retrieval_failed') || 'Failed to get location');
+            }
+
+            return null;
+        }
+    }, [t]);
+
+    const initializeModal = useCallback(async () => {
     try {
-        // Initialize location services
         const permission = await exchangeService.current.checkLocationPermission();
         setLocationPermission(permission);
         
@@ -102,18 +131,16 @@ const initializeModal = async () => {
             await requestLocation();
         }
 
-        // Use pre-verified status (no API call needed)
         setProfileVerified(preVerified);
         
         if (!preVerified) {
             toast.error(t('exchange.profile_unavailable') || 'This profile is not available for contact exchange');
         }
 
-        // Use pre-generated scan token if available (no API call needed)
         if (scanToken && scanAvailable) {
             const tokenCached = exchangeService.current.usePreGeneratedScanToken(
                 scanToken, 
-                new Date(Date.now() + 3600000).toISOString() // 1 hour expiry
+                new Date(Date.now() + 3600000).toISOString()
             );
             
             if (tokenCached) {
@@ -122,41 +149,10 @@ const initializeModal = async () => {
                 console.warn("⚠️ Failed to cache pre-generated scan token");
             }
         }
-
     } catch (error) {
         console.error("Error initializing enhanced modal:", error);
     }
-};
-    const requestLocation = async () => {
-        try {
-            console.log("Requesting location...");
-            
-            const userLocation = await exchangeService.current.getCurrentLocation({
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 300000
-            });
-            
-            setLocation(userLocation);
-            setLocationPermission(prev => ({ ...prev, state: 'granted' }));
-            
-            toast.success(t('exchange.location_obtained') || 'Location obtained successfully!');
-            
-            return userLocation;
-            
-        } catch (error) {
-            console.error("Error getting location:", error);
-            
-            if (error.message.includes('denied')) {
-                setLocationPermission(prev => ({ ...prev, state: 'denied' }));
-                toast.error(t('exchange.location_permission_denied') || 'Location permission denied');
-            } else {
-                toast.error(t('exchange.location_retrieval_failed') || 'Failed to get location');
-            }
-            
-            return null;
-        }
-    };
+}, [preVerified, scanToken, scanAvailable, t, requestLocation]);
 
     // ==================== ENHANCED BUSINESS CARD SCANNING ====================
 
@@ -581,7 +577,7 @@ const initializeModal = async () => {
                 toast.success(
                     () => (
                         <div style={{ textAlign: 'left' }}>
-                            <span className="italic">"{personalizedMessage.greeting}"</span>
+                            <span className="italic">&ldquo;{personalizedMessage.greeting}&rdquo;</span>
                             <br />
                             <a
                                 href={personalizedMessage.url}
@@ -647,41 +643,41 @@ const initializeModal = async () => {
         setPersonalizedMessage(null);
         setScanMetadata(null);
         setShowScanner(false);
-        
+
         // Reset card scanning states
         setScanMode('single');
         setCurrentSide('front');
         resetCardData();
     };
 
-    const resetModalState = () => {
-        setShowScanner(false);
-        setIsScanning(false);
-        setScanResult(null);
-        setDynamicFields([]);
-        setScanMetadata(null);
-        setPersonalizedMessage(null);
-        setShowCamera(false);
-        resetCardData();
-
-        if (mediaStream) {
-            mediaStream.getTracks().forEach(track => track.stop());
-            setMediaStream(null);
-        }
-    };
-
-    const resetCardData = () => {
+    const resetCardData = useCallback(() => {
         Object.values(cardData).forEach(side => {
             if (side.previewUrl && side.previewUrl.startsWith('blob:')) {
                 URL.revokeObjectURL(side.previewUrl);
             }
         });
-        
+
         setCardData({
             front: { image: null, previewUrl: null },
             back: { image: null, previewUrl: null }
         });
-    };
+    }, [cardData]);
+
+   const resetModalState = useCallback(() => {
+    setShowScanner(false);
+    setIsScanning(false);
+    setScanResult(null);
+    setDynamicFields([]);
+    setScanMetadata(null);
+    setPersonalizedMessage(null);
+    setShowCamera(false);
+    resetCardData();
+
+    if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        setMediaStream(null);
+    }
+}, [mediaStream, resetCardData]);
 
     if (!isOpen) return null;
 
@@ -868,11 +864,14 @@ const initializeModal = async () => {
                                 
                                 {getCurrentImage().previewUrl && (
                                     <div className="bg-gray-100 rounded-lg p-4">
-                                        <img
-                                            src={getCurrentImage().previewUrl}
-                                            alt={`Business card ${currentSide} side`}
-                                            className="w-full h-auto max-h-[300px] object-contain rounded-lg shadow-sm"
-                                        />
+<Image
+    src={getCurrentImage().previewUrl}
+    alt={`Business card ${currentSide} side`}
+    width={800}
+    height={600}
+    className="w-full h-auto max-h-[300px] object-contain rounded-lg shadow-sm"
+    unoptimized
+/>
                                         {scanMode === 'double' && (
                                             <p className="text-center text-sm text-gray-600 mt-2">
                                                 {currentSide} side
@@ -1079,7 +1078,7 @@ const initializeModal = async () => {
                             <div>
                                 <h4 className="font-semibold text-green-800 mb-1">Card Scanned Successfully!</h4>
                                 <p className="text-green-700 text-sm">
-                                    <span className="italic">"{personalizedMessage.greeting}"</span>
+                                    <span className="italic">&ldquo;{personalizedMessage.greeting}&rdquo;</span>
                                     <br />
                                     <a 
                                         href={personalizedMessage.url} 

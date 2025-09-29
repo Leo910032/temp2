@@ -1,5 +1,4 @@
-import { collection, getDocs } from "firebase/firestore";
-import { fireApp } from "@/important/firebase";
+import { adminDb } from "@/lib/firebaseAdmin";
 
 const staticRoutes= [
     {
@@ -38,9 +37,14 @@ async function fetchUsernames() {
     const users= [];
 
     try {
-        const collectionRef = collection(fireApp, "accounts");
-        const querySnapshot = await getDocs(collectionRef);
-        
+        if (!adminDb) {
+            console.warn('Firebase Admin not initialized, returning empty users list');
+            return users;
+        }
+
+        const collectionRef = adminDb.collection("accounts");
+        const querySnapshot = await collectionRef.get();
+
         querySnapshot.forEach((doc) => {
             const data = doc.data();
             users.push({

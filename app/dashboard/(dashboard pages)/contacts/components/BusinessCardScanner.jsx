@@ -60,6 +60,21 @@ export default function BusinessCardScanner({ isOpen, onClose, onContactParsed }
         onContactParsed
     });
 
+    // Define resetCardData with useCallback
+    const resetCardData = useCallback(() => {
+        setCardData(prev => {
+            Object.values(prev).forEach(side => {
+                if (side.previewUrl && side.previewUrl.startsWith('blob:')) {
+                    URL.revokeObjectURL(side.previewUrl);
+                }
+            });
+            return {
+                front: { image: null, previewUrl: null },
+                back: { image: null, previewUrl: null }
+            };
+        });
+    }, []);
+
     // Authentication check
     useEffect(() => {
         if (isOpen && !currentUser) {
@@ -80,16 +95,34 @@ export default function BusinessCardScanner({ isOpen, onClose, onContactParsed }
         };
     }, [mediaStream]);
 
-    // Reset states when modal closes
+    // Reset states when modal closes - FIXED: removed function dependencies
     useEffect(() => {
         if (!isOpen) {
-            stopCamera();
-            resetCardData();
+            // Call stopCamera if mediaStream exists
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                setMediaStream(null);
+                setShowCamera(false);
+            }
+            
+            // Reset card data
+            setCardData(prev => {
+                Object.values(prev).forEach(side => {
+                    if (side.previewUrl && side.previewUrl.startsWith('blob:')) {
+                        URL.revokeObjectURL(side.previewUrl);
+                    }
+                });
+                return {
+                    front: { image: null, previewUrl: null },
+                    back: { image: null, previewUrl: null }
+                };
+            });
+            
             setIsProcessing(false);
             setScanMode('single');
             setCurrentSide('front');
         }
-    }, [isOpen, stopCamera, resetCardData]);
+    }, [isOpen, mediaStream]);
 
     // Get cost estimate when component mounts
     useEffect(() => {
@@ -97,18 +130,6 @@ export default function BusinessCardScanner({ isOpen, onClose, onContactParsed }
             setCostEstimate({ estimated: 0.002 });
         }
     }, [isOpen]);
-
-    const resetCardData = useCallback(() => {
-        Object.values(cardData).forEach(side => {
-            if (side.previewUrl && side.previewUrl.startsWith('blob:')) {
-                URL.revokeObjectURL(side.previewUrl);
-            }
-        });
-        setCardData({
-            front: { image: null, previewUrl: null },
-            back: { image: null, previewUrl: null }
-        });
-    }, [cardData]);
 
     const handleFileSelect = async (event) => {
         const files = Array.from(event.target.files);
@@ -179,7 +200,7 @@ export default function BusinessCardScanner({ isOpen, onClose, onContactParsed }
         setScanMode('single');
         setCurrentSide('front');
         onClose();
-    };//
+    };
 
     const handleRetake = () => {
         if (scanMode === 'single' || currentSide === 'front') {

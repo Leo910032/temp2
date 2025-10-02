@@ -74,10 +74,11 @@ export default function NavBar() {
         const newMyLink = newUsername ? `http://localhost:3001/${newUsername}` : "";
         setMyLink(newMyLink);
 
-        // Set profile picture
+        // Set profile picture with key for proper React reconciliation
         if (avatarUrl) {
             setProfilePicture(
                 <Image
+                    key={avatarUrl}
                     src={avatarUrl}
                     alt="profile"
                     height={1000}
@@ -88,7 +89,7 @@ export default function NavBar() {
             );
         } else {
             setProfilePicture(
-                <div className="h-[95%] aspect-square w-[95%] rounded-full bg-gray-300 border grid place-items-center">
+                <div key="no-avatar" className="h-[95%] aspect-square w-[95%] rounded-full bg-gray-300 border grid place-items-center">
                     <span className="text-3xl font-semibold uppercase">
                         {newDisplayName ? newDisplayName.charAt(0) : (currentUser?.email ? currentUser.email.charAt(0) : 'U')}
                     </span>

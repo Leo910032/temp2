@@ -31,6 +31,7 @@ export default function ProfilePic() {
             <div className={profileContainerClass}>
                 {avatarUrl ? (
                     <Image
+                        key={avatarUrl}
                         src={avatarUrl}
                         alt="Profile Picture"
                         width={100}
@@ -39,7 +40,7 @@ export default function ProfilePic() {
                         priority
                     />
                 ) : (
-                    <span className={`text-3xl font-semibold uppercase ${hasBanner ? 'text-gray-700' : ''}`}>
+                    <span key="no-avatar" className={`text-3xl font-semibold uppercase ${hasBanner ? 'text-gray-700' : ''}`}>
                         {displayName?.[0] || 'U'}
                     </span>
                 )}

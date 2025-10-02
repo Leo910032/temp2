@@ -63,6 +63,20 @@ export default function Backgrounds() {
         updateAppearance('backgroundColor', color);
     };
 
+    // Get safe background color (only valid hex colors, not URLs)
+    const getSafeBackgroundColor = () => {
+        const bgColor = appearance?.backgroundColor || '#FFFFFF';
+        // Check if it's a URL (contains http or firebasestorage)
+        if (bgColor.includes('http') || bgColor.includes('firebasestorage')) {
+            return '#FFFFFF'; // Return default color if it's a URL
+        }
+        // Validate it's a hex color
+        if (!/^#[0-9A-Fa-f]{6}$/.test(bgColor)) {
+            return '#FFFFFF';
+        }
+        return bgColor;
+    };
+
     if (!isInitialized) {
         return (
             <div className="w-full bg-white rounded-3xl my-3 flex flex-col p-6 animate-pulse">
@@ -89,7 +103,7 @@ export default function Backgrounds() {
                 )}
                 
                 <div className="grid sm:grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] grid-cols-[repeat(auto-fill,minmax(8rem,1fr))] sm:gap-4 gap-2 w-full">
-                    <BackgroundCard identifier={"Color"} text={translations.flatColour} colorValue={appearance?.backgroundColor || "#3d444b"} />
+                    <BackgroundCard identifier={"Color"} text={translations.flatColour} colorValue={getSafeBackgroundColor()} />
                     <BackgroundCard 
                         identifier={"Gradient"} 
                         text={translations.gradient} 
@@ -106,8 +120,8 @@ export default function Backgrounds() {
                 {/* Show appropriate picker based on selected background type */}
                 {showGradientPicker && <GradientPicker />}
                 {showColorPicker && (
-                    <ColorPickerFlat 
-                        currentColor={appearance?.backgroundColor || '#FFFFFF'}
+                    <ColorPickerFlat
+                        currentColor={getSafeBackgroundColor()}
                         onColorChange={handleBackgroundColorChange}
                         disabled={isSaving}
                         fieldName="Background Color"

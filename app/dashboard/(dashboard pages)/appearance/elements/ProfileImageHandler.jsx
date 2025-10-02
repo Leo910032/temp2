@@ -53,6 +53,7 @@ const updateProfilePictureElement = useMemo(() => {
     if (photoUrl) {
         return (
             <Image
+                key={photoUrl}
                 src={photoUrl}
                 alt={translations.altProfile}
                 height={1000}
@@ -64,7 +65,7 @@ const updateProfilePictureElement = useMemo(() => {
     } else {
         const initial = name?.[0] || 'U';
         return (
-            <div className="h-[95%] aspect-square w-[95%] rounded-full bg-gray-300 border grid place-items-center">
+            <div key="no-photo" className="h-[95%] aspect-square w-[95%] rounded-full bg-gray-300 border grid place-items-center">
                 <span className="text-3xl font-semibold uppercase">{initial}</span>
             </div>
         );

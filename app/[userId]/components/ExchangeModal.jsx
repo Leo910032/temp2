@@ -80,17 +80,6 @@ export default function ExchangeModal({
         };
     }, [mediaStream]);
 
-  useEffect(() => {
-    if (isOpen) {
-        console.log("Enhanced exchange modal opened for:", profileOwnerUsername);
-        console.log("Pre-verified:", preVerified, "Scan available:", scanAvailable);
-        initializeModal();
-    } else {
-        resetModalState();
-    }
-}, [isOpen, profileOwnerUsername, profileOwnerId, preVerified, scanAvailable, initializeModal, resetModalState]);
-  // Replace the initializeModal function in ExchangeModal.jsx
-
     const requestLocation = useCallback(async () => {
         try {
             console.log("Requesting location...");
@@ -678,6 +667,16 @@ export default function ExchangeModal({
         setMediaStream(null);
     }
 }, [mediaStream, resetCardData]);
+
+    useEffect(() => {
+        if (isOpen) {
+            console.log("Enhanced exchange modal opened for:", profileOwnerUsername);
+            console.log("Pre-verified:", preVerified, "Scan available:", scanAvailable);
+            initializeModal();
+        } else {
+            resetModalState();
+        }
+    }, [isOpen, profileOwnerUsername, profileOwnerId, preVerified, scanAvailable, initializeModal, resetModalState]);
 
     if (!isOpen) return null;
 

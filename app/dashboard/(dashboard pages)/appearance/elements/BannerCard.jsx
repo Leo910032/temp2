@@ -75,6 +75,8 @@ export default function BannerCard({
         switch (identifier) {
             case "Image":
             case "Video":
+                // Set the banner type immediately when clicking Image/Video
+                updateAppearance('bannerType', identifier);
                 fileInputRef.current?.click();
                 break;
             case "Color":

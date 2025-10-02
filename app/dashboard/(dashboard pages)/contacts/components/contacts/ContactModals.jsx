@@ -5,12 +5,12 @@ import dynamic from 'next/dynamic';
 import EditContactModal from './EditContactModal.jsx';
 import ContactReviewModal from '../ContactReviewModal.jsx';
 import BusinessCardScanner from '../BusinessCardScanner';
-//import GroupManagerModal from './GroupManagerModal';
+import GroupManagerModal from '../GroupManagerModal';
 //import ImportExportModal from './ImportExportModal';
 //import { ShareContactsModal } from './ShareContactsModal';
 
 // Dynamic import for map to avoid SSR issues
-const ContactsMap = dynamic(() => import('../ContactsMap'), { 
+const ContactsMap = dynamic(() => import('../ContactsMap'), {
     ssr: false,
     loading: () => (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -43,8 +43,6 @@ export default function ContactModals({
     // Group Manager
     showGroupManager,
     onCloseGroupManager,
-    groups,
-    contacts,
     onRefreshData,
     onRefreshUsage,
     
@@ -56,12 +54,14 @@ export default function ContactModals({
     showMap,
     onCloseMap,
     selectedContactForMap,
-    
+    contacts,
+    groups,
+
     // Share Modal
     showShareModal,
     onCloseShare,
     selectedContacts,
-    
+
     // Common props
     hasFeature,
     usageInfo
@@ -93,18 +93,13 @@ export default function ContactModals({
                 hasFeature={hasFeature}
             />
 
-            {/* Group Manager Modal 
+            {/* Group Manager Modal */}
             <GroupManagerModal
                 isOpen={showGroupManager}
                 onClose={onCloseGroupManager}
-                groups={groups}
-                contacts={contacts}
                 onRefreshData={onRefreshData}
                 onRefreshUsage={onRefreshUsage}
-                usageInfo={usageInfo}
-                hasFeature={hasFeature}
             />
-            */}
 
             {/* Import/Export Modal 
             <ImportExportModal

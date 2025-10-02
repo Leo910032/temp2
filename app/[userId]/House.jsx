@@ -1,4 +1,4 @@
-// app/[userId]/House.jsx - Updated with Banner Support
+// app/[userId]/House.jsx - Fixed Social Icons Overlap with Banner
 "use client"
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { fireApp } from "@/important/firebase";
@@ -6,21 +6,18 @@ import { doc, onSnapshot } from "firebase/firestore";
 import ProfilePic from "./components/ProfilePic";
 import UserInfo from "./components/UserInfo";
 import BgDiv from "./components/BgDiv";
-import Banner from "./components/Banner"; // 🆕 Import Banner component
+import Banner from "./components/Banner";
 import MyLinks from "./components/MyLinks";
 import SupportBanner from "./components/SupportBanner";
 import PublicLanguageSwitcher from "./components/PublicLanguageSwitcher";
 import SensitiveWarning from "./components/SensitiveWarning";
 import { trackView } from '@/lib/services/analyticsService';
 import AssetLayer from "./components/AssetLayer";
-
-// Import contact exchange components
 import ExchangeButton from "./components/ExchangeButton";
 
 export const HouseContext = React.createContext(null);
 
 export default function House({ initialUserData, scanToken = null, scanAvailable = false }) {
-    // Initialize state with server-fetched data
     const [userData, setUserData] = useState(initialUserData);
     const [showSensitiveWarning, setShowSensitiveWarning] = useState(false);
     const [isOnline, setIsOnline] = useState(true);
@@ -28,14 +25,12 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
     const [viewTracked, setViewTracked] = useState(false);
     const updateInProgress = useRef(false);
 
-    // Profile verification status for contact exchange
     const [profileVerificationStatus, setProfileVerificationStatus] = useState({
         verified: false,
         loading: true,
         error: null
     });
 
-    // Check for preview mode once on component mount
     const isPreviewMode = useMemo(() => {
         if (typeof window !== 'undefined') {
             const params = new URLSearchParams(window.location.search);
@@ -44,30 +39,25 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
         return false;
     }, []);
 
-    // Updated to work with new document structure
     const shouldShowContactExchange = useMemo(() => {
-        // Don't show in preview mode
         if (isPreviewMode) return false;
-
-        // Check if user has contact exchange enabled (from settings object)
         const settings = userData?.settings || {};
-        const contactExchangeEnabled = settings.contactExchangeEnabled !== false; // Default to true
-
-        // Check if user has basic contact info (from profile object)
+        const contactExchangeEnabled = settings.contactExchangeEnabled !== false;
         const profile = userData?.profile || {};
         const hasContactInfo = profile.displayName || userData?.email;
-
         return contactExchangeEnabled && hasContactInfo;
     }, [isPreviewMode, userData?.profile, userData?.settings, userData?.email]);
 
-    // Updated to check sensitive content from new structure
+    // Check if banner is active
+    const hasBanner = useMemo(() => {
+        return userData?.bannerType && userData?.bannerType !== 'None';
+    }, [userData?.bannerType]);
+
     useEffect(() => {
-        // Check for sensitive content warning from settings
         const settings = userData?.settings || {};
         setShowSensitiveWarning(settings.sensitiveStatus || false);
     }, [userData?.settings?.sensitiveStatus, userData?.settings]);
 
-    // Updated real-time listener to use 'users' collection and include banner data
     useEffect(() => {
         if (!userData?.uid) return;
 
@@ -78,40 +68,27 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
             (docSnap) => {
                 if (docSnap.exists()) {
                     const latestData = docSnap.data();
-                    
-                    // Read from the new nested objects
                     const profile = latestData.profile || {};
                     const appearance = latestData.appearance || {};
                     const settings = latestData.settings || {};
 
-                    // This flattened structure is for backward compatibility with your child components.
                     const flattenedData = {
                         uid: userData.uid,
                         username: latestData.username,
                         email: latestData.email,
-                        
-                        // Profile data
                         displayName: profile.displayName || '',
                         bio: profile.bio || '',
                         profilePhoto: profile.avatarUrl || '',
-
-                        // Content arrays
                         links: latestData.links || [],
                         socials: latestData.socials || [],
-                        
-                        // Appearance data with ALL fields including banner
                         selectedTheme: appearance.selectedTheme || 'Lake White',
                         themeFontColor: appearance.themeFontColor || '#000000',
                         fontType: appearance.fontType || 0,
                         backgroundColor: appearance.backgroundColor || '#FFFFFF',
                         backgroundType: appearance.backgroundType || 'Color',
-                        
-                        // Background gradient fields
                         gradientDirection: appearance.gradientDirection || 0,
                         gradientColorStart: appearance.gradientColorStart || '#FFFFFF',
                         gradientColorEnd: appearance.gradientColorEnd || '#000000',
-                        
-                        // 🆕 Banner fields
                         bannerType: appearance.bannerType || 'None',
                         bannerColor: appearance.bannerColor || '#3B82F6',
                         bannerGradientStart: appearance.bannerGradientStart || '#667eea',
@@ -119,15 +96,12 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
                         bannerGradientDirection: appearance.bannerGradientDirection || 'to right',
                         bannerImage: appearance.bannerImage || null,
                         bannerVideo: appearance.bannerVideo || null,
-                        
                         btnColor: appearance.btnColor || '#000000',
                         btnFontColor: appearance.btnFontColor || '#FFFFFF',
                         btnShadowColor: appearance.btnShadowColor || '#dcdbdb',
                         btnType: appearance.btnType || 0,
                         cvDocument: appearance.cvDocument || null,
                         christmasAccessory: appearance.christmasAccessory || null,
-
-                        // Settings data
                         isPublic: settings.isPublic !== false,
                         sensitiveStatus: settings.sensitiveStatus || false,
                         sensitivetype: settings.sensitivetype || 0,
@@ -158,7 +132,6 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
         };
     }, [userData?.uid]);
 
-    // Effect for tracking the profile view event
     useEffect(() => {
         if (viewTracked) return;
         if (isPreviewMode) {
@@ -174,7 +147,6 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
         }
     }, [viewTracked, isPreviewMode, userData?.uid, userData?.username]);
 
-    // Effect for online/offline status
     useEffect(() => {
         const handleOnline = () => { setIsOnline(true); setRetryCount(0); };
         const handleOffline = () => setIsOnline(false);
@@ -186,7 +158,6 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
         };
     }, []);
 
-    // Effect to verify profile early (before modal opens)
     useEffect(() => {
         const verifyProfileEarly = async () => {
             if (isPreviewMode || !shouldShowContactExchange) {
@@ -196,8 +167,6 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
 
             try {
                 console.log('🔍 House: Early profile verification for contact exchange');
-                
-                // Import the service dynamically to avoid SSR issues
                 const { EnhancedExchangeService } = await import('@/lib/services/serviceContact/client/services/EnhancedExchangeService');
                 const exchangeService = new EnhancedExchangeService();
                 
@@ -228,7 +197,6 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
             }
         };
 
-        // Run verification after initial data is loaded
         if (userData?.uid || userData?.username) {
             verifyProfileEarly();
         }
@@ -238,8 +206,9 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
         userData,
         setShowSensitiveWarning,
         isOnline,
-        retryCount
-    }), [userData, isOnline, retryCount]);
+        retryCount,
+        hasBanner // Pass banner status to child components
+    }), [userData, isOnline, retryCount, hasBanner]);
 
     if (!userData) {
         return (
@@ -266,29 +235,25 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
                 <SensitiveWarning />
             ) : (
                 <>
-                    {/* Layer 1: Background - BgDiv (z-index: 10) */}
                     <BgDiv />
-                    
-                    {/* Layer 2: Banner Background - No text overlay (z-index: 15) */}
                     <Banner />
-                    
-                    {/* Layer 3: Assets/Effects (z-index: 18) */}
                     <AssetLayer />
 
-                    {/* Layer 4: Main Content - Profile + Links (z-index: 20) */}
                     <div className="relative z-20 md:w-[50rem] w-full flex flex-col items-center h-full mx-auto">
                         <div className="flex flex-col items-center flex-1 overflow-auto py-6" 
                              style={{ 
-                                 paddingTop: userData?.bannerType !== 'None' ? '25px' : '24px' 
+                                 paddingTop: hasBanner ? '25px' : '24px'
                              }}>
                             <ProfilePic />
                             <UserInfo />
+                            
+                            {/* Add extra spacing before social icons when banner is present */}
+                            {hasBanner && <div className="h-5"></div>}
+                            
                             <MyLinks />
                             
-                            {/* Contact Exchange Section */}
                             {shouldShowContactExchange && (
                                 <div className="w-full max-w-lg px-4 mt-6 space-y-3">
-                                    {/* Section title */}
                                     <div className="text-center mb-4">
                                         <h3 className="text-lg font-semibold text-gray-800 mb-1">
                                             🤝 Connect with Me
@@ -297,18 +262,16 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
                                             Exchange contact information quickly and easily
                                         </p>
                                         
-                                        {/* Show scan availability status */}
                                         {scanAvailable && (
                                             <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full">
                                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                                                 </svg>
                                                 Business card scanning enabled
                                             </div>
                                         )}
                                     </div>
                                     
-                                    {/* Contact Exchange Button */}
                                     <div className="space-y-3">
                                         <ExchangeButton 
                                             username={userData.username}
@@ -325,7 +288,6 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
                                         />
                                     </div>
 
-                                    {/* Information about business card scanning */}
                                     {scanAvailable && (
                                         <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg">
                                             <div className="flex items-start gap-3">
@@ -349,8 +311,6 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
                             )}
                         </div>
                     </div>
-                    
-                 
                 </>
             )}
         </HouseContext.Provider>

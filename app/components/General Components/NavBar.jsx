@@ -5,7 +5,9 @@
 import { useTranslation } from "@/lib/translation/useTranslation";
 import { isAdmin } from "@/lib/adminAuth";
 import { getAppearanceData } from "@/lib/services/serviceAppearance/client/appearanceService.js";
-import { useDashboard } from '../../dashboard/DashboardContext'; // The ONLY context hook we need
+import { useDashboard } from '../../dashboard/DashboardContext';
+import { fireApp } from "@/important/firebase";
+import { doc, onSnapshot } from "firebase/firestore";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -193,6 +195,46 @@ export default function NavBar() {
             setIsAppearanceLoading(true); // Reset loading state for next user
         }
     }, [currentUser, isInitialized, fetchAppearanceData, updateNavbarState]);
+
+    // Real-time listener for profile picture updates
+    useEffect(() => {
+        if (!currentUser?.uid) return;
+
+        console.log('🔄 NavBar: Setting up real-time listener for avatarUrl changes');
+
+        const userDocRef = doc(fireApp, "users", currentUser.uid);
+        const unsubscribe = onSnapshot(userDocRef,
+            (docSnap) => {
+                if (docSnap.exists()) {
+                    const userData = docSnap.data();
+                    const profile = userData.profile || {};
+                    const newAvatarUrl = profile.avatarUrl || '';
+
+                    // Only update if avatarUrl changed
+                    if (globalNavDataCache && globalNavDataCache.avatarUrl !== newAvatarUrl) {
+                        console.log('✅ NavBar: avatarUrl changed, updating profile picture');
+
+                        // Update cache
+                        globalNavDataCache = {
+                            ...globalNavDataCache,
+                            avatarUrl: newAvatarUrl
+                        };
+
+                        // Update navbar state
+                        updateNavbarState(globalNavDataCache);
+                    }
+                }
+            },
+            (error) => {
+                console.error('❌ NavBar: Error in real-time listener:', error);
+            }
+        );
+
+        return () => {
+            console.log('🧹 NavBar: Cleaning up real-time listener');
+            unsubscribe();
+        };
+    }, [currentUser?.uid, updateNavbarState]);
 
     const handleShowProfileCard = () => {
         if (isLoading || !username) {

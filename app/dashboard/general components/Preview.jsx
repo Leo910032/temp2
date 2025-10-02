@@ -3,7 +3,7 @@
 
 "use client"
 import Image from 'next/image';
-import { useEffect, useState, useContext } from 'react';
+import { useEffect, useState } from 'react';
 import "../../styles/3d.css";
 import { useAuth } from '@/contexts/AuthContext';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -15,6 +15,7 @@ export default function Preview() {
     const [userAppearance, setUserAppearance] = useState(null);
 
     // Listen to user data changes including appearance
+    // Don't force reload - let the iframe's own listeners handle updates
     useEffect(() => {
         if (!currentUser) {
             setUsername("");
@@ -23,24 +24,19 @@ export default function Preview() {
         }
 
         console.log('🔍 Preview: Setting up listener for user:', currentUser.uid);
-        
+
         const docRef = doc(fireApp, "users", currentUser.uid);
         const unsubscribe = onSnapshot(docRef, (docSnap) => {
             if (docSnap.exists()) {
                 const userData = docSnap.data();
                 const fetchedUsername = userData?.username || "";
                 const appearance = userData?.appearance || {};
-                
+
                 console.log('📱 Preview: User data fetched:', { fetchedUsername, appearance });
                 setUsername(fetchedUsername);
                 setUserAppearance(appearance);
-                
-                // Force iframe reload when appearance changes
-                const iframe = document.getElementById('preview-iframe');
-                if (iframe && fetchedUsername) {
-                    // Add timestamp to force reload
-                    iframe.src = `/${fetchedUsername}?preview=true&t=${Date.now()}`;
-                }
+                // Note: We're NOT reloading the iframe here anymore
+                // The iframe has its own real-time listener and will update automatically
             } else {
                 console.warn('⚠️ Preview: User document not found');
                 setUsername("");
@@ -158,6 +154,7 @@ export default function Preview() {
                         <div className="h-full w-full">
                             {username ? (
                                 <iframe
+                                    key={`preview-${username}`}
                                     id="preview-iframe"
                                     src={`/${username}?preview=true`}
                                     frameBorder="0"

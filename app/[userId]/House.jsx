@@ -78,7 +78,7 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
                         email: latestData.email,
                         displayName: profile.displayName || '',
                         bio: profile.bio || '',
-                        profilePhoto: profile.avatarUrl || '',
+                        avatarUrl: profile.avatarUrl || '',
                         links: latestData.links || [],
                         socials: latestData.socials || [],
                         selectedTheme: appearance.selectedTheme || 'Lake White',

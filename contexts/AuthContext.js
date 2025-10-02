@@ -138,15 +138,34 @@
           username = `${baseUsername}_${counter++}`;
       }
 
-      // Create the new document
+      // Create the new document with nested structure
       await setDoc(userRef, {
-        displayName: user.displayName || user.email.split('@')[0],
         username: username,
         email: user.email,
         links: [],
         socials: [],
-        profilePhoto: user.photoURL || "",
-        selectedTheme: "Lake White",
+        profile: {
+          displayName: user.displayName || user.email.split('@')[0],
+          avatarUrl: user.photoURL || "",
+          bio: "",
+          location: ""
+        },
+        appearance: {
+          selectedTheme: "Lake White",
+          themeFontColor: "#000000",
+          fontType: 0,
+          backgroundColor: "#FFFFFF",
+          backgroundType: "Color",
+          btnColor: "#000000",
+          btnFontColor: "#FFFFFF",
+          btnShadowColor: "#dcdbdb",
+          btnType: 0
+        },
+        settings: {
+          isPublic: true,
+          allowMessages: true,
+          contactExchangeEnabled: true
+        },
         createdAt: new Date(),
         emailVerified: user.emailVerified || false,
         uid: user.uid,

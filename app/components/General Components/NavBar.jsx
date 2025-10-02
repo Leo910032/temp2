@@ -62,23 +62,23 @@ export default function NavBar() {
 
     const updateNavbarState = useCallback((data) => {
         console.log("NavBar: Updating state with:", data);
-        
+
         const newUsername = data.username || "";
         const newDisplayName = data.displayName || newUsername;
-        const profilePhoto = data.profilePhoto || "";
-        
+        const avatarUrl = data.avatarUrl || "";
+
         setUsername(newUsername);
         setDisplayName(newDisplayName);
-        
+
         // Create myLink with the correct domain
         const newMyLink = newUsername ? `http://localhost:3001/${newUsername}` : "";
         setMyLink(newMyLink);
-        
+
         // Set profile picture
-        if (profilePhoto) {
+        if (avatarUrl) {
             setProfilePicture(
                 <Image
-                    src={profilePhoto}
+                    src={avatarUrl}
                     alt="profile"
                     height={1000}
                     width={1000}
@@ -115,27 +115,27 @@ export default function NavBar() {
         try {
             console.log('NavBar: Fetching fresh appearance data...');
             const appearanceData = await getAppearanceData();
-            
+
             const username = appearanceData.username || "";
             const displayName = appearanceData.displayName || username || "";
-            const profilePhoto = appearanceData.profilePhoto || "";
-            
+            const avatarUrl = appearanceData.avatarUrl || "";
+
             if (!username) {
                 console.error('NavBar: No username found in appearance data!');
                 const fallbackUsername = currentUser.uid;
                 globalNavDataCache = {
                     username: fallbackUsername,
                     displayName: displayName || fallbackUsername,
-                    profilePhoto: profilePhoto
+                    avatarUrl: avatarUrl
                 };
             } else {
                 globalNavDataCache = {
                     username,
                     displayName,
-                    profilePhoto
+                    avatarUrl
                 };
             }
-            
+
             updateNavbarState(globalNavDataCache);
             console.log('NavBar: User data loaded and cached successfully');
             

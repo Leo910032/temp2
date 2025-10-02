@@ -46,10 +46,10 @@ export default function ProfileImageManager() {
 
 const updateProfilePictureElement = useMemo(() => {
     if (!appearance) return null;
-    
-    const photoUrl = appearance.profilePhoto || '';
+
+    const photoUrl = appearance.avatarUrl || '';
     const name = appearance.displayName || appearance.username || '';
-    
+
     if (photoUrl) {
         return (
             <Image
@@ -102,13 +102,13 @@ const updateProfilePictureElement = useMemo(() => {
         try {
             // ✅ CALL THE SERVICE
             const result = await AppearanceService.uploadProfileImage(uploadedPhoto);
-            
+
             // ✅ UPDATE THE CONTEXT (which updates the whole page)
-            updateAppearance('profilePhoto', result.downloadURL);
+            updateAppearance('avatarUrl', result.downloadURL);
 
             handleReset();
             toast.success(translations.toastSuccess);
-            
+
         } catch (error) {
             console.error("Upload error:", error);
             toast.error(error.message || translations.errorUploadFailed);
@@ -120,17 +120,17 @@ const updateProfilePictureElement = useMemo(() => {
     // ✅ HANDLE IMAGE REMOVAL WITH CONTEXT UPDATES
     const handleRemoveProfilePicture = async () => {
         if (isRemoving) return;
-        
+
         setIsRemoving(true);
         try {
             // ✅ CALL THE SERVICE
             await AppearanceService.removeProfileImage();
-            
+
             // ✅ UPDATE THE CONTEXT
-            updateAppearance('profilePhoto', '');
+            updateAppearance('avatarUrl', '');
 
             toast.success(translations.toastRemoveSuccess);
-            
+
         } catch (error) {
             console.error("Remove error:", error);
             toast.error(error.message || translations.errorRemoveFailed);

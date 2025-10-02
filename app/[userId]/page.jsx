@@ -26,7 +26,7 @@ export async function generateMetadata({ params: { userId } }) {
         title: metaData?.title ? filter.clean(metaData.title) : `@${username || userId} | MyLinks`,
         description: metaData?.description ? filter.clean(metaData.description) : `Check out ${displayName || username || userId}'s links and profile.`,
         openGraph: {
-            images: [userData.profilePhoto || ''],
+            images: [userData.avatarUrl || ''],
         }
     };
 }

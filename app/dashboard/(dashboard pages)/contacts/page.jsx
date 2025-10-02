@@ -14,6 +14,7 @@ import SearchBar from './components/SearchBar';
 import StatsCards from './components/StatsCards';
 import UsageCards from './components/UsageCards';
 import ContactModals from './components/contacts/ContactModals';
+import ContactsMap from './components/ContactsMap';
 
 // Wrapper component to provide context
 export default function ContactsPageWrapper() {

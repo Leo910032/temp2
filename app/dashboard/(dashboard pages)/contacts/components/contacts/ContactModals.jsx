@@ -8,9 +8,9 @@ import BusinessCardScanner from '../BusinessCardScanner';
 //import GroupManagerModal from './GroupManagerModal';
 //import ImportExportModal from './ImportExportModal';
 //import { ShareContactsModal } from './ShareContactsModal';
-  {/*
+
 // Dynamic import for map to avoid SSR issues
-const ContactsMap = dynamic(() => import('./ContactsMap'), { 
+const ContactsMap = dynamic(() => import('../ContactsMap'), { 
     ssr: false,
     loading: () => (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -18,11 +18,9 @@ const ContactsMap = dynamic(() => import('./ContactsMap'), {
         </div>
     )
 });
-   */}
 
 /**
  * Unified modal wrapper component that handles all contact-related modals
- * This keeps the main page clean and organized
  */
 export default function ContactModals({
     // Edit Modal
@@ -78,23 +76,23 @@ export default function ContactModals({
                 onSave={onSaveContact}
             />
 
-            {/* Business Card Scanner  */}
+            {/* Business Card Scanner */}
             <BusinessCardScanner
                 isOpen={showScanner}
                 onClose={onCloseScanner}
                 onContactParsed={onContactParsed}
                 hasFeature={hasFeature}
             />
-           
 
             {/* Contact Review Modal (after scanning) */}
-          <ContactReviewModal
-    isOpen={showReviewModal}
-    onClose={onCloseReview}
-    parsedFields={scannedFields}
-    onSave={onSaveScanned}
-    hasFeature={hasFeature}  // Add this prop
-/>
+            <ContactReviewModal
+                isOpen={showReviewModal}
+                onClose={onCloseReview}
+                parsedFields={scannedFields}
+                onSave={onSaveScanned}
+                hasFeature={hasFeature}
+            />
+
             {/* Group Manager Modal 
             <GroupManagerModal
                 isOpen={showGroupManager}
@@ -106,33 +104,34 @@ export default function ContactModals({
                 usageInfo={usageInfo}
                 hasFeature={hasFeature}
             />
-*/}
+            */}
+
             {/* Import/Export Modal 
             <ImportExportModal
                 isOpen={showImportExportModal}
                 onClose={onCloseImportExport}
                 allContacts={contacts}
                 onActionComplete={onRefreshData}
-            />*/}
+            />
+            */}
 
-            {/* Contacts Map 
+            {/* Contacts Map */}
             <ContactsMap
                 isOpen={showMap}
                 onClose={onCloseMap}
                 contacts={contacts}
                 groups={groups}
                 selectedContactId={selectedContactForMap?.id}
-                onContactsUpdate={onRefreshData}
+                onContactUpdate={onRefreshData}
             />
-*/}
+
             {/* Share Contacts Modal 
             <ShareContactsModal
                 isOpen={showShareModal}
                 onClose={onCloseShare}
                 contacts={contacts}
                 selectedContactIds={selectedContacts}
-                hasFeature={hasFeature} 
-                
+                hasFeature={hasFeature}
             />
             */}
         </>

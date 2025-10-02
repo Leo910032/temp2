@@ -1,11 +1,12 @@
 'use client'
 
-import { useAuth } from "@/contexts/AuthContext";
+import { useDashboard } from '@/app/dashboard/DashboardContext';
 import { useEffect, useState, useContext } from "react";
-import { SettingsContext } from "../SettingsContext";
+import { useSettings } from '../SettingsContext';
 export default function Position() {
-    const { currentUser } = useAuth();
-    const { settings, updateSettings } = useContext(SettingsContext);
+const { currentUser } = useDashboard();
+const { settings, updateSettings } = useSettings();
+
     const [pick, setPick] = useState(0);
 
     // ✅ FIXED: Get social position from centralized settings state

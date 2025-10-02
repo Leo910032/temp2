@@ -1,15 +1,17 @@
 "use client"
 import { useDebounce } from "@/LocalHooks/useDebounce";
-import { useAuth } from "@/contexts/AuthContext";
+import { useDashboard } from '@/app/dashboard/DashboardContext';
 import Image from "next/image";
-import { useEffect, useState, useMemo, useContext, useRef } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useTranslation } from "@/lib/translation/useTranslation";
-import { SettingsContext } from "../SettingsContext";
+import { useSettings } from '../SettingsContext';
+
 
 export default function SEO() {
     const { t, isInitialized } = useTranslation();
-    const { currentUser } = useAuth();
-    const { settings, updateSettings } = useContext(SettingsContext);
+    const { currentUser } = useDashboard();
+    const { settings, updateSettings } = useSettings();
+
     
     const [metaTitle, setMetaTitle] = useState("");
     const [metaDescription, setMetaDescription] = useState("");

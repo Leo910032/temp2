@@ -364,8 +364,6 @@ function ContactsPage() {
                 // Group manager props
                 showGroupManager={showGroupManager}
                 onCloseGroupManager={() => setShowGroupManager(false)}
-                groups={groups}
-                contacts={contacts}
                 onRefreshData={refreshData}
                 onRefreshUsage={refreshUsageInfo}
                 
@@ -380,6 +378,8 @@ function ContactsPage() {
                     setSelectedContactForMap(null);
                 }}
                 selectedContactForMap={selectedContactForMap}
+                contacts={contacts}
+                groups={groups}
                 
                 // Share modal props
                 showShareModal={showShareModal}

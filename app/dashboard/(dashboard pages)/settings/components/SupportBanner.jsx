@@ -4,13 +4,15 @@ import SupportSwitch from "../elements/SupportSwitch";
 import React, { useMemo, useContext } from "react";
 import ChooseCause from "./ChooseCause";
 import { useTranslation } from "@/lib/translation/useTranslation";
-import { SettingsContext } from "../SettingsContext";
+import { useSettings } from '../SettingsContext';
+
 
 export const SupportContext = React.createContext();
 
 export default function SupportBanner() {
     const { t, isInitialized } = useTranslation();
-    const { settings, updateSettings } = useContext(SettingsContext);
+const { settings, updateSettings } = useSettings();
+
 
     const translations = useMemo(() => {
         if (!isInitialized) return {};

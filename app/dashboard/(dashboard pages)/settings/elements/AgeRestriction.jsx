@@ -1,14 +1,16 @@
 "use client";
 
-import { useAuth } from "@/contexts/AuthContext";
+import { useDashboard } from '@/app/dashboard/DashboardContext';
 import { useEffect, useState, useMemo, useContext } from "react";
 import { useTranslation } from "@/lib/translation/useTranslation";
-import { SettingsContext } from "../SettingsContext";
+import { useSettings } from '../SettingsContext';
+
 
 export default function AgeRestriction() {
     const { t, isInitialized } = useTranslation();
-    const { currentUser } = useAuth();
-    const { settings, updateSettings } = useContext(SettingsContext);
+const { currentUser } = useDashboard();
+const { settings, updateSettings } = useSettings();
+
     const [pick, setPick] = useState(3);
 
     const translations = useMemo(() => {

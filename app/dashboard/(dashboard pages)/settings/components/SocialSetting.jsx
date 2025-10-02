@@ -8,14 +8,14 @@ import AddIconModal from "../elements/AddIconModal";
 import EditIconModal from "../elements/EditIconModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "@/lib/translation/useTranslation";
-import { SettingsContext } from "../SettingsContext";
+import { useSettings } from '../SettingsContext';
 
 export const SocialContext = React.createContext();
 
 export default function SocialSetting() {
     const { t, isInitialized } = useTranslation();
     const { currentUser } = useAuth();
-    const { settings, updateSettings } = useContext(SettingsContext);
+const { settings, updateSettings } = useSettings();
     
     const [addIconModalOpen, setAddIconModalOpen] = useState(false);
     const [settingIconModalOpen, setSettingIconModalOpen] = useState({

@@ -2,14 +2,16 @@
 import Image from 'next/image';
 import React, { useMemo, useContext } from 'react';
 import AgeRestriction from '../elements/AgeRestriction';
-import { useAuth } from '@/contexts/AuthContext';
+import { useDashboard } from '@/app/dashboard/DashboardContext';
 import { useTranslation } from '@/lib/translation/useTranslation';
-import { SettingsContext } from '../SettingsContext';
+import { useSettings } from '../SettingsContext';
+
 
 export default function SensitiveMaterial() {
     const { t, isInitialized } = useTranslation();
-    const { currentUser } = useAuth();
-    const { settings, updateSettings } = useContext(SettingsContext);
+const { currentUser } = useDashboard();
+const { settings, updateSettings } = useSettings();
+
 
     const translations = useMemo(() => {
         if (!isInitialized) return {};

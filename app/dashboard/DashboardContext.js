@@ -39,13 +39,21 @@
       
       try {
         console.log('🚀 DashboardProvider: Fetching unified subscription data...');
-        
+
         // Pass the forceRefresh flag to the service
-        const data = await getSubscriptionStatus(forceRefresh); 
-        
+        const data = await getSubscriptionStatus(forceRefresh);
+
         setSubscriptionData(data);
         console.log('✅ DashboardProvider: Data loaded successfully');
-        
+
+        // 🔍 DEBUG: Log permissions for carousel feature
+        console.log('🔍 [DashboardContext] Permissions Debug:', {
+          subscriptionLevel: data?.subscriptionLevel,
+          allPermissions: data?.permissions,
+          hasCarouselPermission: data?.permissions?.['custom_carousel'],
+          permissionKeys: Object.keys(data?.permissions || {})
+        });
+
       } catch (error) {
         console.error('❌ DashboardProvider: Error loading data:', error);
         setError(error.message);

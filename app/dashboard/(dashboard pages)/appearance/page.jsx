@@ -11,6 +11,7 @@ import { AppearanceProvider, useAppearance } from './AppearanceContext';
 import ProfileCard from './components/ProfileCard';
 import Themes from './components/Themes';
 import Banners from './components/Banners'; // 🆕 New Banner component
+import CarouselManager from './components/CarouselManager'; // 🆕 New Carousel component
 import Backgrounds from './components/Backgrounds';
 import Buttons from './components/Buttons';
 import FontsOptions from './components/FontsOptions';
@@ -76,6 +77,7 @@ function AppearanceContent() {
             customAppearance: t('dashboard.appearance.headings.custom_appearance') || 'Custom Appearance',
             customAppearanceDesc: t('dashboard.appearance.custom_appearance_description') || 'Customize your contact card with these advanced options.',
             banners: t('dashboard.appearance.headings.banners') || 'Banner', // 🆕 New banner heading
+            carousel: t('dashboard.appearance.headings.carousel') || 'Content Carousel', // 🆕 New carousel heading
             backgrounds: t('dashboard.appearance.headings.backgrounds') || 'Backgrounds',
             christmas: t('dashboard.appearance.headings.christmas') || 'Christmas Accessories',
             buttons: t('dashboard.appearance.headings.buttons') || 'Buttons',
@@ -89,6 +91,15 @@ function AppearanceContent() {
     const canUseCustomFonts = permissions[APPEARANCE_FEATURES.CUSTOM_FONTS];
     const canUseCustomBackground = permissions[APPEARANCE_FEATURES.CUSTOM_BACKGROUND];
     const canUseCustomBanner = permissions[APPEARANCE_FEATURES.CUSTOM_BACKGROUND]; // 🆕 Reuse background permission for banners
+    const canUseCarousel = permissions[APPEARANCE_FEATURES.CUSTOM_CAROUSEL]; // 🆕 Carousel permission (Pro & Premium)
+
+    // 🔍 DEBUG: Log permission checks
+    console.log('🎨 [AppearancePage] Carousel Permission Debug:', {
+        featureKey: APPEARANCE_FEATURES.CUSTOM_CAROUSEL,
+        canUseCarousel,
+        allPermissions: permissions,
+        permissionKeys: Object.keys(permissions)
+    });
 
     // Loading states
     if (!isInitialized) {
@@ -196,7 +207,18 @@ function AppearanceContent() {
                 </p>
                 {canUseCustomBanner ? <Banners /> : <UpgradePrompt feature="Custom Banners" requiredTier="Premium" />}
             </div>
-            
+
+            {/* 🆕 NEW CAROUSEL SECTION */}
+            <div className="py-4">
+                <h2 className="text-lg font-semibold my-4">
+                    {translations.carousel}
+                    <span className="py-1 px-3 rounded bg-purple-500 text-white font-medium text-sm ml-2">
+                        {translations.newBadge}
+                    </span>
+                </h2>
+                {canUseCarousel ? <CarouselManager /> : <UpgradePrompt feature="Content Carousel" requiredTier="Pro" />}
+            </div>
+
             <div className="py-4">
                 <h2 className="text-lg font-semibold my-4">{translations.backgrounds}</h2>
                 {canUseCustomBackground ? <Backgrounds /> : <UpgradePrompt feature="Custom Backgrounds" requiredTier="Premium" />}

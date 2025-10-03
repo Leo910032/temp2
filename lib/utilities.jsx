@@ -109,7 +109,14 @@ export function generateUniqueId() {
     return `${randomString}-${timestamp}`;
 }
 
+// After
 export function makeValidUrl(url) {
+    // Add a check to handle undefined, null, or empty strings
+    if (typeof url !== 'string' || !url.trim()) {
+        // Return an empty string or '#' as a safe fallback
+        return ''; 
+    }
+
     if (url.startsWith('https://') || url.startsWith('http://')) {
         return url;
     } else {

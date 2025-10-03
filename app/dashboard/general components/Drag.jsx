@@ -24,6 +24,7 @@ import {
 import { SortableItem } from './SortableItem'; // We will create this file next
 import Normal from '../general elements/draggables/Normal';
 import Special from '../general elements/draggables/Special';
+import CarouselItem from '../general elements/draggables/CarouselItem';
 
 const DraggableList = ({ array }) => {
     const { setData } = useContext(ManageLinksContent);
@@ -73,6 +74,8 @@ const DraggableList = ({ array }) => {
         if (!activeItem) return null;
         if (activeItem.type === 0) {
             return <Normal item={activeItem} isOverlay={true} />;
+        } else if (activeItem.type === 2) {
+            return <CarouselItem item={activeItem} isOverlay={true} />;
         } else {
             return <Special item={activeItem} isOverlay={true} />;
         }
@@ -95,7 +98,13 @@ const DraggableList = ({ array }) => {
                     {items.map((item) => (
                         // 3. Render a SortableItem for each element
                         <SortableItem key={item.id} id={item.id}>
-                            {item.type === 0 ? <Normal item={item} /> : <Special item={item} />}
+                            {item.type === 0 ? (
+                                <Normal item={item} />
+                            ) : item.type === 2 ? (
+                                <CarouselItem item={item} />
+                            ) : (
+                                <Special item={item} />
+                            )}
                         </SortableItem>
                     ))}
                 </div>

@@ -33,7 +33,7 @@ export async function POST(request) {
         
         // CSRF/Rate limit checks stay at the API boundary.
         const origin = request.headers.get('origin');
-        const allowedOrigins = [process.env.NEXT_PUBLIC_BASE_URL, 'http://localhost:3000'];
+const allowedOrigins = [process.env.NEXT_PUBLIC_BASE_URL, 'http://localhost:3000', 'http://localhost:3001'];
         if (!allowedOrigins.includes(origin)) {
             return NextResponse.json({ error: 'Invalid origin' }, { status: 403 });
         }

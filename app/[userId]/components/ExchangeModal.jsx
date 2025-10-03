@@ -668,16 +668,17 @@ export default function ExchangeModal({
     }
 }, [mediaStream, resetCardData]);
 
-    useEffect(() => {
-        if (isOpen) {
-            console.log("Enhanced exchange modal opened for:", profileOwnerUsername);
-            console.log("Pre-verified:", preVerified, "Scan available:", scanAvailable);
-            initializeModal();
-        } else {
-            resetModalState();
-        }
-    }, [isOpen, profileOwnerUsername, profileOwnerId, preVerified, scanAvailable, initializeModal, resetModalState]);
-
+  // After
+useEffect(() => {
+    if (isOpen) {
+        console.log("Enhanced exchange modal opened for:", profileOwnerUsername);
+        console.log("Pre-verified:", preVerified, "Scan available:", scanAvailable);
+        initializeModal();
+    } else {
+        resetModalState();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [isOpen, profileOwnerUsername, profileOwnerId, preVerified, scanAvailable]);
     if (!isOpen) return null;
 
     // Scanner UI

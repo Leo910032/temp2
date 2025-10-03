@@ -7,7 +7,6 @@ import ProfilePic from "./components/ProfilePic";
 import UserInfo from "./components/UserInfo";
 import BgDiv from "./components/BgDiv";
 import Banner from "./components/Banner";
-import ProfileCarousel from "./components/ProfileCarousel";
 import MyLinks from "./components/MyLinks";
 import SupportBanner from "./components/SupportBanner";
 import PublicLanguageSwitcher from "./components/PublicLanguageSwitcher";
@@ -53,13 +52,6 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
     const hasBanner = useMemo(() => {
         return userData?.bannerType && userData?.bannerType !== 'None';
     }, [userData?.bannerType]);
-
-    // Check if carousel should be displayed
-    const shouldShowCarousel = useMemo(() => {
-        return userData?.carouselEnabled &&
-               userData?.carouselItems &&
-               userData?.carouselItems.length > 0;
-    }, [userData?.carouselEnabled, userData?.carouselItems]);
 
     useEffect(() => {
         const settings = userData?.settings || {};
@@ -260,14 +252,6 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
 
                             {/* Add extra spacing before social icons when banner is present */}
                             {hasBanner && <div className="h-5"></div>}
-
-                            {/* Carousel Section */}
-                            {shouldShowCarousel && (
-                                <ProfileCarousel
-                                    items={userData.carouselItems}
-                                    style={userData.carouselStyle}
-                                />
-                            )}
 
                             <MyLinks />
                             

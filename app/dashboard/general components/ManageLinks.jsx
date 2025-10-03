@@ -38,6 +38,7 @@ export default function ManageLinks() {
         if (!isInitialized) return {};
         return {
             addHeader: t('dashboard.links.add_header'),
+            addCarousel: t('dashboard.links.add_carousel') || "Add Carousel",
             emptyStateTitle: t('dashboard.links.empty_state.title'),
             emptyStateSubtitle: t('dashboard.links.empty_state.subtitle'),
             linksSaved: t('dashboard.links.saved_success') || "Links saved!",
@@ -59,14 +60,31 @@ export default function ManageLinks() {
     }, []);
 
     const addHeaderItem = useCallback(() => {
-        const newHeader = { 
-            id: generateRandomId(), 
-            title: "", 
-            isActive: true, 
-            type: 0 
+        const newHeader = {
+            id: generateRandomId(),
+            title: "",
+            isActive: true,
+            type: 0
         };
         setData(prevData => [newHeader, ...prevData]);
     }, []);
+
+    const addCarouselItem = useCallback(() => {
+        // Check if carousel already exists in the list
+        const carouselExists = data.some(item => item.type === 2);
+        if (carouselExists) {
+            toast.error("You can only have one carousel in your links");
+            return;
+        }
+
+        const newCarousel = {
+            id: generateRandomId(),
+            title: "Content Carousel",
+            isActive: true,
+            type: 2
+        };
+        setData(prevData => [newCarousel, ...prevData]);
+    }, [data]);
 
     // ✅ ENHANCED API CALLS with caching and sync
    
@@ -197,10 +215,17 @@ useEffect(() => {
         <ManageLinksContent.Provider value={contextValue}>
             <div className="h-full flex-col gap-4 py-1 flex sm:px-2 px-1">
                 <AddBtn onAddItem={addLinkItem} />
-                
+
                 <div className="flex items-center gap-3 justify-center rounded-3xl cursor-pointer active:scale-95 hover:scale-[1.005] border hover:bg-black/5 w-fit text-sm p-3 mt-3" onClick={addHeaderItem}>
                     <Image src={"https://linktree.sirv.com/Images/icons/add.svg"} alt="add header" height={15} width={15} />
                     <span>{translations.addHeader}</span>
+                </div>
+
+                <div className="flex items-center gap-3 justify-center rounded-3xl cursor-pointer active:scale-95 hover:scale-[1.005] border border-purple-300 bg-purple-50 hover:bg-purple-100 w-fit text-sm p-3" onClick={addCarouselItem}>
+                    <svg className="w-4 h-4 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
+                    </svg>
+                    <span className="text-purple-700 font-medium">{translations.addCarousel}</span>
                 </div>
                 
                 {/* Improved saving indicator */}

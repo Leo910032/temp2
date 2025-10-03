@@ -272,6 +272,7 @@
     },
     "links": {
       "add_header": "Add Header",
+      "add_carousel": "Add Carousel",
       "add_link": "Add Link",
       "enter_url": "Enter Url",
       "url_placeholder": "URL",
@@ -280,7 +281,7 @@
       "view_all": "View all",
       "brands": {
         "twitter_handle": "Twitter Handle",
-        "tiktok_profile": "Tiktok Profile", 
+        "tiktok_profile": "Tiktok Profile",
         "instagram_handle": "Instagram Handle",
         "video_link": "Video Link",
         "music_link": "Music Link"
@@ -288,6 +289,9 @@
       "item": {
         "enter_text_placeholder": "Enter text",
         "headline_title_default": "Headline title",
+        "carousel_title_default": "Content Carousel",
+        "carousel_description": "Drag to position where your carousel will appear",
+        "customize_carousel": "Customize",
         "delete_tooltip": "Delete",
         "delete_header": "Delete",
         "delete_confirmation_question": "Delete this forever?",
@@ -296,7 +300,8 @@
         "url_placeholder": "URL",
         "invalid_url_message": "Please enter a valid URL",
         "setup_link_prompt": "Enter your {{kind}} URL, then set up your link",
-        "custom_kind": "Custom"
+        "custom_kind": "Custom",
+        "toggle_disabled_tooltip": "Please enter a valid URL to activate this link"
       }
     },
     "empty_state": {

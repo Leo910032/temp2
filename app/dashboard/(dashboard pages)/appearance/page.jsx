@@ -58,15 +58,41 @@ const CacheDebugPanel = ({ cacheInfo, appearance }) => {
 // Main content component that uses the context
 function AppearanceContent() {
     const { t, isInitialized } = useTranslation();
-    const { 
-        appearance, 
-        isSaving, 
-        isLoading, 
-        hasLoadError, 
-        refreshData, 
+    const {
+        appearance,
+        isSaving,
+        isLoading,
+        hasLoadError,
+        refreshData,
         permissions,
-        cacheInfo 
+        cacheInfo
     } = useAppearance();
+
+    // Handle hash navigation on mount and when hash changes
+    React.useEffect(() => {
+        const handleHashNavigation = () => {
+            const hash = window.location.hash;
+            if (hash) {
+                const elementId = hash.substring(1); // Remove the '#'
+                setTimeout(() => {
+                    const element = document.getElementById(elementId);
+                    if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }, 100);
+            }
+        };
+
+        // Run on mount
+        handleHashNavigation();
+
+        // Listen for hash changes
+        window.addEventListener('hashchange', handleHashNavigation);
+
+        return () => {
+            window.removeEventListener('hashchange', handleHashNavigation);
+        };
+    }, []);
 
     // Pre-compute translations
     const translations = useMemo(() => {
@@ -209,7 +235,7 @@ function AppearanceContent() {
             </div>
 
             {/* 🆕 NEW CAROUSEL SECTION */}
-            <div className="py-4">
+            <div id="carousel" className="py-4 scroll-mt-20">
                 <h2 className="text-lg font-semibold my-4">
                     {translations.carousel}
                     <span className="py-1 px-3 rounded bg-purple-500 text-white font-medium text-sm ml-2">

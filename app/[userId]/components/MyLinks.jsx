@@ -4,7 +4,8 @@ import { HouseContext } from "../House";
 import Button from "../elements/Button";
 import Socials from "../elements/Socials";
 import { filterProperly } from "@/lib/utilities";
-import CVButton from '../elements/CVButton'; // ADD THIS IMPORT
+import CVButton from '../elements/CVButton';
+import ProfileCarousel from './ProfileCarousel';
 
 export default function MyLinks() {
     const { userData } = useContext(HouseContext);
@@ -15,7 +16,10 @@ export default function MyLinks() {
         supportBannerStatus = false,
         themeFontColor = "",
         themeTextColour = "",
-        sensitiveStatus = false
+        sensitiveStatus = false,
+        carouselEnabled = false,
+        carouselItems = [],
+        carouselStyle = 'modern'
     } = userData;
 
     // ✅ IMPROVED: Better memoization of filtered links
@@ -56,14 +60,28 @@ export default function MyLinks() {
             {displayLinks.map((link) => {
                 if (link.type === 0) { // Header type
                     return (
-                        <span 
-                            key={`header-${link.id}`} 
-                            style={{ color: displayColor }} 
+                        <span
+                            key={`header-${link.id}`}
+                            style={{ color: displayColor }}
                             className="mx-auto font-semibold text-sm mt-2"
                         >
                             {sensitiveStatus ? link.title : filterProperly(link.title)}
                         </span>
                     );
+                } else if (link.type === 2) { // Carousel type
+                    // Only render carousel if it's enabled and has items
+                    if (carouselEnabled && carouselItems && carouselItems.length > 0) {
+                        return (
+                            <div key={`carousel-${link.id}`} className="w-full max-w-2xl">
+                                <ProfileCarousel
+                                    items={carouselItems}
+                                    style={carouselStyle}
+                                />
+                            </div>
+                        );
+                    }
+                    // If carousel not configured, don't render anything
+                    return null;
                 } else { // Button type
                     return (
                         <Button

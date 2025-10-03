@@ -13,16 +13,28 @@ export default function TopClickedLinks({ analytics, isConnected }) {
     }
 
     // Function to get the root domain from URL (same as in IconDiv.jsx)
-    function getRootNameFromUrl(url) {
-        try {
-            const urlObj = new URL(makeValidUrl(url));
-            const rootName = urlObj.hostname;
-            return rootName;
-        } catch (error) {
-            console.log(error.message, url);
-            return '';
-        }
+  // Before
+// After
+function getRootNameFromUrl(url) {
+    // 1. First, make sure we have a potentially valid URL string
+    const potentiallyValidUrl = makeValidUrl(url);
+
+    // 2. If the result is empty or invalid, return a default immediately
+    if (!potentiallyValidUrl) {
+        return 'default'; // Return a default name to prevent crashing
     }
+
+    try {
+        // 3. Now it's safer to try constructing the URL
+        const urlObj = new URL(potentiallyValidUrl);
+        const rootName = urlObj.hostname;
+        return rootName;
+    } catch (error) {
+        // This will now only catch truly malformed URLs, not empty strings
+        console.error("Could not parse URL:", potentiallyValidUrl, error.message);
+        return 'default'; // Return a default on failure
+    }
+}
 
     // Function to get icon URL from base URL (same as in IconDiv.jsx)
     function getIconUrlFromBaseUrl(baseUrl) {

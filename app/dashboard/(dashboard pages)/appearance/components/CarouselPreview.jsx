@@ -15,13 +15,15 @@ export default function CarouselPreview({ items, style = 'modern' }) {
     // Filter out items without images for preview
     const validItems = items.filter(item => item.image);
 
-    if (validItems.length === 0) {
-        return (
-            <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
-                <p className="text-gray-500">Add images to carousel items to see preview</p>
-            </div>
-        );
-    }
+    // Auto-scroll carousel to center current item - MOVED BEFORE ANY RETURN
+    useEffect(() => {
+        if (carouselRef.current && validItems.length > 0) {
+            const item = carouselRef.current.children[currentIndex];
+            if (item) {
+                item.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+        }
+    }, [currentIndex, validItems.length]);
 
     // Navigate to specific slide
     const goToSlide = (index) => {
@@ -79,15 +81,14 @@ export default function CarouselPreview({ items, style = 'modern' }) {
         }
     };
 
-    // Auto-scroll carousel to center current item
-    useEffect(() => {
-        if (carouselRef.current) {
-            const item = carouselRef.current.children[currentIndex];
-            if (item) {
-                item.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-            }
-        }
-    }, [currentIndex]);
+    // Early return AFTER all hooks
+    if (validItems.length === 0) {
+        return (
+            <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
+                <p className="text-gray-500">Add images to carousel items to see preview</p>
+            </div>
+        );
+    }
 
     return (
         <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6">

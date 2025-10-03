@@ -76,6 +76,7 @@ export function AppearanceProvider({ children }) {
     const componentId = useRef(Math.random().toString(36).substring(7));
     const cacheKeyRef = useRef(null);
     const lastSavedHashRef = useRef(null);
+    const isListenerUpdate = useRef(false);
     
     // Debounced appearance for auto-save
     const debouncedAppearance = useDebounce(appearance, 500);
@@ -204,6 +205,8 @@ export function AppearanceProvider({ children }) {
 
         setIsSaving(true);
         console.log(`💾 [${componentId.current}] Saving appearance data...`);
+        console.log(`📊 [${componentId.current}] Current hash:`, currentDataHash?.substring(0, 100));
+        console.log(`📊 [${componentId.current}] Last saved hash:`, lastSavedHashRef.current?.substring(0, 100));
         
         try {
             // Only send the fields that have actually changed
@@ -250,9 +253,12 @@ export function AppearanceProvider({ children }) {
 
     // Update appearance function for child components
     const updateAppearance = useCallback((fieldOrData, value) => {
+        // Clear listener flag when user makes manual updates
+        isListenerUpdate.current = false;
+
         setAppearance(prev => {
             if (!prev) return prev;
-            
+
             let newAppearance;
             if (typeof fieldOrData === 'object') {
                 newAppearance = { ...prev, ...fieldOrData };
@@ -265,14 +271,14 @@ export function AppearanceProvider({ children }) {
                 newAppearance = { ...prev, [fieldOrData]: value };
                 console.log(`🔄 [${componentId.current}] Appearance field updated:`, fieldOrData, '→', value);
             }
-            
+
             // Update metadata
             newAppearance._meta = {
                 ...prev._meta,
                 lastModified: Date.now(),
                 fromCache: false
             };
-            
+
             // Update cache immediately for responsiveness
             if (cacheKeyRef.current) {
                 appearanceCache.set(cacheKeyRef.current, {
@@ -280,7 +286,7 @@ export function AppearanceProvider({ children }) {
                     timestamp: Date.now()
                 });
             }
-            
+
             return newAppearance;
         });
     }, []);
@@ -307,29 +313,94 @@ export function AppearanceProvider({ children }) {
         }
     }, [updateAppearance]);
 
-    // Initial data fetch
+    // Initial data fetch and real-time listener setup
     useEffect(() => {
-        if (currentUser && isInitialized && !isSessionLoading) {
-            fetchAppearanceData();
+        if (!currentUser || !isInitialized || isSessionLoading) {
+            // Reset cache when user changes
+            if (!currentUser && !isSessionLoading) {
+                console.log(`👋 [${componentId.current}] User logged out, clearing state`);
+                setAppearance(null);
+                setIsLoading(false);
+                setIsFromCache(false);
+                setHasLoadError(false);
+                isInitialLoad.current = true;
+                cacheKeyRef.current = null;
+                lastSavedHashRef.current = null;
+            }
+            return;
         }
-        
-        // Reset cache when user changes
-        if (!currentUser && !isSessionLoading) {
-            console.log(`👋 [${componentId.current}] User logged out, clearing state`);
-            setAppearance(null);
+
+        // Initial fetch
+        const cacheKey = `appearance_${currentUser.uid}`;
+        cacheKeyRef.current = cacheKey;
+
+        console.log(`[AppearanceProvider] 🚀 Initializing for user: ${currentUser.uid}`);
+
+        // Check cache first for instant loading
+        const cachedEntry = appearanceCache.get(cacheKey);
+        const now = Date.now();
+
+        if (cachedEntry && (now - cachedEntry.timestamp < CACHE_DURATION)) {
+            console.log(`[AppearanceProvider] ⚡ Loading from cache (${Math.round((now - cachedEntry.timestamp) / 1000)}s old)`);
+            setAppearance(cachedEntry.data);
+            lastSavedHashRef.current = createAppearanceHash(cachedEntry.data);
+            setIsFromCache(true);
             setIsLoading(false);
-            setIsFromCache(false);
             setHasLoadError(false);
-            isInitialLoad.current = true;
-            cacheKeyRef.current = null;
-            lastSavedHashRef.current = null;
+        } else {
+            // Fetch fresh data
+            console.log(`[AppearanceProvider] 🆕 No cache or cache expired, fetching fresh data`);
+            fetchAppearanceData(false);
         }
-    }, [currentUser, isInitialized, isSessionLoading, fetchAppearanceData]);
+
+        // Set up real-time listener for appearance data changes
+        console.log(`📡 [${componentId.current}] Setting up real-time listener for appearance data`);
+        const unsubscribe = AppearanceService.listenToAppearanceData(
+            currentUser.uid,
+            (updatedAppearance) => {
+                console.log(`📡 [${componentId.current}] Received appearance update from listener`, updatedAppearance);
+
+                // Mark as listener update to prevent save loop
+                isListenerUpdate.current = true;
+
+                // Update state with fresh data
+                const enhancedData = {
+                    ...updatedAppearance,
+                    _meta: {
+                        fetchedAt: Date.now(),
+                        fromCache: false,
+                        cacheKey,
+                        fromListener: true
+                    }
+                };
+
+                setAppearance(enhancedData);
+                lastSavedHashRef.current = createAppearanceHash(enhancedData);
+
+                // Update cache
+                appearanceCache.set(cacheKey, {
+                    data: enhancedData,
+                    timestamp: Date.now()
+                });
+
+                // Reset listener flag after a short delay
+                setTimeout(() => {
+                    isListenerUpdate.current = false;
+                }, 100);
+            }
+        );
+
+        // Cleanup listener on unmount
+        return () => {
+            console.log(`📡 [${componentId.current}] Cleaning up real-time listener`);
+            unsubscribe();
+        };
+    }, [currentUser, isInitialized, isSessionLoading, fetchAppearanceData, createAppearanceHash]);
 
     // Debounced auto-save effect
     useEffect(() => {
         if (debouncedAppearance === null) return;
-        
+
         if (isInitialLoad.current) {
             if (appearance !== null && lastSavedHashRef.current !== null) {
                 isInitialLoad.current = false;
@@ -337,8 +408,15 @@ export function AppearanceProvider({ children }) {
             }
             return;
         }
-        
-        console.log(`⏰ [${componentId.current}] Debounced save triggered`);
+
+        // Skip save if this was triggered by a listener update
+        console.log(`🔍 [${componentId.current}] Debounce check - isListenerUpdate: ${isListenerUpdate.current}`);
+        if (isListenerUpdate.current) {
+            console.log(`⏭️ [${componentId.current}] Debounced save skipped (listener update)`);
+            return;
+        }
+
+        console.log(`⏰ [${componentId.current}] Debounced save triggered - proceeding to save`);
         saveAppearance(debouncedAppearance);
     }, [debouncedAppearance, saveAppearance, appearance]);
 

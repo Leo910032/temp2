@@ -1,3 +1,4 @@
+//app/dashboard/general elements/draggables/CarouselItem.jsx
 "use client"
 
 import { useRouter } from 'next/navigation';
@@ -18,6 +19,7 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
     const [wantsToDelete, setWantsToDelete] = useState(false);
     const [carouselEnabled, setCarouselEnabled] = useState(false);
     const [isLoadingToggle, setIsLoadingToggle] = useState(true);
+    const [userToggledCarousel, setUserToggledCarousel] = useState(false);
     const router = useRouter();
     const debouncedCarouselEnabled = useDebounce(carouselEnabled, 500);
 
@@ -36,11 +38,15 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
         };
     }, [t, isInitialized]);
 
-    // Load carousel enabled state on mount
+    // Load carousel enabled state on mount and listen for real-time updates
     useEffect(() => {
-        const loadCarouselState = async () => {
-            if (!currentUser) return;
+        if (!currentUser?.uid) {
+            setIsLoadingToggle(false);
+            return;
+        }
 
+        // Initial load
+        const loadInitialState = async () => {
             try {
                 const appearance = await AppearanceService.getAppearanceData();
                 setCarouselEnabled(appearance.carouselEnabled || false);
@@ -51,26 +57,42 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
             }
         };
 
-        loadCarouselState();
-    }, [currentUser]);
+        loadInitialState();
 
-    // Save carousel enabled state when toggled
+        // Set up real-time listener for carousel changes
+        const unsubscribe = AppearanceService.listenToAppearanceData(
+            currentUser.uid,
+            (appearance) => {
+                const newCarouselEnabled = appearance.carouselEnabled || false;
+                setCarouselEnabled(newCarouselEnabled);
+            }
+        );
+
+        // Cleanup listener on unmount
+        return () => {
+            unsubscribe();
+        };
+    }, [currentUser?.uid]);
+
+    // Save carousel enabled state when toggled by user
     useEffect(() => {
-        if (isLoadingToggle) return; // Don't save on initial load
+        if (isLoadingToggle || !userToggledCarousel) return; // Don't save on initial load or listener updates
 
         const saveCarouselState = async () => {
             try {
                 await AppearanceService.updateCarouselEnabled(carouselEnabled);
+                setUserToggledCarousel(false); // Reset flag after save
             } catch (error) {
                 console.error('Error saving carousel state:', error);
             }
         };
 
         saveCarouselState();
-    }, [debouncedCarouselEnabled, isLoadingToggle]);
+    }, [debouncedCarouselEnabled, isLoadingToggle, carouselEnabled, userToggledCarousel]);
 
     const handleToggleCarousel = (event) => {
         setCarouselEnabled(event.target.checked);
+        setUserToggledCarousel(true); // Mark as user action
     };
 
     const handleDelete = () => {

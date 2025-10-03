@@ -30,10 +30,19 @@ const DraggableList = ({ array }) => {
     const { setData } = useContext(ManageLinksContent);
     const [items, setItems] = useState([]);
     const [activeItem, setActiveItem] = useState(null); // To store the item being dragged for the overlay
+    const [pendingUpdate, setPendingUpdate] = useState(false);
 
     useEffect(() => {
-        setItems(array || []); 
+        setItems(array || []);
     }, [array]);
+
+    // Sync items back to parent when drag ends
+    useEffect(() => {
+        if (pendingUpdate && items.length > 0) {
+            setData(items);
+            setPendingUpdate(false);
+        }
+    }, [pendingUpdate, items, setData]);
 
     // Setup sensors for different input methods (mouse, touch, keyboard)
     const sensors = useSensors(
@@ -60,12 +69,12 @@ const DraggableList = ({ array }) => {
 
                 // Use the arrayMove utility from dnd-kit for a clean reorder
                 const newItems = arrayMove(currentItems, oldIndex, newIndex);
-                
-                // Update the parent component's state
-                setData(newItems);
-                
+
                 return newItems;
             });
+
+            // Trigger update to parent via useEffect
+            setPendingUpdate(true);
         }
     }
     

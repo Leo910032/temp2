@@ -48,7 +48,9 @@ export default function ProfileCard() {
             </div>
 
             {/* CV Manager - Separate card */}
-            <CVManager />
+            <div id="cv">
+                <CVManager />
+            </div>
         </div>
     );
 }

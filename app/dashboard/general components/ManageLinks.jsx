@@ -40,6 +40,7 @@ export default function ManageLinks() {
         return {
             addHeader: t('dashboard.links.add_header'),
             addCarousel: t('dashboard.links.add_carousel') || "Add Carousel",
+            addCV: t('dashboard.links.add_cv') || "Add CV / Document",
             emptyStateTitle: t('dashboard.links.empty_state.title'),
             emptyStateSubtitle: t('dashboard.links.empty_state.subtitle'),
             linksSaved: t('dashboard.links.saved_success') || "Links saved!",
@@ -85,6 +86,23 @@ export default function ManageLinks() {
             type: 2
         };
         setData(prevData => [newCarousel, ...prevData]);
+    }, [data]);
+
+    const addCVItem = useCallback(() => {
+        // Check if CV already exists in the list
+        const cvExists = data.some(item => item.type === 3);
+        if (cvExists) {
+            toast.error("You can only have one CV item in your links");
+            return;
+        }
+
+        const newCV = {
+            id: generateRandomId(),
+            title: "CV / Document",
+            isActive: true,
+            type: 3
+        };
+        setData(prevData => [newCV, ...prevData]);
     }, [data]);
 
     // ✅ ENHANCED API CALLS with caching and sync
@@ -227,6 +245,13 @@ useEffect(() => {
                         <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
                     </svg>
                     <span className="text-purple-700 font-medium">{translations.addCarousel}</span>
+                </div>
+
+                <div className="flex items-center gap-3 justify-center rounded-3xl cursor-pointer active:scale-95 hover:scale-[1.005] border border-indigo-300 bg-indigo-50 hover:bg-indigo-100 w-fit text-sm p-3" onClick={addCVItem}>
+                    <svg className="w-4 h-4 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-indigo-700 font-medium">{translations.addCV}</span>
                 </div>
                 
                 {/* Improved saving indicator */}

@@ -6,10 +6,11 @@
 
 import React, { useState, useRef, useContext, useMemo } from 'react';
 import { FaUpload, FaTrash, FaDownload, FaFileAlt, FaExclamationTriangle } from 'react-icons/fa';
-import { FaPencil } from 'react-icons/fa6';
+import { FaPencil, FaToggleOn, FaToggleOff } from 'react-icons/fa6';
 import { toast } from 'react-hot-toast';
 import { AppearanceContext } from '../AppearanceContext';
 import { AppearanceService } from '@/lib/services/serviceAppearance/client/appearanceService.js';
+import { useTranslation } from '@/lib/translation/useTranslation';
 
 /**
  * A reusable modal for confirming destructive actions.
@@ -48,10 +49,12 @@ function ConfirmationModal({ isOpen, onClose, onConfirm, title, message, confirm
  * This component is now a "dumb" component that gets its state and update logic from AppearanceContext.
  */
 export default function CVManager() {
+    const { t, isInitialized } = useTranslation();
+
     // --- CONTEXT CONSUMPTION ---
     // Get all necessary data and functions from the centralized context.
-    const { appearance, updateAppearance } = useContext(AppearanceContext);
-    
+    const { appearance, updateAppearance, isSaving } = useContext(AppearanceContext);
+
     // --- LOCAL UI STATE ---
     // This state is only for managing the UI of this component (e.g., loading spinners, modals).
     const [isUploading, setIsUploading] = useState(false);
@@ -60,10 +63,28 @@ export default function CVManager() {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const fileInputRef = useRef(null);
 
-    // Derive the cvDocument from the context's appearance state.
+    // Derive the CV state from the context's appearance state.
+    const cvEnabled = appearance?.cvEnabled || false;
     const cvDocument = appearance?.cvDocument;
 
-    // --- API HANDLERS (using the service layer) ---
+    // Pre-compute translations for performance
+    const translations = useMemo(() => {
+        if (!isInitialized) return {};
+        return {
+            title: t('dashboard.appearance.cv.title') || 'Curriculum / Documents',
+            enabled: t('dashboard.appearance.cv.enabled') || 'Enabled',
+            disabled: t('dashboard.appearance.cv.disabled') || 'Disabled',
+            description: t('dashboard.appearance.cv.description') || 'Upload and manage your CV or resume document.',
+        };
+    }, [t, isInitialized]);
+
+    // --- HANDLERS ---
+
+    // Toggle CV enabled/disabled
+    const handleToggleCV = () => {
+        updateAppearance('cvEnabled', !cvEnabled);
+        toast.success(cvEnabled ? 'CV disabled' : 'CV enabled');
+    };
 
     const handleFileUpload = async (event) => {
         const file = event.target.files[0];
@@ -172,15 +193,39 @@ export default function CVManager() {
     const fileExtension = getFileExtension(cvDocument?.fileName);
 
     // Render a skeleton loader if the main appearance data hasn't loaded yet.
-    if (!appearance) {
+    if (!appearance || !isInitialized) {
         return <div className="w-full bg-gray-200 rounded-3xl my-3 p-6 h-36 animate-pulse"></div>;
     }
-    
+
     return (
         <>
             <div className="w-full bg-white rounded-3xl my-3 p-6">
-                <h3 className="text-lg font-semibold mb-4">Curriculum / Documents</h3>
-                
+                {/* Header with enable/disable toggle */}
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                        <h3 className="text-xl font-semibold">{translations.title}</h3>
+                        <button
+                            onClick={handleToggleCV}
+                            disabled={isSaving}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                                cvEnabled
+                                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                        >
+                            {cvEnabled ? <FaToggleOn className="text-xl" /> : <FaToggleOff className="text-xl" />}
+                            <span className="text-sm font-medium">
+                                {cvEnabled ? translations.enabled : translations.disabled}
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Description */}
+                <p className="text-sm text-gray-600 mb-6">
+                    {translations.description}
+                </p>
+
                 <input
                     ref={fileInputRef}
                     type="file"
@@ -189,7 +234,8 @@ export default function CVManager() {
                     className="hidden"
                 />
 
-                {cvDocument ? (
+                {/* Only show document management if CV is enabled */}
+                {cvEnabled && cvDocument ? (
                     <div className="mb-4 p-4 border border-gray-200 rounded-lg flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <FaFileAlt className="text-2xl text-gray-500" />
@@ -224,13 +270,14 @@ export default function CVManager() {
                             </button>
                         </div>
                     </div>
-                ) : (
+                ) : cvEnabled ? (
                     <div className="mb-4 p-4 border-2 border-dashed border-gray-300 rounded-lg text-center">
                         <p className="text-sm text-gray-500">No document uploaded.</p>
                     </div>
-                )}
+                ) : null}
 
-                <button
+                {cvEnabled && (
+                    <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
                     className={`w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold rounded-lg transition-colors ${
@@ -248,11 +295,23 @@ export default function CVManager() {
                             <span>{cvDocument ? 'Upload New Document' : 'Upload Document'}</span>
                         </>
                     )}
-                </button>
-                
-                <p className="text-xs text-gray-500 mt-2 text-center">
-                    Allowed types: PDF, DOC, DOCX. Max size: 10MB.
-                </p>
+                    </button>
+                )}
+
+                {cvEnabled && (
+                    <p className="text-xs text-gray-500 mt-2 text-center">
+                        Allowed types: PDF, DOC, DOCX. Max size: 10MB.
+                    </p>
+                )}
+
+                {/* Disabled state message */}
+                {!cvEnabled && (
+                    <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                        <p className="text-gray-500">
+                            Enable the CV to start managing your document.
+                        </p>
+                    </div>
+                )}
             </div>
 
             <ConfirmationModal

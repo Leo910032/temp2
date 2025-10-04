@@ -19,7 +19,9 @@ export default function MyLinks() {
         sensitiveStatus = false,
         carouselEnabled = false,
         carouselItems = [],
-        carouselStyle = 'modern'
+        carouselStyle = 'modern',
+        cvEnabled = false,
+        cvDocument = null
     } = userData;
 
     // ✅ IMPROVED: Better memoization of filtered links
@@ -82,6 +84,19 @@ export default function MyLinks() {
                     }
                     // If carousel not configured, don't render anything
                     return null;
+                } else if (link.type === 3) { // CV type
+                    // Only render CV if it's enabled and document exists
+                    if (cvEnabled && cvDocument && cvDocument.url) {
+                        return (
+                            <CVButton
+                                key={`cv-${link.id}`}
+                                cvDocument={cvDocument}
+                                userData={userData}
+                            />
+                        );
+                    }
+                    // If CV not configured, don't render anything
+                    return null;
                 } else { // Button type
                     return (
                         <Button
@@ -92,13 +107,7 @@ export default function MyLinks() {
                     );
                 }
             })}
-            {userData?.cvDocument && (
-    <CVButton 
-        cvDocument={userData.cvDocument}
-        userData={userData}
-    />
-)}
-            
+
             {/* ✅ FIXED: Better conditional rendering for bottom socials */}
             {socialPosition === 1 && activeSocials.length > 0 && (
                 <div className="w-full flex justify-center">

@@ -57,7 +57,7 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
         const settings = userData?.settings || {};
         setShowSensitiveWarning(settings.sensitiveStatus || false);
     }, [userData?.settings?.sensitiveStatus, userData?.settings]);
-
+/*
     useEffect(() => {
         if (!userData?.uid) return;
 
@@ -138,7 +138,7 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
             unsubscribe();
         };
     }, [userData?.uid]);
-
+*/
     useEffect(() => {
         if (viewTracked) return;
         if (isPreviewMode) {

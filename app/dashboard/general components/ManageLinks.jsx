@@ -16,6 +16,7 @@ import DraggableList from "./Drag";
 // ✅ IMPORT THE NEW SERVICES AND CONTEXT
 import { useDashboard } from '@/app/dashboard/DashboardContext.js';
 import { LinksService } from '@/lib/services/serviceLinks/client/LinksService.js';
+import { AppearanceService } from '@/lib/services/serviceAppearance/client/appearanceService.js';
 
 export const ManageLinksContent = createContext(null);
 
@@ -88,21 +89,47 @@ export default function ManageLinks() {
         setData(prevData => [newCarousel, ...prevData]);
     }, [data]);
 
-    const addCVItem = useCallback(() => {
-        // Check if CV already exists in the list
-        const cvExists = data.some(item => item.type === 3);
-        if (cvExists) {
-            toast.error("You can only have one CV item in your links");
-            return;
-        }
+    const addCVItem = useCallback(async () => {
+        // Create a unique ID for the CV item that will be created in appearance
+        const cvItemId = `cv_${Date.now()}`;
 
+        // Create the link item
         const newCV = {
             id: generateRandomId(),
             title: "CV / Document",
             isActive: true,
-            type: 3
+            type: 3,
+            cvItemId: cvItemId // Link to the CV item in appearance
         };
+
+        // Add to links
         setData(prevData => [newCV, ...prevData]);
+
+        // Also create the corresponding CV item in appearance
+        try {
+            const appearance = await AppearanceService.getAppearanceData();
+            const cvItems = appearance.cvItems || [];
+
+            const newCvItem = {
+                id: cvItemId,
+                url: '',
+                fileName: '',
+                displayTitle: 'New CV Document',
+                uploadDate: null,
+                fileSize: 0,
+                fileType: '',
+                order: cvItems.length
+            };
+
+            await AppearanceService.updateAppearanceData({
+                cvItems: [...cvItems, newCvItem]
+            });
+
+            toast.success("CV item added - go to Appearance to upload document");
+        } catch (error) {
+            console.error("Error creating CV item:", error);
+            toast.error("CV link added but failed to create document slot");
+        }
     }, [data]);
 
     // ✅ ENHANCED API CALLS with caching and sync

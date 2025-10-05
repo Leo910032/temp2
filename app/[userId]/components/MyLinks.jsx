@@ -21,6 +21,7 @@ export default function MyLinks() {
         carouselItems = [],
         carouselStyle = 'modern',
         cvEnabled = false,
+        cvItems = [],
         cvDocument = null
     } = userData;
 
@@ -85,17 +86,20 @@ export default function MyLinks() {
                     // If carousel not configured, don't render anything
                     return null;
                 } else if (link.type === 3) { // CV type
-                    // Only render CV if it's enabled and document exists
-                    if (cvEnabled && cvDocument && cvDocument.url) {
+                    // Find the specific CV item this link refers to
+                    const cvItem = cvItems.find(cv => cv.id === link.cvItemId);
+
+                    // Only render CV if it's enabled and the specific document exists
+                    if (cvEnabled && cvItem && cvItem.url) {
                         return (
                             <CVButton
                                 key={`cv-${link.id}`}
-                                cvDocument={cvDocument}
+                                cvDocument={cvItem}
                                 userData={userData}
                             />
                         );
                     }
-                    // If CV not configured, don't render anything
+                    // If CV not configured or document not uploaded, don't render anything
                     return null;
                 } else { // Button type
                     return (

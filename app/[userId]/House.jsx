@@ -100,6 +100,7 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
                         carouselItems: appearance.carouselItems || [],
                         carouselStyle: appearance.carouselStyle || 'modern',
                         cvEnabled: appearance.cvEnabled || false,
+                        cvItems: appearance.cvItems || [],
                         cvDocument: appearance.cvDocument || null,
                         btnColor: appearance.btnColor || '#000000',
                         btnFontColor: appearance.btnFontColor || '#FFFFFF',

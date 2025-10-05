@@ -19,16 +19,21 @@ export default function CVItem({ item, itemRef, style, listeners, attributes, is
     const { currentUser } = useDashboard();
     const [wantsToDelete, setWantsToDelete] = useState(false);
     const [cvEnabled, setCvEnabled] = useState(false);
+    const [cvItems, setCvItems] = useState([]);
     const [isLoadingToggle, setIsLoadingToggle] = useState(true);
     const [userToggledCV, setUserToggledCV] = useState(false);
     const router = useRouter();
     const debouncedCvEnabled = useDebounce(cvEnabled, 500);
 
+    // Get the specific CV item this link refers to
+    const linkedCvItem = cvItems.find(cv => cv.id === item.cvItemId);
+    const cvTitle = linkedCvItem?.displayTitle || item.title || 'CV / Document';
+
     // Pre-compute translations for performance
     const translations = useMemo(() => {
         if (!isInitialized) return {};
         return {
-            cvTitle: t('dashboard.links.item.cv_title_default') || 'CV / Document',
+            cvTitleDefault: t('dashboard.links.item.cv_title_default') || 'CV / Document',
             cvDescription: t('dashboard.links.item.cv_description') || 'Display your CV or resume here',
             customizeButton: t('dashboard.links.item.customize_cv') || 'Manage Document',
             deleteTooltip: t('dashboard.links.item.delete_tooltip') || 'Delete',
@@ -51,6 +56,7 @@ export default function CVItem({ item, itemRef, style, listeners, attributes, is
             try {
                 const appearance = await AppearanceService.getAppearanceData();
                 setCvEnabled(appearance.cvEnabled || false);
+                setCvItems(appearance.cvItems || []);
             } catch (error) {
                 console.error('Error loading CV state:', error);
             } finally {
@@ -65,7 +71,9 @@ export default function CVItem({ item, itemRef, style, listeners, attributes, is
             currentUser.uid,
             (appearance) => {
                 const newCvEnabled = appearance.cvEnabled || false;
+                const newCvItems = appearance.cvItems || [];
                 setCvEnabled(newCvEnabled);
+                setCvItems(newCvItems);
             }
         );
 
@@ -96,8 +104,25 @@ export default function CVItem({ item, itemRef, style, listeners, attributes, is
         setUserToggledCV(true); // Mark as user action
     };
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
+        // Remove from links
         setData(prevData => prevData.filter(i => i.id !== item.id));
+
+        // Also remove the corresponding CV item from appearance
+        if (item.cvItemId) {
+            try {
+                const appearance = await AppearanceService.getAppearanceData();
+                const updatedCvItems = (appearance.cvItems || [])
+                    .filter(cv => cv.id !== item.cvItemId)
+                    .map((cv, index) => ({ ...cv, order: index }));
+
+                await AppearanceService.updateAppearanceData({
+                    cvItems: updatedCvItems
+                });
+            } catch (error) {
+                console.error('Error deleting CV item from appearance:', error);
+            }
+        }
     };
 
     const handleManage = () => {
@@ -149,7 +174,7 @@ export default function CVItem({ item, itemRef, style, listeners, attributes, is
                     <div className='flex gap-3 items-center'>
                         <span className='font-semibold text-indigo-700 flex items-center gap-2'>
                             <FaFileAlt className='w-5 h-5' />
-                            {translations.cvTitle}
+                            {cvTitle}
                         </span>
                     </div>
 

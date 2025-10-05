@@ -10,18 +10,33 @@ import { useTranslation } from '@/lib/translation/useTranslation';
 import { useDashboard } from '@/app/dashboard/DashboardContext';
 import { AppearanceService } from '@/lib/services/serviceAppearance/client/appearanceService.js';
 import { useDebounce } from '@/LocalHooks/useDebounce';
+import { APPEARANCE_FEATURES } from '@/lib/services/constants';
+import { toast } from 'react-hot-toast';
 
 // Video Embed Item Component - Type 4
 export default function VideoEmbedItem({ item, itemRef, style, listeners, attributes, isOverlay = false }) {
     const { t, isInitialized } = useTranslation();
     const { setData } = useContext(ManageLinksContent);
-    const { currentUser } = useDashboard();
+    const { currentUser, permissions, subscriptionLevel } = useDashboard();
     const [wantsToDelete, setWantsToDelete] = useState(false);
     const [videoEmbedEnabled, setVideoEmbedEnabled] = useState(false);
     const [isLoadingToggle, setIsLoadingToggle] = useState(true);
     const [userToggledVideoEmbed, setUserToggledVideoEmbed] = useState(false);
     const router = useRouter();
     const debouncedVideoEmbedEnabled = useDebounce(videoEmbedEnabled, 500);
+
+    // Check if user has permission to use video embed
+    const canUseVideoEmbed = permissions[APPEARANCE_FEATURES.CUSTOM_VIDEO_EMBED];
+    const hasExistingVideoEmbeds = videoEmbedEnabled; // User had video embeds before downgrade
+
+    // 🆕 Monitor permission changes in real-time
+    useEffect(() => {
+        console.log('🔄 [VideoEmbedItem] Permissions updated:', {
+            canUseVideoEmbed,
+            subscriptionLevel,
+            timestamp: new Date().toISOString()
+        });
+    }, [canUseVideoEmbed, subscriptionLevel]);
 
     // Pre-compute translations for performance
     const translations = useMemo(() => {
@@ -93,6 +108,19 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
     }, [debouncedVideoEmbedEnabled, isLoadingToggle, videoEmbedEnabled, userToggledVideoEmbed]);
 
     const handleToggleVideoEmbed = (event) => {
+        // Prevent toggle if user doesn't have permission
+        if (!canUseVideoEmbed) {
+            const requiredTier = subscriptionLevel === 'base' ? 'Pro' : 'Pro';
+            toast.error(`Upgrade to ${requiredTier} to enable Video Embed`, {
+                duration: 4000,
+                style: {
+                    background: '#FEF3C7',
+                    color: '#92400E',
+                    fontWeight: 'bold',
+                }
+            });
+            return;
+        }
         setVideoEmbedEnabled(event.target.checked);
         setUserToggledVideoEmbed(true);
     };
@@ -102,6 +130,20 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
     };
 
     const handleCustomize = () => {
+        // Prevent customization if user doesn't have permission
+        if (!canUseVideoEmbed) {
+            const requiredTier = subscriptionLevel === 'base' ? 'Pro' : 'Pro';
+            toast.error(`Upgrade to ${requiredTier} to customize Video Embed`, {
+                duration: 4000,
+                style: {
+                    background: '#FEF3C7',
+                    color: '#92400E',
+                    fontWeight: 'bold',
+                }
+            });
+            return;
+        }
+
         // Navigate to appearance page with video-embed hash
         router.push('/dashboard/appearance#video-embed');
 
@@ -114,7 +156,12 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
         }, 300);
     };
 
-    const containerClasses = `rounded-3xl border flex flex-col bg-gradient-to-r from-red-50 to-orange-50 border-red-300 ${isOverlay ? 'shadow-lg' : ''}`;
+    // Grey out if user doesn't have permission
+    const containerClasses = `rounded-3xl border flex flex-col ${
+        !canUseVideoEmbed
+            ? 'bg-gray-100 border-gray-300 opacity-60'
+            : 'bg-gradient-to-r from-red-50 to-orange-50 border-red-300'
+    } ${isOverlay ? 'shadow-lg' : ''}`;
 
     // Loading state while translations load
     if (!isInitialized) {
@@ -148,23 +195,41 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
                 <div className='flex-1 flex flex-col px-3 gap-2'>
                     {/* Video Embed Title with Icon */}
                     <div className='flex gap-3 items-center'>
-                        <span className='font-semibold text-red-700 flex items-center gap-2'>
+                        <span className={`font-semibold flex items-center gap-2 ${
+                            !canUseVideoEmbed ? 'text-gray-500' : 'text-red-700'
+                        }`}>
                             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
                             </svg>
                             {translations.videoEmbedTitle}
                         </span>
+                        {/* Show upgrade badge if no permission */}
+                        {!canUseVideoEmbed && (
+                            <span className='text-xs px-2 py-0.5 bg-amber-500 text-white rounded-full font-semibold'>
+                                Pro Required
+                            </span>
+                        )}
                     </div>
 
                     {/* Video Embed Description */}
-                    <div className='text-sm text-red-600 opacity-80'>
-                        Drag to position where your video will appear
+                    <div className={`text-sm opacity-80 ${
+                        !canUseVideoEmbed ? 'text-gray-500' : 'text-red-600'
+                    }`}>
+                        {!canUseVideoEmbed
+                            ? 'Upgrade to Pro or Premium to use this feature'
+                            : 'Drag to position where your video will appear'
+                        }
                     </div>
 
                     {/* Customize Button */}
                     <button
                         onClick={handleCustomize}
-                        className='flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm w-fit'
+                        disabled={!canUseVideoEmbed}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm w-fit ${
+                            !canUseVideoEmbed
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : 'bg-red-600 text-white hover:bg-red-700'
+                        }`}
                     >
                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
@@ -176,16 +241,20 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
                 {/* Toggle and Delete Buttons */}
                 <div className='grid sm:pr-2 gap-2 place-items-center'>
                     {/* Toggle Switch */}
-                    <div className='cursor-pointer scale-[0.8] sm:scale-100'>
+                    <div className={`scale-[0.8] sm:scale-100 ${canUseVideoEmbed ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
                         <label className="relative flex justify-between items-center group p-2 text-xl">
                             <input
                                 type="checkbox"
                                 onChange={handleToggleVideoEmbed}
                                 checked={videoEmbedEnabled}
-                                disabled={isLoadingToggle}
+                                disabled={isLoadingToggle || !canUseVideoEmbed}
                                 className="absolute left-1/2 -translate-x-1/2 w-full h-full peer appearance-none rounded-md"
                             />
-                            <span className="w-9 h-6 flex items-center flex-shrink-0 ml-4 p-1 bg-gray-400 rounded-full duration-300 ease-in-out peer-checked:bg-green-600 after:w-4 after:h-4 after:bg-white after:rounded-full after:shadow-md after:duration-300 peer-checked:after:translate-x-3 group-hover:after:translate-x-[2px]"></span>
+                            <span className={`w-9 h-6 flex items-center flex-shrink-0 ml-4 p-1 rounded-full duration-300 ease-in-out after:w-4 after:h-4 after:bg-white after:rounded-full after:shadow-md after:duration-300 ${
+                                !canUseVideoEmbed
+                                    ? 'bg-gray-300 opacity-50'
+                                    : 'bg-gray-400 peer-checked:bg-green-600 peer-checked:after:translate-x-3 group-hover:after:translate-x-[2px]'
+                            }`}></span>
                         </label>
                     </div>
 

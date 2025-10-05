@@ -61,8 +61,19 @@ export function useAppearance() {
 }
 
 export function AppearanceProvider({ children }) {
-    const { permissions, isLoading: isSessionLoading, currentUser } = useDashboard();
+    const { permissions, isLoading: isSessionLoading, currentUser, subscriptionLevel } = useDashboard();
     const { t, isInitialized } = useTranslation();
+
+    // 🆕 Monitor permission changes in real-time
+    useEffect(() => {
+        console.log('🔄 [AppearanceContext] Permissions/Subscription updated:', {
+            subscriptionLevel,
+            carouselPermission: permissions[APPEARANCE_FEATURES.CUSTOM_CAROUSEL],
+            videoEmbedPermission: permissions[APPEARANCE_FEATURES.CUSTOM_VIDEO_EMBED],
+            allPermissions: permissions,
+            timestamp: new Date().toISOString()
+        });
+    }, [permissions, subscriptionLevel]);
     
     // Core state
     const [appearance, setAppearance] = useState(null);
@@ -358,50 +369,16 @@ useEffect(() => {
         fetchAppearanceData(false);
     }
 
-    // Set up real-time listener for appearance data changes
-    console.log(`📡 [${id}] Setting up real-time listener for appearance data`);
-    const unsubscribe = AppearanceService.listenToAppearanceData(
-        currentUser.uid,
-        (updatedAppearance) => {
-            console.log(`📡 [${id}] Received appearance update from listener`, updatedAppearance);
+    // ❌ REMOVED: Real-time listener that was causing race conditions
+    // The DashboardContext is the single source of truth for subscription/permission changes
+    // Appearance data will be refreshed through manual saves and page loads
+    console.log(`✅ [${id}] Using DashboardContext as single source of truth for permissions`);
 
-            // Mark as listener update to prevent save loop
-            isListenerUpdate.current = true;
-
-            // Update state with fresh data
-            const enhancedData = {
-                ...updatedAppearance,
-                _meta: {
-                    fetchedAt: Date.now(),
-                    fromCache: false,
-                    cacheKey,
-                    fromListener: true
-                }
-            };
-
-            setAppearance(enhancedData);
-            lastSavedHashRef.current = createAppearanceHash(enhancedData);
-
-            // Update cache
-            appearanceCache.set(cacheKey, {
-                data: enhancedData,
-                timestamp: Date.now()
-            });
-
-            // Reset listener flag after a short delay
-            setTimeout(() => {
-                isListenerUpdate.current = false;
-            }, 100);
-        }
-    );
-
-    // Cleanup listener on unmount
+    // No cleanup needed since we removed the listener
     return () => {
-        // ✅ FIX: Use the local variable in the cleanup function
-        console.log(`📡 [${id}] Cleaning up real-time listener`);
-        unsubscribe();
+        console.log(`👋 [${id}] Cleaning up AppearanceContext`);
     };
-}, [currentUser, isInitialized, isSessionLoading, fetchAppearanceData, createAppearanceHash]);
+}, [currentUser, isInitialized, isSessionLoading, fetchAppearanceData]);
 
 // ... rest of the component
     // Debounced auto-save effect
@@ -444,6 +421,7 @@ useEffect(() => {
         refreshData: () => fetchAppearanceData(true),
         isDataLoaded: !!appearance && !isLoading,
         permissions,
+        subscriptionLevel, // 🆕 Include subscription level for real-time updates
         cacheInfo: {
             isFromCache,
             totalCacheEntries: appearanceCache.size,
@@ -451,8 +429,9 @@ useEffect(() => {
             lastModified: appearance?._meta?.lastModified
         }
     }), [
-        appearance, updateAppearance, isSaving, isLoading, hasLoadError, 
-        fetchAppearanceData, permissions, handleFileUpload, isFromCache
+        appearance, updateAppearance, isSaving, isLoading, hasLoadError,
+        fetchAppearanceData, permissions, handleFileUpload, isFromCache,
+        subscriptionLevel // 🆕 Add to dependency array to trigger re-renders
     ]);
 
     return (

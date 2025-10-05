@@ -10,18 +10,33 @@ import { useTranslation } from '@/lib/translation/useTranslation';
 import { useDashboard } from '@/app/dashboard/DashboardContext';
 import { AppearanceService } from '@/lib/services/serviceAppearance/client/appearanceService.js';
 import { useDebounce } from '@/LocalHooks/useDebounce';
+import { APPEARANCE_FEATURES } from '@/lib/services/constants';
+import { toast } from 'react-hot-toast';
 
 // Carousel Item Component - Type 2
 export default function CarouselItem({ item, itemRef, style, listeners, attributes, isOverlay = false }) {
     const { t, isInitialized } = useTranslation();
     const { setData } = useContext(ManageLinksContent);
-    const { currentUser } = useDashboard();
+    const { currentUser, permissions, subscriptionLevel } = useDashboard();
     const [wantsToDelete, setWantsToDelete] = useState(false);
     const [carouselEnabled, setCarouselEnabled] = useState(false);
     const [isLoadingToggle, setIsLoadingToggle] = useState(true);
     const [userToggledCarousel, setUserToggledCarousel] = useState(false);
     const router = useRouter();
     const debouncedCarouselEnabled = useDebounce(carouselEnabled, 500);
+
+    // Check if user has permission to use carousel
+    const canUseCarousel = permissions[APPEARANCE_FEATURES.CUSTOM_CAROUSEL];
+    const hasExistingCarousel = carouselEnabled; // User had carousel before downgrade
+
+    // 🆕 Monitor permission changes in real-time
+    useEffect(() => {
+        console.log('🔄 [CarouselItem] Permissions updated:', {
+            canUseCarousel,
+            subscriptionLevel,
+            timestamp: new Date().toISOString()
+        });
+    }, [canUseCarousel, subscriptionLevel]);
 
     // Pre-compute translations for performance
     const translations = useMemo(() => {
@@ -91,6 +106,19 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
     }, [debouncedCarouselEnabled, isLoadingToggle, carouselEnabled, userToggledCarousel]);
 
     const handleToggleCarousel = (event) => {
+        // Prevent toggle if user doesn't have permission
+        if (!canUseCarousel) {
+            const requiredTier = subscriptionLevel === 'base' ? 'Pro' : 'Pro';
+            toast.error(`Upgrade to ${requiredTier} to enable Content Carousel`, {
+                duration: 4000,
+                style: {
+                    background: '#FEF3C7',
+                    color: '#92400E',
+                    fontWeight: 'bold',
+                }
+            });
+            return;
+        }
         setCarouselEnabled(event.target.checked);
         setUserToggledCarousel(true); // Mark as user action
     };
@@ -100,6 +128,20 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
     };
 
     const handleCustomize = () => {
+        // Prevent customization if user doesn't have permission
+        if (!canUseCarousel) {
+            const requiredTier = subscriptionLevel === 'base' ? 'Pro' : 'Pro';
+            toast.error(`Upgrade to ${requiredTier} to customize Content Carousel`, {
+                duration: 4000,
+                style: {
+                    background: '#FEF3C7',
+                    color: '#92400E',
+                    fontWeight: 'bold',
+                }
+            });
+            return;
+        }
+
         // Navigate to appearance page with carousel hash
         router.push('/dashboard/appearance#carousel');
 
@@ -112,7 +154,12 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
         }, 300);
     };
 
-    const containerClasses = `rounded-3xl border flex flex-col bg-gradient-to-r from-purple-50 to-blue-50 border-purple-300 ${isOverlay ? 'shadow-lg' : ''}`;
+    // Grey out if user doesn't have permission
+    const containerClasses = `rounded-3xl border flex flex-col ${
+        !canUseCarousel
+            ? 'bg-gray-100 border-gray-300 opacity-60'
+            : 'bg-gradient-to-r from-purple-50 to-blue-50 border-purple-300'
+    } ${isOverlay ? 'shadow-lg' : ''}`;
 
     // Loading state while translations load
     if (!isInitialized) {
@@ -146,23 +193,41 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
                 <div className='flex-1 flex flex-col px-3 gap-2'>
                     {/* Carousel Title with Icon */}
                     <div className='flex gap-3 items-center'>
-                        <span className='font-semibold text-purple-700 flex items-center gap-2'>
+                        <span className={`font-semibold flex items-center gap-2 ${
+                            !canUseCarousel ? 'text-gray-500' : 'text-purple-700'
+                        }`}>
                             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
                             </svg>
                             {translations.carouselTitle}
                         </span>
+                        {/* Show upgrade badge if no permission */}
+                        {!canUseCarousel && (
+                            <span className='text-xs px-2 py-0.5 bg-amber-500 text-white rounded-full font-semibold'>
+                                Pro Required
+                            </span>
+                        )}
                     </div>
 
                     {/* Carousel Description */}
-                    <div className='text-sm text-purple-600 opacity-80'>
-                        Drag to position where your carousel will appear
+                    <div className={`text-sm opacity-80 ${
+                        !canUseCarousel ? 'text-gray-500' : 'text-purple-600'
+                    }`}>
+                        {!canUseCarousel
+                            ? 'Upgrade to Pro or Premium to use this feature'
+                            : 'Drag to position where your carousel will appear'
+                        }
                     </div>
 
                     {/* Customize Button */}
                     <button
                         onClick={handleCustomize}
-                        className='flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm w-fit'
+                        disabled={!canUseCarousel}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm w-fit ${
+                            !canUseCarousel
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : 'bg-purple-600 text-white hover:bg-purple-700'
+                        }`}
                     >
                         <FaGear className='text-xs' />
                         <span>{translations.customizeButton}</span>
@@ -172,16 +237,20 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
                 {/* Toggle and Delete Buttons */}
                 <div className='grid sm:pr-2 gap-2 place-items-center'>
                     {/* Toggle Switch */}
-                    <div className='cursor-pointer scale-[0.8] sm:scale-100'>
+                    <div className={`scale-[0.8] sm:scale-100 ${canUseCarousel ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
                         <label className="relative flex justify-between items-center group p-2 text-xl">
                             <input
                                 type="checkbox"
                                 onChange={handleToggleCarousel}
                                 checked={carouselEnabled}
-                                disabled={isLoadingToggle}
+                                disabled={isLoadingToggle || !canUseCarousel}
                                 className="absolute left-1/2 -translate-x-1/2 w-full h-full peer appearance-none rounded-md"
                             />
-                            <span className="w-9 h-6 flex items-center flex-shrink-0 ml-4 p-1 bg-gray-400 rounded-full duration-300 ease-in-out peer-checked:bg-green-600 after:w-4 after:h-4 after:bg-white after:rounded-full after:shadow-md after:duration-300 peer-checked:after:translate-x-3 group-hover:after:translate-x-[2px]"></span>
+                            <span className={`w-9 h-6 flex items-center flex-shrink-0 ml-4 p-1 rounded-full duration-300 ease-in-out after:w-4 after:h-4 after:bg-white after:rounded-full after:shadow-md after:duration-300 ${
+                                !canUseCarousel
+                                    ? 'bg-gray-300 opacity-50'
+                                    : 'bg-gray-400 peer-checked:bg-green-600 peer-checked:after:translate-x-3 group-hover:after:translate-x-[2px]'
+                            }`}></span>
                         </label>
                     </div>
 

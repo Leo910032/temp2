@@ -7,6 +7,8 @@
   import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
   import { useAuth } from '@/contexts/AuthContext';
   import { getSubscriptionStatus } from '@/lib/services/client/subscriptionService';
+  import { getFirestore, doc, onSnapshot } from 'firebase/firestore';
+  import { app } from '@/important/firebase';
 
   const DashboardContext = createContext();
 
@@ -46,11 +48,12 @@
         setSubscriptionData(data);
         console.log('✅ DashboardProvider: Data loaded successfully');
 
-        // 🔍 DEBUG: Log permissions for carousel feature
+        // 🔍 DEBUG: Log permissions for carousel and video embed features
         console.log('🔍 [DashboardContext] Permissions Debug:', {
           subscriptionLevel: data?.subscriptionLevel,
-          allPermissions: data?.permissions,
           hasCarouselPermission: data?.permissions?.['custom_carousel'],
+          hasVideoEmbedPermission: data?.permissions?.['custom_video_embed'],
+          allPermissions: data?.permissions,
           permissionKeys: Object.keys(data?.permissions || {})
         });
 
@@ -69,10 +72,10 @@
     if (didFetch.current) {
       return;
     }
-    
+
     if (currentUser) {
       // Set the ref to true BEFORE fetching
-      didFetch.current = true; 
+      didFetch.current = true;
       fetchDashboardData();
     } else {
       // Reset everything on logout
@@ -81,8 +84,64 @@
       setError(null);
       didFetch.current = false; // Allow fetching again for the next user
     }
-    
+
   }, [currentUser, fetchDashboardData]); // ✅ ADD fetchDashboardData BACK HERE
+
+  // 🆕 Real-time listener for subscription changes
+  useEffect(() => {
+    if (!currentUser?.uid) {
+      return;
+    }
+
+    console.log('🔔 [DashboardContext] Setting up real-time subscription listener for:', currentUser.uid);
+
+    const db = getFirestore(app);
+    const userRef = doc(db, 'users', currentUser.uid);
+
+    const unsubscribe = onSnapshot(
+      userRef,
+      (docSnapshot) => {
+        if (docSnapshot.exists()) {
+          const userData = docSnapshot.data();
+          const newSubscriptionLevel = userData.accountType || 'base'; // ✅ FIX: Read from 'accountType' field
+          const currentLevel = subscriptionData?.subscriptionLevel;
+
+          console.log('🔍 [DashboardContext] Listener fired - checking subscription:', {
+            firestoreAccountType: userData.accountType,
+            newSubscriptionLevel,
+            currentLevel,
+            hasCurrentLevel: !!currentLevel
+          });
+
+          // Only refresh if subscription level actually changed
+          if (currentLevel && newSubscriptionLevel !== currentLevel) {
+            console.log('🔄 [DashboardContext] Subscription changed:', {
+              from: currentLevel,
+              to: newSubscriptionLevel
+            });
+            console.log('🔄 [DashboardContext] Fetching new permissions for subscription:', newSubscriptionLevel);
+
+            // Force refresh subscription data to get new permissions
+            fetchDashboardData(true);
+          } else {
+            console.log('🔔 [DashboardContext] Subscription listener fired but no change detected:', {
+              currentLevel,
+              newSubscriptionLevel,
+              hasCurrentLevel: !!currentLevel
+            });
+          }
+        }
+      },
+      (error) => {
+        console.error('❌ [DashboardContext] Subscription listener error:', error);
+      }
+    );
+
+    return () => {
+      console.log('🧹 [DashboardContext] Cleaning up subscription listener');
+      unsubscribe();
+    };
+  }, [currentUser?.uid, subscriptionData?.subscriptionLevel, fetchDashboardData]);
 
 // ...
     // Convenience getters for common subscription checks

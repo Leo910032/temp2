@@ -17,12 +17,13 @@ import DraggableList from "./Drag";
 import { useDashboard } from '@/app/dashboard/DashboardContext.js';
 import { LinksService } from '@/lib/services/serviceLinks/client/LinksService.js';
 import { AppearanceService } from '@/lib/services/serviceAppearance/client/appearanceService.js';
+import { APPEARANCE_FEATURES } from '@/lib/services/constants';
 
 export const ManageLinksContent = createContext(null);
 
 export default function ManageLinks() {
     const { t, isInitialized } = useTranslation();
-    const { currentUser, isLoading: isSessionLoading } = useDashboard(); // Get global session
+    const { currentUser, isLoading: isSessionLoading, subscriptionLevel, permissions } = useDashboard(); // Get global session and subscription info
     
     // Page-specific state
     const [data, setData] = useState([]);
@@ -74,6 +75,23 @@ export default function ManageLinks() {
     }, []);
 
     const addCarouselItem = useCallback(() => {
+        // Check subscription permission
+        const canUseCarousel = permissions[APPEARANCE_FEATURES.CUSTOM_CAROUSEL];
+
+        if (!canUseCarousel) {
+            // Show upgrade prompt for users without permission
+            const requiredTier = subscriptionLevel === 'base' ? 'Pro' : 'Pro';
+            toast.error(`Upgrade to ${requiredTier} to use Content Carousel feature`, {
+                duration: 4000,
+                style: {
+                    background: '#FEF3C7',
+                    color: '#92400E',
+                    fontWeight: 'bold',
+                }
+            });
+            return;
+        }
+
         // Check if carousel already exists in the list
         const carouselExists = data.some(item => item.type === 2);
         if (carouselExists) {
@@ -88,7 +106,7 @@ export default function ManageLinks() {
             type: 2
         };
         setData(prevData => [newCarousel, ...prevData]);
-    }, [data]);
+    }, [data, permissions, subscriptionLevel]);
 
     const addCVItem = useCallback(async () => {
         // Create a unique ID for the CV item that will be created in appearance
@@ -134,6 +152,23 @@ export default function ManageLinks() {
 }, []); // <-- Dependency array is now empty
 
     const addVideoEmbedItem = useCallback(() => {
+        // Check subscription permission
+        const canUseVideoEmbed = permissions[APPEARANCE_FEATURES.CUSTOM_VIDEO_EMBED];
+
+        if (!canUseVideoEmbed) {
+            // Show upgrade prompt for users without permission
+            const requiredTier = subscriptionLevel === 'base' ? 'Pro' : 'Pro';
+            toast.error(`Upgrade to ${requiredTier} to use Video Embed feature`, {
+                duration: 4000,
+                style: {
+                    background: '#FEF3C7',
+                    color: '#92400E',
+                    fontWeight: 'bold',
+                }
+            });
+            return;
+        }
+
         // Check if video embed already exists in the list
         const videoEmbedExists = data.some(item => item.type === 4);
         if (videoEmbedExists) {
@@ -148,7 +183,7 @@ export default function ManageLinks() {
             type: 4
         };
         setData(prevData => [newVideoEmbed, ...prevData]);
-    }, [data]);
+    }, [data, permissions, subscriptionLevel]);
 
     // ✅ ENHANCED API CALLS with caching and sync
    

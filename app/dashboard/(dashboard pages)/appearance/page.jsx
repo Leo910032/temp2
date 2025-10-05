@@ -32,6 +32,35 @@ const UpgradePrompt = ({ feature, requiredTier }) => (
     </div>
 );
 
+// Locked/Greyed out component for downgraded users with existing content
+const LockedFeature = ({ feature, requiredTier, children }) => (
+    <div className="relative">
+        {/* Overlay with lock icon */}
+        <div className="absolute inset-0 bg-gray-100 bg-opacity-90 z-10 rounded-3xl flex flex-col items-center justify-center">
+            <div className="bg-white rounded-full p-4 shadow-lg mb-4">
+                <svg className="w-8 h-8 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                </svg>
+            </div>
+            <div className="text-center px-4">
+                <div className="text-lg font-semibold text-gray-800 mb-2">
+                    {feature} Locked
+                </div>
+                <p className="text-gray-600 mb-4 text-sm max-w-md">
+                    Your {feature.toLowerCase()} content is preserved, but requires a {requiredTier} subscription to edit or enable.
+                </p>
+                <button className="px-6 py-3 bg-amber-500 text-white font-bold rounded-lg hover:bg-amber-600 transition-colors">
+                    Upgrade to {requiredTier}
+                </button>
+            </div>
+        </div>
+        {/* Greyed out content behind */}
+        <div className="opacity-40 pointer-events-none">
+            {children}
+        </div>
+    </div>
+);
+
 // Cache status debug panel for development
 const CacheDebugPanel = ({ cacheInfo, appearance }) => {
     if (process.env.NODE_ENV !== 'development') return null;
@@ -123,12 +152,23 @@ function AppearanceContent() {
     const canUseVideoEmbed = permissions[APPEARANCE_FEATURES.CUSTOM_VIDEO_EMBED]; // 🆕 Video Embed permission (Pro & Premium)
 
     // 🔍 DEBUG: Log permission checks
-    console.log('🎨 [AppearancePage] Carousel Permission Debug:', {
-        featureKey: APPEARANCE_FEATURES.CUSTOM_CAROUSEL,
+    console.log('🎨 [AppearancePage] Permissions Debug:', {
+        carouselFeature: APPEARANCE_FEATURES.CUSTOM_CAROUSEL,
+        videoEmbedFeature: APPEARANCE_FEATURES.CUSTOM_VIDEO_EMBED,
         canUseCarousel,
+        canUseVideoEmbed,
         allPermissions: permissions,
         permissionKeys: Object.keys(permissions)
     });
+
+    // 🆕 Monitor permission changes in real-time
+    React.useEffect(() => {
+        console.log('🔄 [AppearancePage] Permissions updated:', {
+            canUseCarousel,
+            canUseVideoEmbed,
+            timestamp: new Date().toISOString()
+        });
+    }, [canUseCarousel, canUseVideoEmbed]);
 
     // Loading states
     if (!isInitialized) {
@@ -245,7 +285,15 @@ function AppearanceContent() {
                         {translations.newBadge}
                     </span>
                 </h2>
-                {canUseCarousel ? <CarouselManager /> : <UpgradePrompt feature="Content Carousel" requiredTier="Pro" />}
+                {canUseCarousel ? (
+                    <CarouselManager />
+                ) : appearance?.carouselItems?.length > 0 || appearance?.carouselEnabled ? (
+                    <LockedFeature feature="Content Carousel" requiredTier="Pro">
+                        <CarouselManager />
+                    </LockedFeature>
+                ) : (
+                    <UpgradePrompt feature="Content Carousel" requiredTier="Pro" />
+                )}
             </div>
 
             {/* 🆕 NEW VIDEO EMBED SECTION */}
@@ -256,7 +304,15 @@ function AppearanceContent() {
                         {translations.newBadge}
                     </span>
                 </h2>
-                {canUseVideoEmbed ? <VideoEmbedManager /> : <UpgradePrompt feature="Video Embed" requiredTier="Pro" />}
+                {canUseVideoEmbed ? (
+                    <VideoEmbedManager />
+                ) : appearance?.videoEmbedItems?.length > 0 || appearance?.videoEmbedEnabled ? (
+                    <LockedFeature feature="Video Embed" requiredTier="Pro">
+                        <VideoEmbedManager />
+                    </LockedFeature>
+                ) : (
+                    <UpgradePrompt feature="Video Embed" requiredTier="Pro" />
+                )}
             </div>
 
             <div className="py-4">

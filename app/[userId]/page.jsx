@@ -1,13 +1,24 @@
 // app/[userId]/page.jsx (This is a Server Component)
 
 // ✅ SAFE IMPORTS
-import { fetchProfileByUsername } from "@/lib/server/fetchProfileData";
+import { fetchProfileByUsername,fetchAllUsernames } from "@/lib/server/fetchProfileData";
 import { ScanTokenService } from "@/lib/services/serviceContact/server/scanTokenService";
 import House from "./House";
 import Filter from "bad-words";
 import { Toaster } from "react-hot-toast";
 import { LanguageProvider } from "@/lib/translation/languageContext";
 import { notFound } from 'next/navigation';
+
+
+// ✅ ADD THIS FUNCTION
+export async function generateStaticParams() {
+    const usernames = await fetchAllUsernames();
+    
+    // Map the usernames to the format Next.js expects
+    return usernames.map((username) => ({
+        userId: username,
+    }));
+}
 
 export async function generateMetadata({ params: { userId } }) {
     const userData = await fetchProfileByUsername(userId);

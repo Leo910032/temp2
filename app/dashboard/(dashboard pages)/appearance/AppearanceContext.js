@@ -313,90 +313,97 @@ export function AppearanceProvider({ children }) {
         }
     }, [updateAppearance]);
 
-    // Initial data fetch and real-time listener setup
-    useEffect(() => {
-        if (!currentUser || !isInitialized || isSessionLoading) {
-            // Reset cache when user changes
-            if (!currentUser && !isSessionLoading) {
-                console.log(`👋 [${componentId.current}] User logged out, clearing state`);
-                setAppearance(null);
-                setIsLoading(false);
-                setIsFromCache(false);
-                setHasLoadError(false);
-                isInitialLoad.current = true;
-                cacheKeyRef.current = null;
-                lastSavedHashRef.current = null;
-            }
-            return;
-        }
+  // ... inside the AppearanceProvider component
 
-        // Initial fetch
-        const cacheKey = `appearance_${currentUser.uid}`;
-        cacheKeyRef.current = cacheKey;
+// Initial data fetch and real-time listener setup
+useEffect(() => {
+    // ✅ FIX: Copy the ref value to a local variable
+    const id = componentId.current;
 
-        console.log(`[AppearanceProvider] 🚀 Initializing for user: ${currentUser.uid}`);
-
-        // Check cache first for instant loading
-        const cachedEntry = appearanceCache.get(cacheKey);
-        const now = Date.now();
-
-        if (cachedEntry && (now - cachedEntry.timestamp < CACHE_DURATION)) {
-            console.log(`[AppearanceProvider] ⚡ Loading from cache (${Math.round((now - cachedEntry.timestamp) / 1000)}s old)`);
-            setAppearance(cachedEntry.data);
-            lastSavedHashRef.current = createAppearanceHash(cachedEntry.data);
-            setIsFromCache(true);
+    if (!currentUser || !isInitialized || isSessionLoading) {
+        // Reset cache when user changes
+        if (!currentUser && !isSessionLoading) {
+            console.log(`👋 [${id}] User logged out, clearing state`);
+            setAppearance(null);
             setIsLoading(false);
+            setIsFromCache(false);
             setHasLoadError(false);
-        } else {
-            // Fetch fresh data
-            console.log(`[AppearanceProvider] 🆕 No cache or cache expired, fetching fresh data`);
-            fetchAppearanceData(false);
+            isInitialLoad.current = true;
+            cacheKeyRef.current = null;
+            lastSavedHashRef.current = null;
         }
+        return;
+    }
 
-        // Set up real-time listener for appearance data changes
-        console.log(`📡 [${componentId.current}] Setting up real-time listener for appearance data`);
-        const unsubscribe = AppearanceService.listenToAppearanceData(
-            currentUser.uid,
-            (updatedAppearance) => {
-                console.log(`📡 [${componentId.current}] Received appearance update from listener`, updatedAppearance);
+    // Initial fetch
+    const cacheKey = `appearance_${currentUser.uid}`;
+    cacheKeyRef.current = cacheKey;
 
-                // Mark as listener update to prevent save loop
-                isListenerUpdate.current = true;
+    console.log(`[AppearanceProvider] 🚀 Initializing for user: ${currentUser.uid}`);
 
-                // Update state with fresh data
-                const enhancedData = {
-                    ...updatedAppearance,
-                    _meta: {
-                        fetchedAt: Date.now(),
-                        fromCache: false,
-                        cacheKey,
-                        fromListener: true
-                    }
-                };
+    // Check cache first for instant loading
+    const cachedEntry = appearanceCache.get(cacheKey);
+    const now = Date.now();
 
-                setAppearance(enhancedData);
-                lastSavedHashRef.current = createAppearanceHash(enhancedData);
+    if (cachedEntry && (now - cachedEntry.timestamp < CACHE_DURATION)) {
+        console.log(`[AppearanceProvider] ⚡ Loading from cache (${Math.round((now - cachedEntry.timestamp) / 1000)}s old)`);
+        setAppearance(cachedEntry.data);
+        lastSavedHashRef.current = createAppearanceHash(cachedEntry.data);
+        setIsFromCache(true);
+        setIsLoading(false);
+        setHasLoadError(false);
+    } else {
+        // Fetch fresh data
+        console.log(`[AppearanceProvider] 🆕 No cache or cache expired, fetching fresh data`);
+        fetchAppearanceData(false);
+    }
 
-                // Update cache
-                appearanceCache.set(cacheKey, {
-                    data: enhancedData,
-                    timestamp: Date.now()
-                });
+    // Set up real-time listener for appearance data changes
+    console.log(`📡 [${id}] Setting up real-time listener for appearance data`);
+    const unsubscribe = AppearanceService.listenToAppearanceData(
+        currentUser.uid,
+        (updatedAppearance) => {
+            console.log(`📡 [${id}] Received appearance update from listener`, updatedAppearance);
 
-                // Reset listener flag after a short delay
-                setTimeout(() => {
-                    isListenerUpdate.current = false;
-                }, 100);
-            }
-        );
+            // Mark as listener update to prevent save loop
+            isListenerUpdate.current = true;
 
-        // Cleanup listener on unmount
-        return () => {
-            console.log(`📡 [${componentId.current}] Cleaning up real-time listener`);
-            unsubscribe();
-        };
-    }, [currentUser, isInitialized, isSessionLoading, fetchAppearanceData, createAppearanceHash]);
+            // Update state with fresh data
+            const enhancedData = {
+                ...updatedAppearance,
+                _meta: {
+                    fetchedAt: Date.now(),
+                    fromCache: false,
+                    cacheKey,
+                    fromListener: true
+                }
+            };
 
+            setAppearance(enhancedData);
+            lastSavedHashRef.current = createAppearanceHash(enhancedData);
+
+            // Update cache
+            appearanceCache.set(cacheKey, {
+                data: enhancedData,
+                timestamp: Date.now()
+            });
+
+            // Reset listener flag after a short delay
+            setTimeout(() => {
+                isListenerUpdate.current = false;
+            }, 100);
+        }
+    );
+
+    // Cleanup listener on unmount
+    return () => {
+        // ✅ FIX: Use the local variable in the cleanup function
+        console.log(`📡 [${id}] Cleaning up real-time listener`);
+        unsubscribe();
+    };
+}, [currentUser, isInitialized, isSessionLoading, fetchAppearanceData, createAppearanceHash]);
+
+// ... rest of the component
     // Debounced auto-save effect
     useEffect(() => {
         if (debouncedAppearance === null) return;

@@ -130,7 +130,7 @@ export default function ManageLinks() {
             console.error("Error creating CV item:", error);
             toast.error("CV link added but failed to create document slot");
         }
-    }, [data]);
+}, []); // <-- Dependency array is now empty
 
     // ✅ ENHANCED API CALLS with caching and sync
    

@@ -16,7 +16,7 @@ export default function CVManager() {
 
     // Derive CV state from appearance
     const cvEnabled = appearance?.cvEnabled || false;
-    const cvItems = appearance?.cvItems || [];
+const cvItems = useMemo(() => appearance?.cvItems || [], [appearance]);
 
     // Migration: Create missing links for existing CV items (runs once on mount)
     const [hasMigrated, setHasMigrated] = React.useState(false);

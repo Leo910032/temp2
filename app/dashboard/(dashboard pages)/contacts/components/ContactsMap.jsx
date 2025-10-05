@@ -102,8 +102,7 @@ export default function ContacctsMap({
                 color: getGroupColor(group.id)
             }))
             .sort((a, b) => b.contactCount - a.contactCount);
-    }, [filteredGroups]);
-    
+}, [filteredGroups, getGroupColor]);    
     // Contact count statistics
     const contactCounts = useMemo(() => ({
         total: contacts.length,
@@ -252,7 +251,7 @@ export default function ContacctsMap({
             setIsMapReady(false);
             console.log('🧹 Cleaned up map resources');
         };
-    }, [isOpen, selectedContactId, contactsWithLocation]);
+    }, [isOpen, selectedContactId, contactsWithLocation,isMapReady]);
 
     // Initialize and update GroupClusterManager
     useEffect(() => {

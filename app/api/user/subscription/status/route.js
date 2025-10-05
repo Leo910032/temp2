@@ -5,6 +5,8 @@
 import { NextResponse } from 'next/server';
 import { createApiSession } from '@/lib/server/session';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   try {
     // The unified session object contains everything we need

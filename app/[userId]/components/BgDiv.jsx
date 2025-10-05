@@ -134,24 +134,24 @@ export default function BgDiv() {
         }
 
         // ✅ NEW: Handle Image background
-        if (backgroundType === 'Image') {
-            const imageUrl = backgroundImage || backgroundColor; // backgroundColor might contain the URL
-            console.log('🎨 BgDiv: Rendering image background:', imageUrl?.substring(0, 50));
-            
-            return (
-                <BgContext.Provider value={contextValue}>
-                    <div className="fixed inset-0 w-full h-full -z-10">
-                        {imageUrl && (
-                            <img 
-                                src={imageUrl}
-                                alt="Background"
-                                className="w-full h-full object-cover"
-                            />
-                        )}
-                    </div>
-                </BgContext.Provider>
-            );
-        }
+       if (backgroundType === 'Image') {
+    // ...
+    return (
+        <BgContext.Provider value={contextValue}>
+            <div className="fixed inset-0 w-full h-full -z-10">
+                {imageUrl && (
+                    <Image 
+                        src={imageUrl}
+                        alt="Background"
+                        fill
+                        priority
+                        className="object-cover"
+                    />
+                )}
+            </div>
+        </BgContext.Provider>
+    );
+}
 
         // ✅ NEW: Handle Video background
         if (backgroundType === 'Video') {

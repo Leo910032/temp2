@@ -57,95 +57,73 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
         const settings = userData?.settings || {};
         setShowSensitiveWarning(settings.sensitiveStatus || false);
     }, [userData?.settings?.sensitiveStatus, userData?.settings]);
-// In app/[userId]/House.jsx
-
-// ... right after the hasBanner useEffect block ...
-
-useEffect(() => {
-    // ✅ FIX: Only set up the listener if we are in PREVIEW MODE.
-    if (!isPreviewMode || !userData?.uid) {
-        // If not in preview, do nothing. The page will be updated by revalidation.
-        return;
-    }
-
-    console.log('🔄 Setting up REAL-TIME PREVIEW listener for user:', userData.uid);
-    
-    const docRef = doc(fireApp, "users", userData.uid);
-    const unsubscribe = onSnapshot(docRef, 
-        (docSnap) => {
-            if (docSnap.exists()) {
-                const latestData = docSnap.data();
-                const profile = latestData.profile || {};
-                const appearance = latestData.appearance || {};
-                const settings = latestData.settings || {};
-
-                // IMPORTANT: We must include accountType here for the permissions to update live!
-                const flattenedData = {
-                    uid: userData.uid,
-                    username: latestData.username,
-                    email: latestData.email,
-                    accountType: latestData.accountType || 'base', // ✅ ADDED THIS LINE
-                    displayName: profile.displayName || '',
-                    bio: profile.bio || '',
-                    avatarUrl: profile.avatarUrl || '',
-                    links: latestData.links || [],
-                    socials: latestData.socials || [],
-                    selectedTheme: appearance.selectedTheme || 'Lake White',
-                    themeFontColor: appearance.themeFontColor || '#000000',
-                    fontType: appearance.fontType || 0,
-                    backgroundColor: appearance.backgroundColor || '#FFFFFF',
-                    backgroundType: appearance.backgroundType || 'Color',
-                    gradientDirection: appearance.gradientDirection || 0,
-                    gradientColorStart: appearance.gradientColorStart || '#FFFFFF',
-                    gradientColorEnd: appearance.gradientColorEnd || '#000000',
-                    bannerType: appearance.bannerType || 'None',
-                    bannerColor: appearance.bannerColor || '#3B82F6',
-                    bannerGradientStart: appearance.bannerGradientStart || '#667eea',
-                    bannerGradientEnd: appearance.bannerGradientEnd || '#764ba2',
-                    bannerGradientDirection: appearance.bannerGradientDirection || 'to right',
-                    bannerImage: appearance.bannerImage || null,
-                    bannerVideo: appearance.bannerVideo || null,
-                    carouselEnabled: appearance.carouselEnabled || false,
-                    carouselItems: appearance.carouselItems || [],
-                    carouselStyle: appearance.carouselStyle || 'modern',
-                    cvEnabled: appearance.cvEnabled || false,
-                    cvItems: appearance.cvItems || [],
-                    cvDocument: appearance.cvDocument || null,
-                    videoEmbedEnabled: appearance.videoEmbedEnabled || false,
-                    videoEmbedItems: appearance.videoEmbedItems || [],
-                    btnColor: appearance.btnColor || '#000000',
-                    btnFontColor: appearance.btnFontColor || '#FFFFFF',
-                    btnShadowColor: appearance.btnShadowColor || '#dcdbdb',
-                    btnType: appearance.btnType || 0,
-                    christmasAccessory: appearance.christmasAccessory || null,
-                    isPublic: settings.isPublic !== false,
-                    sensitiveStatus: settings.sensitiveStatus || false,
-                    sensitivetype: settings.sensitivetype || 0,
-                    supportBanner: settings.supportBanner || '',
-                    supportBannerStatus: settings.supportBannerStatus || false,
-                    socialPosition: settings.socialPosition || 0,
-                };
-                
-                console.log('🎨 House (Preview): Live update received.', flattenedData);
-                
-                setUserData(flattenedData);
-            } else {
-                console.warn('❌ User document not found in real-time update');
-            }
-        },
-        (error) => {
-            // NOTE: This will still fail for public users due to security rules,
-            // but that's okay because the listener won't be active for them.
-            console.error('❌ Real-time listener error:', error);
+  // ✅ THIS IS THE FIX: A CONDITIONAL REAL-TIME LISTENER
+    useEffect(() => {
+        // Only set up the listener if we are in PREVIEW MODE.
+        if (!isPreviewMode || !userData?.uid) {
+            // For public visitors, do nothing. Updates are handled by revalidation on the next page load.
+            return;
         }
-    );
 
-    return () => {
-        console.log('🧹 Cleaning up real-time listener');
-        unsubscribe();
-    };
-// ✅ FIX: The listener should only depend on the preview mode status and user ID.
-}, [isPreviewMode, userData?.uid]);
+        console.log('🔄 Setting up REAL-TIME PREVIEW listener for user:', userData.uid);
+        
+        const docRef = doc(fireApp, "users", userData.uid);
+        const unsubscribe = onSnapshot(docRef, 
+            (docSnap) => {
+                if (docSnap.exists()) {
+                    const latestData = docSnap.data();
+                    const profile = latestData.profile || {};
+                    const appearance = latestData.appearance || {};
+                    const settings = latestData.settings || {};
+
+                    // This flattened structure should match what fetchProfileByUsername creates
+                    const flattenedData = {
+                        uid: userData.uid,
+                        username: latestData.username,
+                        email: latestData.email,
+                        accountType: latestData.accountType || 'base', // Make sure this is included
+                        subscriptionLevel: latestData.accountType || 'base', // Add this for consistency with your MyLinks component
+                        displayName: profile.displayName || '',
+                        bio: profile.bio || '',
+                        avatarUrl: profile.avatarUrl || '',
+                        links: latestData.links || [],
+                        socials: latestData.socials || [],
+                        // ... copy ALL other fields from your fetchProfileByUsername function here
+                        selectedTheme: appearance.selectedTheme || 'Lake White',
+                        themeFontColor: appearance.themeFontColor || '#000000',
+                        fontType: appearance.fontType || 0,
+                        backgroundColor: appearance.backgroundColor || '#FFFFFF',
+                        backgroundType: appearance.backgroundType || 'Color',
+                        btnColor: appearance.btnColor || '#000000',
+                        btnFontColor: appearance.btnFontColor || '#FFFFFF',
+                        btnShadowColor: appearance.btnShadowColor || '#dcdbdb',
+                        btnType: appearance.btnType || 0,
+                        carouselEnabled: appearance.carouselEnabled || false,
+                        carouselItems: appearance.carouselItems || [],
+                        videoEmbedEnabled: appearance.videoEmbedEnabled || false,
+                        videoEmbedItems: appearance.videoEmbedItems || [],
+                        isPublic: settings.isPublic !== false,
+                    };
+                    
+                    console.log('🎨 House (Preview): Live update received.', flattenedData);
+                    
+                    setUserData(flattenedData);
+                } else {
+                    console.warn('❌ User document not found in real-time update');
+                }
+            },
+            (error) => {
+                // This error is expected for anyone not logged in, but since this
+                // only runs in preview mode (where the user IS logged in), it indicates a real problem.
+                console.error('❌ Real-time listener error (in preview mode):', error);
+            }
+        );
+
+        return () => {
+            console.log('🧹 Cleaning up real-time preview listener');
+            unsubscribe();
+        };
+    }, [isPreviewMode, userData?.uid]);
     useEffect(() => {
         if (viewTracked) return;
         if (isPreviewMode) {

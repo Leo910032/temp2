@@ -7,6 +7,7 @@ import { filterProperly } from "@/lib/utilities";
 import CVButton from '../elements/CVButton';
 import ProfileCarousel from './ProfileCarousel';
 import VideoEmbed from './VideoEmbed';
+import { hasAppearanceFeature, APPEARANCE_FEATURES } from "@/lib/services/constants";
 
 export default function MyLinks() {
     const { userData } = useContext(HouseContext);
@@ -25,8 +26,13 @@ export default function MyLinks() {
         cvItems = [],
         cvDocument = null,
         videoEmbedEnabled = false,
-        videoEmbedItems = []
+        videoEmbedItems = [],
+        subscriptionLevel = 'base'
     } = userData;
+
+    // Check if user has permission for carousel and video embed features
+    const canUseCarousel = hasAppearanceFeature(subscriptionLevel, APPEARANCE_FEATURES.CUSTOM_CAROUSEL);
+    const canUseVideoEmbed = hasAppearanceFeature(subscriptionLevel, APPEARANCE_FEATURES.CUSTOM_VIDEO_EMBED);
 
     // ✅ IMPROVED: Better memoization of filtered links
     const displayLinks = useMemo(() => {
@@ -75,8 +81,8 @@ export default function MyLinks() {
                         </span>
                     );
                 } else if (link.type === 2) { // Carousel type
-                    // Only render carousel if it's enabled and has items
-                    if (carouselEnabled && carouselItems && carouselItems.length > 0) {
+                    // Only render carousel if user has permission, it's enabled and has items
+                    if (canUseCarousel && carouselEnabled && carouselItems && carouselItems.length > 0) {
                         return (
                             <div key={`carousel-${link.id}`} className="w-full max-w-2xl">
                                 <ProfileCarousel
@@ -86,7 +92,7 @@ export default function MyLinks() {
                             </div>
                         );
                     }
-                    // If carousel not configured, don't render anything
+                    // If carousel not configured or no permission, don't render anything
                     return null;
                 } else if (link.type === 3) { // CV type
                     // Find the specific CV item this link refers to
@@ -105,15 +111,15 @@ export default function MyLinks() {
                     // If CV not configured or document not uploaded, don't render anything
                     return null;
                 } else if (link.type === 4) { // Video Embed type
-                    // Only render video embed if it's enabled and has items
-                    if (videoEmbedEnabled && videoEmbedItems && videoEmbedItems.length > 0) {
+                    // Only render video embed if user has permission, it's enabled and has items
+                    if (canUseVideoEmbed && videoEmbedEnabled && videoEmbedItems && videoEmbedItems.length > 0) {
                         return (
                             <div key={`video-embed-${link.id}`} className="w-full">
                                 <VideoEmbed items={videoEmbedItems} />
                             </div>
                         );
                     }
-                    // If video embed not configured, don't render anything
+                    // If video embed not configured or no permission, don't render anything
                     return null;
                 } else { // Button type
                     return (

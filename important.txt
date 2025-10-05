@@ -1,0 +1,7 @@
+firebase functions:config:set app.webhook_secret="AIAIzaSyD8JAo4QQTrAIzaSyD8JAo4QQTrdqxgYYlcK7dWn0SRI_qbdqxgYYAIzaSyD8JAo4QQTrdqxgYYlcK7dWn0SRI_qblcK7dWn0SRI_qbzaSyD8JAo4QQTrdqxgYYlcK7dWn0SRI_qb"
+
+
+
+firebase functions:config:set app.base_url="https://tapit-fr-dev.vercel.app"
+
+

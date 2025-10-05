@@ -1,7 +1,13 @@
 // In functions/subscriptionChangeHandler.js
 
-const functions = require("firebase-functions");
 const fetch = require("node-fetch");
+// ✅ CHANGE: Import tools for handling environment variables in v2
+const {defineString} = require("firebase-functions/params");
+
+// ✅ CHANGE: Define the environment variables your function needs
+const WEBHOOK_SECRET = defineString("APP_WEBHOOK_SECRET");
+const BASE_URL = defineString("APP_BASE_URL");
+
 
 /**
  * Calls the Vercel webhook to trigger revalidation.
@@ -15,13 +21,13 @@ async function handleSubscriptionChange(data) {
     return;
   }
 
-  // Get secrets from Firebase Functions config
-  const secret = functions.config().app.webhook_secret;
-  const baseUrl = functions.config().app.base_url;
+  // ✅ CHANGE: Access the variables using .value()
+  const secret = WEBHOOK_SECRET.value();
+  const baseUrl = BASE_URL.value();
 
   if (!secret || !baseUrl) {
     console.error(
-        "Missing webhook_secret or base_url in Firebase Functions config.",
+        "Missing APP_WEBHOOK_SECRET or APP_BASE_URL in environment config.",
     );
     return;
   }
@@ -59,7 +65,6 @@ async function handleSubscriptionChange(data) {
  * @return {boolean} - True if the change is significant.
  */
 function affectsAppearanceFeatures(oldLevel, newLevel) {
-  // For now, we'll just say any change is significant.
   return oldLevel !== newLevel;
 }
 

@@ -72,9 +72,12 @@ export default function NavBar() {
         setUsername(newUsername);
         setDisplayName(newDisplayName);
 
-        // Create myLink with the correct domain
-        const newMyLink = newUsername ? `http://localhost:3001/${newUsername}` : "";
-        setMyLink(newMyLink);
+     
+    // ✅ CHANGE: Use the environment variable with a fallback
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
+    const newMyLink = newUsername ? `${baseUrl}/${newUsername}` : "";
+    setMyLink(newMyLink);
+
 
         // Set profile picture with key for proper React reconciliation
         if (avatarUrl) {
@@ -151,8 +154,10 @@ export default function NavBar() {
             
             setUsername(fallbackUsername);
             setDisplayName(fallbackDisplayName);
-            setMyLink(fallbackUsername ? `http://localhost:3001/${fallbackUsername}` : "");
-            
+ // ✅ CHANGE: Use the environment variable here as well
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
+    setMyLink(fallbackUsername ? `${baseUrl}/${fallbackUsername}` : "");
+                
             setProfilePicture(
                 <div className="h-[95%] aspect-square w-[95%] rounded-full bg-gray-300 border grid place-items-center">
                     <span className="text-3xl font-semibold uppercase">

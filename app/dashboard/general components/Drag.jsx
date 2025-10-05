@@ -26,6 +26,7 @@ import Normal from '../general elements/draggables/Normal';
 import Special from '../general elements/draggables/Special';
 import CarouselItem from '../general elements/draggables/CarouselItem';
 import CVItem from '../general elements/draggables/CVItem';
+import VideoEmbedItem from '../general elements/draggables/VideoEmbedItem';
 
 const DraggableList = ({ array }) => {
     const { setData } = useContext(ManageLinksContent);
@@ -88,6 +89,8 @@ const DraggableList = ({ array }) => {
             return <CarouselItem item={activeItem} isOverlay={true} />;
         } else if (activeItem.type === 3) {
             return <CVItem item={activeItem} isOverlay={true} />;
+        } else if (activeItem.type === 4) {
+            return <VideoEmbedItem item={activeItem} isOverlay={true} />;
         } else {
             return <Special item={activeItem} isOverlay={true} />;
         }
@@ -116,6 +119,8 @@ const DraggableList = ({ array }) => {
                                 <CarouselItem item={item} />
                             ) : item.type === 3 ? (
                                 <CVItem item={item} />
+                            ) : item.type === 4 ? (
+                                <VideoEmbedItem item={item} />
                             ) : (
                                 <Special item={item} />
                             )}

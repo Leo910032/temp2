@@ -102,6 +102,8 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
                         cvEnabled: appearance.cvEnabled || false,
                         cvItems: appearance.cvItems || [],
                         cvDocument: appearance.cvDocument || null,
+                        videoEmbedEnabled: appearance.videoEmbedEnabled || false,
+                        videoEmbedItems: appearance.videoEmbedItems || [],
                         btnColor: appearance.btnColor || '#000000',
                         btnFontColor: appearance.btnFontColor || '#FFFFFF',
                         btnShadowColor: appearance.btnShadowColor || '#dcdbdb',

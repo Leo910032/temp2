@@ -42,6 +42,7 @@ export default function ManageLinks() {
             addHeader: t('dashboard.links.add_header'),
             addCarousel: t('dashboard.links.add_carousel') || "Add Carousel",
             addCV: t('dashboard.links.add_cv') || "Add CV / Document",
+            addVideoEmbed: t('dashboard.links.add_video_embed') || "Add Video Embed",
             emptyStateTitle: t('dashboard.links.empty_state.title'),
             emptyStateSubtitle: t('dashboard.links.empty_state.subtitle'),
             linksSaved: t('dashboard.links.saved_success') || "Links saved!",
@@ -131,6 +132,23 @@ export default function ManageLinks() {
             toast.error("CV link added but failed to create document slot");
         }
 }, []); // <-- Dependency array is now empty
+
+    const addVideoEmbedItem = useCallback(() => {
+        // Check if video embed already exists in the list
+        const videoEmbedExists = data.some(item => item.type === 4);
+        if (videoEmbedExists) {
+            toast.error("You can only have one video embed in your links");
+            return;
+        }
+
+        const newVideoEmbed = {
+            id: generateRandomId(),
+            title: "Video Embed",
+            isActive: true,
+            type: 4
+        };
+        setData(prevData => [newVideoEmbed, ...prevData]);
+    }, [data]);
 
     // ✅ ENHANCED API CALLS with caching and sync
    
@@ -279,6 +297,13 @@ useEffect(() => {
                         <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
                     </svg>
                     <span className="text-indigo-700 font-medium">{translations.addCV}</span>
+                </div>
+
+                <div className="flex items-center gap-3 justify-center rounded-3xl cursor-pointer active:scale-95 hover:scale-[1.005] border border-red-300 bg-red-50 hover:bg-red-100 w-fit text-sm p-3" onClick={addVideoEmbedItem}>
+                    <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
+                    </svg>
+                    <span className="text-red-700 font-medium">{translations.addVideoEmbed}</span>
                 </div>
                 
                 {/* Improved saving indicator */}

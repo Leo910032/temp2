@@ -6,6 +6,7 @@ import Socials from "../elements/Socials";
 import { filterProperly } from "@/lib/utilities";
 import CVButton from '../elements/CVButton';
 import ProfileCarousel from './ProfileCarousel';
+import VideoEmbed from './VideoEmbed';
 
 export default function MyLinks() {
     const { userData } = useContext(HouseContext);
@@ -22,7 +23,9 @@ export default function MyLinks() {
         carouselStyle = 'modern',
         cvEnabled = false,
         cvItems = [],
-        cvDocument = null
+        cvDocument = null,
+        videoEmbedEnabled = false,
+        videoEmbedItems = []
     } = userData;
 
     // ✅ IMPROVED: Better memoization of filtered links
@@ -100,6 +103,17 @@ export default function MyLinks() {
                         );
                     }
                     // If CV not configured or document not uploaded, don't render anything
+                    return null;
+                } else if (link.type === 4) { // Video Embed type
+                    // Only render video embed if it's enabled and has items
+                    if (videoEmbedEnabled && videoEmbedItems && videoEmbedItems.length > 0) {
+                        return (
+                            <div key={`video-embed-${link.id}`} className="w-full">
+                                <VideoEmbed items={videoEmbedItems} />
+                            </div>
+                        );
+                    }
+                    // If video embed not configured, don't render anything
                     return null;
                 } else { // Button type
                     return (

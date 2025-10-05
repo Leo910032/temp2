@@ -12,6 +12,7 @@ import ProfileCard from './components/ProfileCard';
 import Themes from './components/Themes';
 import Banners from './components/Banners'; // 🆕 New Banner component
 import CarouselManager from './components/CarouselManager'; // 🆕 New Carousel component
+import VideoEmbedManager from './components/VideoEmbedManager'; // 🆕 New Video Embed component
 import Backgrounds from './components/Backgrounds';
 import Buttons from './components/Buttons';
 import FontsOptions from './components/FontsOptions';
@@ -104,6 +105,7 @@ function AppearanceContent() {
             customAppearanceDesc: t('dashboard.appearance.custom_appearance_description') || 'Customize your contact card with these advanced options.',
             banners: t('dashboard.appearance.headings.banners') || 'Banner', // 🆕 New banner heading
             carousel: t('dashboard.appearance.headings.carousel') || 'Content Carousel', // 🆕 New carousel heading
+            videoEmbed: t('dashboard.appearance.headings.video_embed') || 'Video Embed', // 🆕 New video embed heading
             backgrounds: t('dashboard.appearance.headings.backgrounds') || 'Backgrounds',
             christmas: t('dashboard.appearance.headings.christmas') || 'Christmas Accessories',
             buttons: t('dashboard.appearance.headings.buttons') || 'Buttons',
@@ -118,6 +120,7 @@ function AppearanceContent() {
     const canUseCustomBackground = permissions[APPEARANCE_FEATURES.CUSTOM_BACKGROUND];
     const canUseCustomBanner = permissions[APPEARANCE_FEATURES.CUSTOM_BACKGROUND]; // 🆕 Reuse background permission for banners
     const canUseCarousel = permissions[APPEARANCE_FEATURES.CUSTOM_CAROUSEL]; // 🆕 Carousel permission (Pro & Premium)
+    const canUseVideoEmbed = permissions[APPEARANCE_FEATURES.CUSTOM_VIDEO_EMBED]; // 🆕 Video Embed permission (Pro & Premium)
 
     // 🔍 DEBUG: Log permission checks
     console.log('🎨 [AppearancePage] Carousel Permission Debug:', {
@@ -243,6 +246,17 @@ function AppearanceContent() {
                     </span>
                 </h2>
                 {canUseCarousel ? <CarouselManager /> : <UpgradePrompt feature="Content Carousel" requiredTier="Pro" />}
+            </div>
+
+            {/* 🆕 NEW VIDEO EMBED SECTION */}
+            <div id="video-embed" className="py-4 scroll-mt-20">
+                <h2 className="text-lg font-semibold my-4">
+                    {translations.videoEmbed}
+                    <span className="py-1 px-3 rounded bg-red-500 text-white font-medium text-sm ml-2">
+                        {translations.newBadge}
+                    </span>
+                </h2>
+                {canUseVideoEmbed ? <VideoEmbedManager /> : <UpgradePrompt feature="Video Embed" requiredTier="Pro" />}
             </div>
 
             <div className="py-4">

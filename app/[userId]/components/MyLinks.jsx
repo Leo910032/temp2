@@ -111,11 +111,16 @@ export default function MyLinks() {
                     // If CV not configured or document not uploaded, don't render anything
                     return null;
                 } else if (link.type === 4) { // Video Embed type
-                    // Only render video embed if user has permission, it's enabled and has items
-                    if (canUseVideoEmbed && videoEmbedEnabled && videoEmbedItems && videoEmbedItems.length > 0) {
+                    // Find the specific video item linked to this link
+                    const linkedVideoItem = videoEmbedItems?.find(
+                        item => item.id === link.videoEmbedItemId
+                    );
+
+                    // Only render if user has permission, video embed is enabled, and the linked video exists with a URL
+                    if (canUseVideoEmbed && videoEmbedEnabled && linkedVideoItem && linkedVideoItem.url) {
                         return (
                             <div key={`video-embed-${link.id}`} className="w-full">
-                                <VideoEmbed items={videoEmbedItems} />
+                                <VideoEmbed items={[linkedVideoItem]} />
                             </div>
                         );
                     }

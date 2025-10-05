@@ -17,7 +17,7 @@ import DraggableList from "./Drag";
 import { useDashboard } from '@/app/dashboard/DashboardContext.js';
 import { LinksService } from '@/lib/services/serviceLinks/client/LinksService.js';
 import { AppearanceService } from '@/lib/services/serviceAppearance/client/appearanceService.js';
-import { APPEARANCE_FEATURES } from '@/lib/services/constants';
+import { APPEARANCE_FEATURES, getMaxVideoEmbedItems, getMaxCarouselItems } from '@/lib/services/constants';
 
 export const ManageLinksContent = createContext(null);
 
@@ -74,7 +74,7 @@ export default function ManageLinks() {
         setData(prevData => [newHeader, ...prevData]);
     }, []);
 
-    const addCarouselItem = useCallback(() => {
+    const addCarouselItem = useCallback(async () => {
         // Check subscription permission
         const canUseCarousel = permissions[APPEARANCE_FEATURES.CUSTOM_CAROUSEL];
 
@@ -92,20 +92,67 @@ export default function ManageLinks() {
             return;
         }
 
-        // Check if carousel already exists in the list
-        const carouselExists = data.some(item => item.type === 2);
-        if (carouselExists) {
-            toast.error("You can only have one carousel in your links");
+        // Get max carousels for user's subscription level
+        const maxCarousels = getMaxCarouselItems(subscriptionLevel);
+
+        // Count existing carousel links
+        const existingCarousels = data.filter(item => item.type === 2);
+
+        if (existingCarousels.length >= maxCarousels) {
+            toast.error(`Maximum ${maxCarousels} carousel link${maxCarousels > 1 ? 's' : ''} reached for ${subscriptionLevel} plan`, {
+                duration: 4000,
+                style: {
+                    background: '#FEF3C7',
+                    color: '#92400E',
+                    fontWeight: 'bold',
+                }
+            });
             return;
         }
 
+        // Create a unique ID for the carousel item that will be created in appearance
+        const carouselItemId = `carousel_${Date.now()}`;
+
+        // Create the link item
         const newCarousel = {
             id: generateRandomId(),
             title: "Content Carousel",
             isActive: true,
-            type: 2
+            type: 2,
+            carouselItemId: carouselItemId // Link to the carousel item in appearance
         };
+
+        // Add to links
         setData(prevData => [newCarousel, ...prevData]);
+
+        // Also create the corresponding carousel item in appearance
+        try {
+            const appearance = await AppearanceService.getAppearanceData();
+            const carouselItems = appearance.carouselItems || [];
+
+            const newCarouselItem = {
+                id: carouselItemId,
+                image: '',
+                title: 'New Item',
+                description: 'Click to edit this carousel item',
+                category: '',
+                link: '',
+                author: '',
+                readTime: '',
+                videoUrl: '',
+                order: carouselItems.length
+            };
+
+            await AppearanceService.updateAppearanceData({
+                carouselItems: [...carouselItems, newCarouselItem],
+                carouselEnabled: true // Auto-enable when adding first carousel
+            });
+
+            toast.success("Carousel link added - go to Appearance to configure carousel");
+        } catch (error) {
+            console.error("Error creating carousel item:", error);
+            toast.error("Carousel link added but failed to create carousel item slot");
+        }
     }, [data, permissions, subscriptionLevel]);
 
     const addCVItem = useCallback(async () => {
@@ -151,7 +198,7 @@ export default function ManageLinks() {
         }
 }, []); // <-- Dependency array is now empty
 
-    const addVideoEmbedItem = useCallback(() => {
+    const addVideoEmbedItem = useCallback(async () => {
         // Check subscription permission
         const canUseVideoEmbed = permissions[APPEARANCE_FEATURES.CUSTOM_VIDEO_EMBED];
 
@@ -169,20 +216,63 @@ export default function ManageLinks() {
             return;
         }
 
-        // Check if video embed already exists in the list
-        const videoEmbedExists = data.some(item => item.type === 4);
-        if (videoEmbedExists) {
-            toast.error("You can only have one video embed in your links");
+        // Get max video embeds for user's subscription level
+        const maxVideoEmbeds = getMaxVideoEmbedItems(subscriptionLevel);
+
+        // Count existing video embed links
+        const existingVideoEmbeds = data.filter(item => item.type === 4);
+
+        if (existingVideoEmbeds.length >= maxVideoEmbeds) {
+            toast.error(`Maximum ${maxVideoEmbeds} video embed link${maxVideoEmbeds > 1 ? 's' : ''} reached for ${subscriptionLevel} plan`, {
+                duration: 4000,
+                style: {
+                    background: '#FEF3C7',
+                    color: '#92400E',
+                    fontWeight: 'bold',
+                }
+            });
             return;
         }
 
+        // Create a unique ID for the video embed item that will be created in appearance
+        const videoEmbedItemId = `video_embed_${Date.now()}`;
+
+        // Create the link item
         const newVideoEmbed = {
             id: generateRandomId(),
             title: "Video Embed",
             isActive: true,
-            type: 4
+            type: 4,
+            videoEmbedItemId: videoEmbedItemId // Link to the video embed item in appearance
         };
+
+        // Add to links
         setData(prevData => [newVideoEmbed, ...prevData]);
+
+        // Also create the corresponding video embed item in appearance
+        try {
+            const appearance = await AppearanceService.getAppearanceData();
+            const videoEmbedItems = appearance.videoEmbedItems || [];
+
+            const newVideoItem = {
+                id: videoEmbedItemId,
+                title: 'New Video',
+                url: '',
+                platform: 'youtube',
+                description: '',
+                order: videoEmbedItems.length
+            };
+
+            await AppearanceService.updateAppearanceData({
+                videoEmbedItems: [...videoEmbedItems, newVideoItem],
+                videoEmbedEnabled: true // Auto-enable when adding first video
+            });
+
+            toast.success("Video embed link added - go to Appearance to configure video");
+        } catch (error) {
+            console.error("Error creating video embed item:", error);
+            toast.error("Video link added but failed to create video item slot");
+        }
     }, [data, permissions, subscriptionLevel]);
 
     // ✅ ENHANCED API CALLS with caching and sync

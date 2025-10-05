@@ -1,13 +1,66 @@
 // app/dashboard/(dashboard pages)/appearance/elements/VideoEmbedCard.jsx
 "use client"
 
-import React, { useState } from "react";
-import { FaTrash, FaEdit, FaSave, FaTimes, FaGripVertical } from "react-icons/fa";
+import React, { useState, useEffect } from "react";
+import { FaTrash, FaEdit, FaSave, FaTimes, FaGripVertical, FaExternalLinkAlt } from "react-icons/fa";
 import { toast } from "react-hot-toast";
+import { useRouter } from 'next/navigation';
+import { LinksService } from '@/lib/services/serviceLinks/client/LinksService.js';
 
 export default function VideoEmbedCard({ item, onUpdate, onDelete, disabled }) {
     const [isEditing, setIsEditing] = useState(false);
     const [localData, setLocalData] = useState(item);
+    const [linkedLinkItem, setLinkedLinkItem] = useState(null);
+    const [isHighlighted, setIsHighlighted] = useState(false);
+    const router = useRouter();
+
+    // Find the link item that's linked to this video embed
+    useEffect(() => {
+        const findLinkedItem = async () => {
+            try {
+                const links = await LinksService.getLinks();
+                const linkedItem = links.links?.find(link =>
+                    link.type === 4 && link.videoEmbedItemId === item.id
+                );
+                setLinkedLinkItem(linkedItem);
+            } catch (error) {
+                console.error('Error finding linked item:', error);
+            }
+        };
+
+        findLinkedItem();
+
+        // Subscribe to links changes to keep it updated
+        const unsubscribe = LinksService.subscribe((updatedLinks) => {
+            const linkedItem = updatedLinks.find(link =>
+                link.type === 4 && link.videoEmbedItemId === item.id
+            );
+            setLinkedLinkItem(linkedItem);
+        });
+
+        return () => unsubscribe();
+    }, [item.id]);
+
+    // Check for highlight parameter in URL hash
+    useEffect(() => {
+        const hash = window.location.hash;
+        if (hash === `#video-item-${item.id}`) {
+            setIsHighlighted(true);
+            // Remove highlight after 3 seconds
+            setTimeout(() => {
+                setIsHighlighted(false);
+                // Clear the hash
+                window.history.replaceState(null, '', window.location.pathname);
+            }, 3000);
+        }
+    }, [item.id]);
+
+    // Sync localData with item prop when item changes (but only when not editing to avoid conflicts)
+    useEffect(() => {
+        if (!isEditing) {
+            setLocalData(item);
+        }
+    }, [item, isEditing]);
 
     // Handle field changes
     const handleChange = (field, value) => {
@@ -95,10 +148,36 @@ export default function VideoEmbedCard({ item, onUpdate, onDelete, disabled }) {
         }
     };
 
+    // Navigate to linked item in links page
+    const handleGoToLinkedItem = () => {
+        if (linkedLinkItem) {
+            router.push(`/dashboard#video-link-${linkedLinkItem.id}`);
+
+            // After navigation, scroll to the highlighted item with retry mechanism
+            const scrollToTarget = (attempts = 0) => {
+                if (attempts > 10) return; // Give up after 10 attempts
+
+                const targetElement = document.getElementById(`video-link-${linkedLinkItem.id}`);
+                if (targetElement) {
+                    targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                    // Element not found, try again after a short delay
+                    setTimeout(() => scrollToTarget(attempts + 1), 200);
+                }
+            };
+
+            setTimeout(() => scrollToTarget(), 500);
+        }
+    };
+
     const embedUrl = getEmbedUrl();
 
     return (
-        <div className="border-2 border-gray-200 rounded-lg p-4 bg-white hover:border-gray-300 transition-colors">
+        <div className={`border-2 rounded-lg p-4 bg-white transition-all duration-300 ${
+            isHighlighted
+                ? 'border-amber-400 ring-4 ring-amber-400 shadow-xl scale-[1.02]'
+                : 'border-gray-200 hover:border-gray-300'
+        }`}>
             {/* Header with drag handle and actions */}
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -106,9 +185,30 @@ export default function VideoEmbedCard({ item, onUpdate, onDelete, disabled }) {
                     <h5 className="font-semibold text-gray-800">
                         {isEditing ? 'Editing Video Embed' : localData.title || 'Video Embed'}
                     </h5>
+                    {/* Show link indicator if linked to a link item */}
+                    {linkedLinkItem && (
+                        <span className='text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-semibold border border-green-300 flex items-center gap-1'>
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clipRule="evenodd" />
+                            </svg>
+                            Linked to Links Page
+                        </span>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-2">
+                    {/* Button to go to linked item */}
+                    {linkedLinkItem && !isEditing && (
+                        <button
+                            onClick={handleGoToLinkedItem}
+                            disabled={disabled}
+                            className="px-3 py-2 bg-purple-100 text-purple-600 rounded hover:bg-purple-200 transition-colors flex items-center gap-2 text-sm font-medium"
+                            title="Go to Links Page"
+                        >
+                            <FaExternalLinkAlt className="text-xs" />
+                            Go to Link
+                        </button>
+                    )}
                     {!isEditing ? (
                         <>
                             <button

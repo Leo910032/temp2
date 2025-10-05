@@ -22,6 +22,8 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
     const [videoEmbedEnabled, setVideoEmbedEnabled] = useState(false);
     const [isLoadingToggle, setIsLoadingToggle] = useState(true);
     const [userToggledVideoEmbed, setUserToggledVideoEmbed] = useState(false);
+    const [linkedVideoName, setLinkedVideoName] = useState(null);
+    const [isHighlighted, setIsHighlighted] = useState(false);
     const router = useRouter();
     const debouncedVideoEmbedEnabled = useDebounce(videoEmbedEnabled, 500);
 
@@ -53,7 +55,7 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
         };
     }, [t, isInitialized]);
 
-    // Load video embed enabled state on mount and listen for real-time updates
+    // Load video embed enabled state and linked video name
     useEffect(() => {
         if (!currentUser?.uid) {
             setIsLoadingToggle(false);
@@ -65,6 +67,18 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
             try {
                 const appearance = await AppearanceService.getAppearanceData();
                 setVideoEmbedEnabled(appearance.videoEmbedEnabled || false);
+
+                // Find the linked video item by ID
+                if (item.videoEmbedItemId) {
+                    const videoEmbedItems = appearance.videoEmbedItems || [];
+                    const linkedVideo = videoEmbedItems.find(v => v.id === item.videoEmbedItemId);
+                    // Only show linked video name if video has been configured (has URL)
+                    if (linkedVideo && linkedVideo.title && linkedVideo.url?.trim()) {
+                        setLinkedVideoName(linkedVideo.title);
+                    } else {
+                        setLinkedVideoName(null);
+                    }
+                }
             } catch (error) {
                 console.error('Error loading video embed state:', error);
             } finally {
@@ -80,6 +94,18 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
             (appearance) => {
                 const newVideoEmbedEnabled = appearance.videoEmbedEnabled || false;
                 setVideoEmbedEnabled(newVideoEmbedEnabled);
+
+                // Update linked video name in real-time
+                if (item.videoEmbedItemId) {
+                    const videoEmbedItems = appearance.videoEmbedItems || [];
+                    const linkedVideo = videoEmbedItems.find(v => v.id === item.videoEmbedItemId);
+                    // Only show linked video name if video has been configured (has URL)
+                    if (linkedVideo && linkedVideo.title && linkedVideo.url?.trim()) {
+                        setLinkedVideoName(linkedVideo.title);
+                    } else {
+                        setLinkedVideoName(null);
+                    }
+                }
             }
         );
 
@@ -87,7 +113,21 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
         return () => {
             unsubscribe();
         };
-    }, [currentUser?.uid]);
+    }, [currentUser?.uid, item.videoEmbedItemId]);
+
+    // Check for highlight parameter in URL hash
+    useEffect(() => {
+        const hash = window.location.hash;
+        if (hash === `#video-link-${item.id}`) {
+            setIsHighlighted(true);
+            // Remove highlight after 3 seconds
+            setTimeout(() => {
+                setIsHighlighted(false);
+                // Clear the hash
+                window.history.replaceState(null, '', window.location.pathname);
+            }, 3000);
+        }
+    }, [item.id]);
 
     // Save video embed enabled state when toggled by user
     useEffect(() => {
@@ -144,24 +184,45 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
             return;
         }
 
-        // Navigate to appearance page with video-embed hash
-        router.push('/dashboard/appearance#video-embed');
+        // Navigate to appearance page with specific item hash or general video-embed section
+        const specificItemHash = item.videoEmbedItemId ? `#video-item-${item.videoEmbedItemId}` : '#video-embed';
+        router.push(`/dashboard/appearance${specificItemHash}`);
 
-        // After navigation, scroll to the video embed section
-        setTimeout(() => {
+        // After navigation, scroll to the video embed section or specific item
+        // Use a longer timeout and retry mechanism to ensure the page has loaded
+        const scrollToTarget = (attempts = 0) => {
+            if (attempts > 10) return; // Give up after 10 attempts
+
+            // Try to scroll to specific video item first
+            if (item.videoEmbedItemId) {
+                const specificElement = document.getElementById(`video-item-${item.videoEmbedItemId}`);
+                if (specificElement) {
+                    specificElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return;
+                }
+            }
+
+            // Fallback: scroll to the video-embed section
             const videoEmbedSection = document.getElementById('video-embed');
             if (videoEmbedSection) {
                 videoEmbedSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                // Element not found, try again after a short delay
+                setTimeout(() => scrollToTarget(attempts + 1), 200);
             }
-        }, 300);
+        };
+
+        setTimeout(() => scrollToTarget(), 500);
     };
 
-    // Grey out if user doesn't have permission
-    const containerClasses = `rounded-3xl border flex flex-col ${
+    // Grey out if user doesn't have permission, add highlight effect if highlighted
+    const containerClasses = `rounded-3xl border flex flex-col transition-all duration-300 ${
         !canUseVideoEmbed
             ? 'bg-gray-100 border-gray-300 opacity-60'
             : 'bg-gradient-to-r from-red-50 to-orange-50 border-red-300'
-    } ${isOverlay ? 'shadow-lg' : ''}`;
+    } ${isOverlay ? 'shadow-lg' : ''} ${
+        isHighlighted ? 'ring-4 ring-amber-400 shadow-xl scale-[1.02]' : ''
+    }`;
 
     // Loading state while translations load
     if (!isInitialized) {
@@ -173,6 +234,7 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
 
     return (
         <div
+            id={`video-link-${item.id}`}
             ref={itemRef}
             style={style}
             className={containerClasses}
@@ -201,12 +263,18 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
                             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
                             </svg>
-                            {translations.videoEmbedTitle}
+                            {linkedVideoName || translations.videoEmbedTitle}
                         </span>
                         {/* Show upgrade badge if no permission */}
                         {!canUseVideoEmbed && (
                             <span className='text-xs px-2 py-0.5 bg-amber-500 text-white rounded-full font-semibold'>
                                 Pro Required
+                            </span>
+                        )}
+                        {/* Show link indicator if video is linked */}
+                        {linkedVideoName && canUseVideoEmbed && (
+                            <span className='text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-semibold border border-green-300'>
+                                Linked
                             </span>
                         )}
                     </div>

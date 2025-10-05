@@ -9,6 +9,8 @@ import { AppearanceContext } from "../AppearanceContext";
 import VideoEmbedCard from "../elements/VideoEmbedCard";
 import { getMaxVideoEmbedItems } from "@/lib/services/constants";
 import { useDashboard } from "@/app/dashboard/DashboardContext";
+import { LinksService } from "@/lib/services/serviceLinks/client/LinksService";
+import { generateRandomId } from "@/lib/utilities";
 
 export default function VideoEmbedManager() {
     const { t, isInitialized } = useTranslation();
@@ -54,14 +56,16 @@ export default function VideoEmbedManager() {
     };
 
     // Add new video embed item
-    const handleAddItem = () => {
+    const handleAddItem = async () => {
         if (videoEmbedItems.length >= maxItems) {
             toast.error(`Maximum ${maxItems} video${maxItems > 1 ? 's' : ''} allowed for your plan`);
             return;
         }
 
+        const videoEmbedItemId = `video_embed_${Date.now()}`;
+
         const newItem = {
-            id: `video_embed_${Date.now()}`,
+            id: videoEmbedItemId,
             title: 'New Video',
             url: '',
             platform: 'youtube',
@@ -71,7 +75,29 @@ export default function VideoEmbedManager() {
 
         const updatedItems = [...videoEmbedItems, newItem];
         updateAppearance('videoEmbedItems', updatedItems);
-        toast.success('Video embed added');
+
+        // Also create the corresponding link item
+        try {
+            const links = await LinksService.getLinks();
+            const existingLinks = links.links || [];
+
+            const newLinkItem = {
+                id: generateRandomId(),
+                title: "Video Embed",
+                isActive: true,
+                type: 4,
+                videoEmbedItemId: videoEmbedItemId // Link to the video embed item
+            };
+
+            // Add the new link to the beginning of the list
+            const updatedLinks = [newLinkItem, ...existingLinks];
+            await LinksService.saveLinks(updatedLinks);
+
+            toast.success('Video embed added to both appearance and links');
+        } catch (error) {
+            console.error('Error creating link item:', error);
+            toast.error('Video added to appearance but failed to create link item');
+        }
     };
 
     // Update a video embed item
@@ -83,12 +109,33 @@ export default function VideoEmbedManager() {
     };
 
     // Delete a video embed item
-    const handleDeleteItem = (itemId) => {
+    const handleDeleteItem = async (itemId) => {
         const updatedItems = videoEmbedItems
             .filter(item => item.id !== itemId)
             .map((item, index) => ({ ...item, order: index })); // Re-order
         updateAppearance('videoEmbedItems', updatedItems);
-        toast.success('Video deleted');
+
+        // Also delete the corresponding link item
+        try {
+            const links = await LinksService.getLinks();
+            const existingLinks = links.links || [];
+
+            // Find and remove the link item that references this video embed item
+            const updatedLinks = existingLinks.filter(link =>
+                !(link.type === 4 && link.videoEmbedItemId === itemId)
+            );
+
+            if (updatedLinks.length !== existingLinks.length) {
+                // A link was removed, save the updated links
+                await LinksService.saveLinks(updatedLinks);
+                toast.success('Video deleted from both appearance and links');
+            } else {
+                toast.success('Video deleted');
+            }
+        } catch (error) {
+            console.error('Error deleting link item:', error);
+            toast.success('Video deleted from appearance');
+        }
     };
 
     if (!isInitialized) {
@@ -159,13 +206,14 @@ export default function VideoEmbedManager() {
                             {videoEmbedItems
                                 .sort((a, b) => a.order - b.order)
                                 .map((item) => (
-                                    <VideoEmbedCard
-                                        key={item.id}
-                                        item={item}
-                                        onUpdate={(updatedData) => handleUpdateItem(item.id, updatedData)}
-                                        onDelete={() => handleDeleteItem(item.id)}
-                                        disabled={isSaving}
-                                    />
+                                    <div key={item.id} id={`video-item-${item.id}`} className="scroll-mt-20">
+                                        <VideoEmbedCard
+                                            item={item}
+                                            onUpdate={(updatedData) => handleUpdateItem(item.id, updatedData)}
+                                            onDelete={() => handleDeleteItem(item.id)}
+                                            disabled={isSaving}
+                                        />
+                                    </div>
                                 ))}
                         </div>
                     )}

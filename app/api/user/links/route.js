@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import { createApiSession } from '@/lib/server/session';
 import { LinksService } from '@/lib/services/serviceLinks/server/linksService.js';
 import { rateLimit } from '@/lib/rateLimiter';
+import { revalidateUserPage } from '@/lib/server/revalidation';
 
 export async function GET(request) {
     try {
@@ -48,9 +49,15 @@ const allowedOrigins = [process.env.NEXT_PUBLIC_BASE_URL, 'http://localhost:3000
             linksData: body.links,
             session: session
         });
-        
-        return NextResponse.json({ 
-            success: true, 
+
+        // Trigger on-demand revalidation of the user's public page
+        const username = session.userData?.username;
+        if (username) {
+            await revalidateUserPage(username);
+        }
+
+        return NextResponse.json({
+            success: true,
             message: 'Links updated successfully.',
             count: result.count
         });

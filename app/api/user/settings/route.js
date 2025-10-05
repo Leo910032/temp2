@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import { createApiSession } from '@/lib/server/session';
 import { SettingsService } from '@/lib/services/serviceSetting/server/settingsService.js';
 import { rateLimit } from '@/lib/rateLimiter';
+import { revalidateUserPage } from '@/lib/server/revalidation';
 
 export async function GET(request) {
     try {
@@ -52,13 +53,19 @@ export async function POST(request) {
             settingsData: body,
             session: session
         });
-        
-        const message = result.isBulkUpdate ? 
-            'Settings updated successfully' : 
+
+        // Trigger on-demand revalidation of the user's public page
+        const username = session.userData?.username;
+        if (username) {
+            await revalidateUserPage(username);
+        }
+
+        const message = result.isBulkUpdate ?
+            'Settings updated successfully' :
             'Setting updated successfully';
 
-        return NextResponse.json({ 
-            success: true, 
+        return NextResponse.json({
+            success: true,
             message,
             updatedFields: result.updatedFields,
             updateType: result.updateType

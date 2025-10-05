@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server';
 import { createApiSession } from '@/lib/server/session';
 import { AppearanceService } from '@/lib/services/serviceAppearance/server/appearanceService.js';
+import { revalidateUserPage } from '@/lib/server/revalidation';
 
 /**
  * GET /api/user/appearance/theme
@@ -82,10 +83,16 @@ export async function POST(request) {
         }
 
         // Step C: Delegate all work to the service
-        const result = await AppearanceService.updateAppearance({ 
-            data: dataToUpdate, 
-            session 
+        const result = await AppearanceService.updateAppearance({
+            data: dataToUpdate,
+            session
         });
+
+        // Trigger on-demand revalidation of the user's public page
+        const username = session.userData?.username;
+        if (username) {
+            await revalidateUserPage(username);
+        }
 
         // Step D: Return response
         return NextResponse.json({

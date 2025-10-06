@@ -137,7 +137,7 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
             try {
                 await AppearanceService.updateAppearanceData({
                     videoEmbedEnabled: videoEmbedEnabled
-                });
+                }, { origin: 'manage-links', userId: currentUser?.uid });
                 setUserToggledVideoEmbed(false);
             } catch (error) {
                 console.error('Error saving video embed state:', error);
@@ -145,7 +145,7 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
         };
 
         saveVideoEmbedState();
-    }, [debouncedVideoEmbedEnabled, isLoadingToggle, videoEmbedEnabled, userToggledVideoEmbed]);
+    }, [currentUser?.uid, debouncedVideoEmbedEnabled, isLoadingToggle, videoEmbedEnabled, userToggledVideoEmbed]);
 
     const handleToggleVideoEmbed = (event) => {
         // Prevent toggle if user doesn't have permission

@@ -89,7 +89,7 @@ export default function CVItem({ item, itemRef, style, listeners, attributes, is
 
         const saveCvState = async () => {
             try {
-                await AppearanceService.updateAppearanceData({ cvEnabled });
+                await AppearanceService.updateAppearanceData({ cvEnabled }, { origin: 'manage-links', userId: currentUser?.uid });
                 setUserToggledCV(false); // Reset flag after save
             } catch (error) {
                 console.error('Error saving CV state:', error);
@@ -97,7 +97,7 @@ export default function CVItem({ item, itemRef, style, listeners, attributes, is
         };
 
         saveCvState();
-    }, [debouncedCvEnabled, isLoadingToggle, cvEnabled, userToggledCV]);
+    }, [currentUser?.uid, debouncedCvEnabled, isLoadingToggle, cvEnabled, userToggledCV]);
 
     const handleToggleCV = (event) => {
         setCvEnabled(event.target.checked);
@@ -118,7 +118,7 @@ export default function CVItem({ item, itemRef, style, listeners, attributes, is
 
                 await AppearanceService.updateAppearanceData({
                     cvItems: updatedCvItems
-                });
+                }, { origin: 'manage-links', userId: currentUser?.uid });
             } catch (error) {
                 console.error('Error deleting CV item from appearance:', error);
             }

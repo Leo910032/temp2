@@ -16,7 +16,12 @@ import { useDashboard } from '@/app/dashboard/DashboardContext';
 import { useDebounce } from '@/LocalHooks/useDebounce';
 import { useTranslation } from "@/lib/translation/useTranslation";
 import { toast } from 'react-hot-toast';
-import { AppearanceService } from '@/lib/services/serviceAppearance/client/appearanceService.js';
+import {
+    AppearanceService,
+    subscribeToLocalChanges as subscribeToAppearanceChanges,
+    getLatestLocalEvent as getLatestAppearanceEvent,
+    clearLatestLocalEvent as clearLatestAppearanceEvent
+} from '@/lib/services/serviceAppearance/client/appearanceService.js';
 import { APPEARANCE_FEATURES } from '@/lib/services/constants';
 
 // Global cache object - persists across component mounts
@@ -88,6 +93,7 @@ export function AppearanceProvider({ children }) {
     const cacheKeyRef = useRef(null);
     const lastSavedHashRef = useRef(null);
     const isListenerUpdate = useRef(false);
+    const latestAppearanceRef = useRef(null);
     
     // Debounced appearance for auto-save
     const debouncedAppearance = useDebounce(appearance, 500);
@@ -102,6 +108,11 @@ export function AppearanceProvider({ children }) {
             loadingError: t('common.loading_error') || "Failed to load appearance data"
         };
     }, [t, isInitialized]);
+
+    // Keep a ref in sync with the latest appearance snapshot for external listeners
+    useEffect(() => {
+        latestAppearanceRef.current = appearance;
+    }, [appearance]);
 
     // Helper: Create hash for change detection
     const createAppearanceHash = useCallback((data) => {
@@ -235,7 +246,10 @@ export function AppearanceProvider({ children }) {
                 return; // No real changes found
             }
 
-            await AppearanceService.updateAppearanceData(changedData);
+            await AppearanceService.updateAppearanceData(changedData, {
+                silent: true,
+                origin: 'appearance-context'
+            });
             
             // Update hash and cache after successful save
             lastSavedHashRef.current = currentDataHash;
@@ -324,61 +338,222 @@ export function AppearanceProvider({ children }) {
         }
     }, [updateAppearance]);
 
-  // ... inside the AppearanceProvider component
+    // ... inside the AppearanceProvider component
 
-// Initial data fetch and real-time listener setup
-useEffect(() => {
-    // ✅ FIX: Copy the ref value to a local variable
-    const id = componentId.current;
+    // Initial data fetch and real-time listener setup
+    useEffect(() => {
+        // ✅ FIX: Copy the ref value to a local variable
+        const id = componentId.current;
 
-    if (!currentUser || !isInitialized || isSessionLoading) {
-        // Reset cache when user changes
-        if (!currentUser && !isSessionLoading) {
-            console.log(`👋 [${id}] User logged out, clearing state`);
-            setAppearance(null);
-            setIsLoading(false);
-            setIsFromCache(false);
-            setHasLoadError(false);
-            isInitialLoad.current = true;
-            cacheKeyRef.current = null;
-            lastSavedHashRef.current = null;
+        if (!currentUser || !isInitialized || isSessionLoading) {
+            // Reset cache when user changes
+            if (!currentUser && !isSessionLoading) {
+                console.log(`👋 [${id}] User logged out, clearing state`);
+                setAppearance(null);
+                setIsLoading(false);
+                setIsFromCache(false);
+                setHasLoadError(false);
+                isInitialLoad.current = true;
+                cacheKeyRef.current = null;
+                lastSavedHashRef.current = null;
+            }
+            return;
         }
-        return;
-    }
 
-    // Initial fetch
-    const cacheKey = `appearance_${currentUser.uid}`;
-    cacheKeyRef.current = cacheKey;
+        // Initial fetch
+        const cacheKey = `appearance_${currentUser.uid}`;
+        cacheKeyRef.current = cacheKey;
 
-    console.log(`[AppearanceProvider] 🚀 Initializing for user: ${currentUser.uid}`);
+        console.log(`[AppearanceProvider] 🚀 Initializing for user: ${currentUser.uid}`);
 
-    // Check cache first for instant loading
-    const cachedEntry = appearanceCache.get(cacheKey);
-    const now = Date.now();
+        const getLatestEvent =
+            (AppearanceService && typeof AppearanceService.getLatestLocalEvent === 'function'
+                ? AppearanceService.getLatestLocalEvent.bind(AppearanceService)
+                : typeof getLatestAppearanceEvent === 'function'
+                    ? getLatestAppearanceEvent
+                    : null);
+        const clearLocalEvent =
+            (AppearanceService && typeof AppearanceService.clearLatestLocalEvent === 'function'
+                ? AppearanceService.clearLatestLocalEvent.bind(AppearanceService)
+                : typeof clearLatestAppearanceEvent === 'function'
+                    ? clearLatestAppearanceEvent
+                    : null);
 
-    if (cachedEntry && (now - cachedEntry.timestamp < CACHE_DURATION)) {
-        console.log(`[AppearanceProvider] ⚡ Loading from cache (${Math.round((now - cachedEntry.timestamp) / 1000)}s old)`);
-        setAppearance(cachedEntry.data);
-        lastSavedHashRef.current = createAppearanceHash(cachedEntry.data);
-        setIsFromCache(true);
-        setIsLoading(false);
-        setHasLoadError(false);
-    } else {
-        // Fetch fresh data
-        console.log(`[AppearanceProvider] 🆕 No cache or cache expired, fetching fresh data`);
-        fetchAppearanceData(false);
-    }
+        const latestLocalEvent = getLatestEvent ? getLatestEvent() : null;
+        const latestEventTimestamp = latestLocalEvent?.timestamp || 0;
+        const eventUserId = latestLocalEvent?.userId;
+        const eventMatchesUser = !eventUserId || eventUserId === currentUser.uid;
+        const eventCarousels = eventMatchesUser ? latestLocalEvent?.payload?.carousels : null;
 
-    // ❌ REMOVED: Real-time listener that was causing race conditions
-    // The DashboardContext is the single source of truth for subscription/permission changes
-    // Appearance data will be refreshed through manual saves and page loads
-    console.log(`✅ [${id}] Using DashboardContext as single source of truth for permissions`);
+        // Check cache first for instant loading
+        const cachedEntry = appearanceCache.get(cacheKey);
+        const now = Date.now();
+        const cacheTimestamp = cachedEntry?.timestamp || 0;
+        const cacheIsFresh = cachedEntry && (now - cachedEntry.timestamp < CACHE_DURATION);
+        const cacheStaleFromEvent = cacheIsFresh && eventMatchesUser && latestEventTimestamp > cacheTimestamp;
 
-    // No cleanup needed since we removed the listener
-    return () => {
-        console.log(`👋 [${id}] Cleaning up AppearanceContext`);
-    };
-}, [currentUser, isInitialized, isSessionLoading, fetchAppearanceData]);
+        if (cacheIsFresh) {
+            console.log(`[AppearanceProvider] ⚡ Loading from cache (${Math.round((now - cachedEntry.timestamp) / 1000)}s old)`);
+
+            let dataToUse = cachedEntry.data;
+
+            if (cacheStaleFromEvent && Array.isArray(eventCarousels)) {
+                console.log('[AppearanceProvider] ♻️ Applying pending local carousel update over cached data');
+                dataToUse = {
+                    ...cachedEntry.data,
+                    carousels: eventCarousels,
+                    _meta: {
+                        ...cachedEntry.data?._meta,
+                        lastSynced: Date.now(),
+                        fromCache: false,
+                        lastUpdatedBy: latestLocalEvent?.origin || 'external'
+                    }
+                };
+
+                const mergedTimestamp = Date.now();
+                appearanceCache.set(cacheKey, {
+                    data: dataToUse,
+                    timestamp: mergedTimestamp
+                });
+                if (typeof clearLocalEvent === 'function') {
+                    clearLocalEvent();
+                }
+            }
+
+            setAppearance(dataToUse);
+            lastSavedHashRef.current = createAppearanceHash(dataToUse);
+            setIsFromCache(true);
+            setIsLoading(false);
+            setHasLoadError(false);
+
+            if (cacheStaleFromEvent) {
+                console.log('[AppearanceProvider] 🔄 Cache superseded by local event, forcing refresh');
+                fetchAppearanceData(true);
+            }
+        } else {
+            // Fetch fresh data (force refresh if we detected a newer local update)
+            const forceRefresh = latestLocalEvent && eventMatchesUser ? true : false;
+            console.log(`[AppearanceProvider] 🆕 No cache or cache expired${forceRefresh ? ' (local event detected)' : ''}, fetching fresh data`);
+            fetchAppearanceData(forceRefresh);
+            if (forceRefresh && typeof clearLocalEvent === 'function') {
+                clearLocalEvent();
+            }
+        }
+
+        // ❌ REMOVED: Real-time listener that was causing race conditions
+        // The DashboardContext is the single source of truth for subscription/permission changes
+        // Appearance data will be refreshed through manual saves and page loads
+        console.log(`✅ [${id}] Using DashboardContext as single source of truth for permissions`);
+
+        // No cleanup needed since we removed the listener
+        return () => {
+            console.log(`👋 [${id}] Cleaning up AppearanceContext`);
+        };
+    }, [currentUser, isInitialized, isSessionLoading, fetchAppearanceData, clearLatestAppearanceEvent, getLatestAppearanceEvent]);
+
+    // Listen for local appearance updates triggered outside of this provider (e.g., Manage Links page)
+    useEffect(() => {
+        if (!currentUser) return;
+
+        const subscribe =
+            (AppearanceService && typeof AppearanceService.subscribeToLocalChanges === 'function'
+                ? AppearanceService.subscribeToLocalChanges.bind(AppearanceService)
+                : null) ||
+            (typeof subscribeToAppearanceChanges === 'function' ? subscribeToAppearanceChanges : null);
+        const clearLocalEvent =
+            (AppearanceService && typeof AppearanceService.clearLatestLocalEvent === 'function'
+                ? AppearanceService.clearLatestLocalEvent.bind(AppearanceService)
+                : typeof clearLatestAppearanceEvent === 'function'
+                    ? clearLatestAppearanceEvent
+                    : null);
+
+        if (!subscribe) {
+            console.warn('[AppearanceProvider] subscribeToLocalChanges not available. Skipping carousel sync listener.');
+            return;
+        }
+
+        const unsubscribe = subscribe((event) => {
+            if (!event) return;
+            if (event.origin === 'appearance-context') return;
+
+            const payload = event.payload || {};
+            const targetUserId = event.userId || null;
+
+            if (targetUserId && currentUser?.uid && targetUserId !== currentUser.uid) {
+                console.log('[AppearanceProvider] ⚠️ Ignoring appearance update for different user', {
+                    targetUserId,
+                    currentUserId: currentUser.uid
+                });
+                return;
+            }
+
+            if (!payload.carousels || !Array.isArray(payload.carousels)) {
+                return;
+            }
+
+            const currentAppearance = latestAppearanceRef.current;
+
+            if (!currentAppearance) {
+                console.log('[AppearanceProvider] 🔔 Received carousel update but no appearance data yet. Forcing refresh.');
+                fetchAppearanceData(true);
+                return;
+            }
+
+            const previousCarousels = currentAppearance.carousels || [];
+            const incomingCarousels = payload.carousels || [];
+
+            const previousSnapshot = JSON.stringify(previousCarousels);
+            const incomingSnapshot = JSON.stringify(incomingCarousels);
+
+            if (previousSnapshot === incomingSnapshot) {
+                return;
+            }
+
+            isListenerUpdate.current = true;
+
+            setAppearance(prev => {
+                if (!prev) return prev;
+
+                const updatedAppearance = {
+                    ...prev,
+                    carousels: incomingCarousels,
+                    _meta: {
+                        ...prev._meta,
+                        lastSynced: Date.now(),
+                        fromCache: false,
+                        lastUpdatedBy: event.origin || 'external'
+                    }
+                };
+
+                lastSavedHashRef.current = createAppearanceHash(updatedAppearance);
+
+                if (cacheKeyRef.current) {
+                    appearanceCache.set(cacheKeyRef.current, {
+                        data: updatedAppearance,
+                        timestamp: Date.now()
+                    });
+                }
+
+                console.log(`[AppearanceProvider] 🔔 Carousels updated from ${event.origin || 'external'} (${incomingCarousels.length} total)`);
+
+                return updatedAppearance;
+            });
+
+            if (typeof clearLocalEvent === 'function') {
+                clearLocalEvent();
+            }
+
+            setTimeout(() => {
+                isListenerUpdate.current = false;
+            }, 0);
+        });
+
+        return () => {
+            if (typeof unsubscribe === 'function') {
+                unsubscribe();
+            }
+        };
+    }, [currentUser, fetchAppearanceData, createAppearanceHash, subscribeToAppearanceChanges, clearLatestAppearanceEvent]);
 
 // ... rest of the component
     // Debounced auto-save effect

@@ -136,7 +136,7 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
                     : carousel
             );
 
-            await AppearanceService.updateAppearanceData({ carousels: updatedCarousels });
+            await AppearanceService.updateAppearanceData({ carousels: updatedCarousels }, { origin: 'manage-links', userId: currentUser?.uid });
             toast.success(newEnabledState ? 'Carousel enabled' : 'Carousel disabled');
         } catch (error) {
             console.error('Error updating carousel state:', error);

@@ -141,14 +141,14 @@ export default function ManageLinks() {
 
             await AppearanceService.updateAppearanceData({
                 carousels: [...carousels, newCarouselContainer]
-            });
+            }, { origin: 'manage-links', userId: currentUser?.uid });
 
             toast.success("Carousel link added - go to Appearance to add items");
         } catch (error) {
             console.error("Error creating carousel container:", error);
             toast.error("Carousel link added but failed to create carousel container");
         }
-    }, [data, permissions, subscriptionLevel]);
+    }, [currentUser?.uid, data, permissions, subscriptionLevel]);
 
     const addCVItem = useCallback(async () => {
         // Create a unique ID for the CV item that will be created in appearance
@@ -184,14 +184,14 @@ export default function ManageLinks() {
 
             await AppearanceService.updateAppearanceData({
                 cvItems: [...cvItems, newCvItem]
-            });
+            }, { origin: 'manage-links', userId: currentUser?.uid });
 
             toast.success("CV item added - go to Appearance to upload document");
         } catch (error) {
             console.error("Error creating CV item:", error);
             toast.error("CV link added but failed to create document slot");
         }
-}, []); // <-- Dependency array is now empty
+}, [currentUser?.uid]); // <-- Dependency array updated to include user
 
     const addVideoEmbedItem = useCallback(async () => {
         // Check subscription permission
@@ -261,14 +261,14 @@ export default function ManageLinks() {
             await AppearanceService.updateAppearanceData({
                 videoEmbedItems: [...videoEmbedItems, newVideoItem],
                 videoEmbedEnabled: true // Auto-enable when adding first video
-            });
+            }, { origin: 'manage-links', userId: currentUser?.uid });
 
             toast.success("Video embed link added - go to Appearance to configure video");
         } catch (error) {
             console.error("Error creating video embed item:", error);
             toast.error("Video link added but failed to create video item slot");
         }
-    }, [data, permissions, subscriptionLevel]);
+    }, [currentUser?.uid, data, permissions, subscriptionLevel]);
 
     // ✅ ENHANCED API CALLS with caching and sync
    

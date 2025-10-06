@@ -20,6 +20,7 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
     const { currentUser, permissions, subscriptionLevel } = useDashboard();
     const [wantsToDelete, setWantsToDelete] = useState(false);
     const [carouselEnabled, setCarouselEnabled] = useState(false);
+    const [hasItems, setHasItems] = useState(false);
     const [linkedCarouselName, setLinkedCarouselName] = useState(null);
     const [isLoadingCarousel, setIsLoadingCarousel] = useState(true);
     const router = useRouter();
@@ -71,9 +72,11 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
                 if (linkedCarousel) {
                     setCarouselEnabled(linkedCarousel.enabled || false);
                     setLinkedCarouselName(linkedCarousel.title || 'Untitled Carousel');
+                    setHasItems(Array.isArray(linkedCarousel.items) && linkedCarousel.items.length > 0);
                 } else {
                     setCarouselEnabled(false);
                     setLinkedCarouselName(null);
+                    setHasItems(false);
                 }
             } catch (error) {
                 console.error('Error loading carousel state:', error);
@@ -94,9 +97,11 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
                 if (linkedCarousel) {
                     setCarouselEnabled(linkedCarousel.enabled || false);
                     setLinkedCarouselName(linkedCarousel.title || 'Untitled Carousel');
+                    setHasItems(Array.isArray(linkedCarousel.items) && linkedCarousel.items.length > 0);
                 } else {
                     setCarouselEnabled(false);
                     setLinkedCarouselName(null);
+                    setHasItems(false);
                 }
             }
         );
@@ -123,12 +128,23 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
         }
 
         const newEnabledState = event.target.checked;
-        setCarouselEnabled(newEnabledState);
 
         // Update the carousel's enabled state in appearance
         try {
             const appearance = await AppearanceService.getAppearanceData();
             const carousels = appearance.carousels || [];
+            const linkedCarousel = carousels.find(carousel => carousel.id === item.carouselId);
+            const linkedCarouselHasItems = !!(linkedCarousel && Array.isArray(linkedCarousel.items) && linkedCarousel.items.length > 0);
+
+            if (newEnabledState && !linkedCarouselHasItems) {
+                toast.error('Add at least one carousel item before enabling.');
+                setCarouselEnabled(false);
+                setHasItems(false);
+                return;
+            }
+
+            setCarouselEnabled(newEnabledState);
+            setHasItems(linkedCarouselHasItems);
 
             const updatedCarousels = carousels.map(carousel =>
                 carousel.id === item.carouselId
@@ -145,8 +161,40 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
         }
     };
 
-    const handleDelete = () => {
-        setData(prevData => prevData.filter(i => i.id !== item.id));
+    const handleDelete = async () => {
+        setData(prevData => {
+            const filtered = prevData.filter(i => i.id !== item.id);
+            return filtered.map((link, index) => ({
+                ...link,
+                order: index
+            }));
+        });
+
+        if (!item.carouselId) {
+            setHasItems(false);
+            return;
+        }
+
+        try {
+            const appearance = await AppearanceService.getAppearanceData();
+            const carousels = appearance.carousels || [];
+            const filteredCarousels = carousels
+                .filter(carousel => carousel.id !== item.carouselId)
+                .map((carousel, index) => ({ ...carousel, order: index }));
+
+            if (filteredCarousels.length === carousels.length) {
+                return;
+            }
+
+            await AppearanceService.updateAppearanceData(
+                { carousels: filteredCarousels },
+                { origin: 'manage-links', userId: currentUser?.uid }
+            );
+            setHasItems(false);
+        } catch (error) {
+            console.error('Error removing linked carousel from appearance:', error);
+            toast.error('Failed to delete linked carousel from appearance');
+        }
     };
 
     const handleCustomize = () => {
@@ -182,6 +230,8 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
             ? 'bg-gray-100 border-gray-300 opacity-60'
             : 'bg-gradient-to-r from-purple-50 to-blue-50 border-purple-300'
     } ${isOverlay ? 'shadow-lg' : ''}`;
+    const toggleBlocked = !isLoadingCarousel && !carouselEnabled && !hasItems;
+    const toggleDisabled = isLoadingCarousel || !canUseCarousel || toggleBlocked;
 
     // Loading state while translations load
     if (!isInitialized) {
@@ -261,21 +311,26 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
                 {/* Toggle and Delete Buttons */}
                 <div className='grid sm:pr-2 gap-2 place-items-center'>
                     {/* Toggle Switch */}
-                    <div className={`scale-[0.8] sm:scale-100 ${canUseCarousel ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+                    <div className={`scale-[0.8] sm:scale-100 ${toggleDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
                         <label className="relative flex justify-between items-center group p-2 text-xl">
                             <input
                                 type="checkbox"
                                 onChange={handleToggleCarousel}
                                 checked={carouselEnabled}
-                                disabled={isLoadingCarousel || !canUseCarousel}
+                                disabled={toggleDisabled}
                                 className="absolute left-1/2 -translate-x-1/2 w-full h-full peer appearance-none rounded-md"
                             />
                             <span className={`w-9 h-6 flex items-center flex-shrink-0 ml-4 p-1 rounded-full duration-300 ease-in-out after:w-4 after:h-4 after:bg-white after:rounded-full after:shadow-md after:duration-300 ${
-                                !canUseCarousel
-                                    ? 'bg-gray-300 opacity-50'
+                                toggleDisabled
+                                    ? 'bg-gray-300 opacity-60'
                                     : 'bg-gray-400 peer-checked:bg-green-600 peer-checked:after:translate-x-3 group-hover:after:translate-x-[2px]'
                             }`}></span>
                         </label>
+                        {toggleBlocked && (
+                            <p className="text-xs text-purple-700 mt-1 text-center">
+                                Add items to enable
+                            </p>
+                        )}
                     </div>
 
                     {/* Delete Button */}

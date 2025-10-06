@@ -7,6 +7,7 @@ import { useTranslation } from "@/lib/translation/useTranslation";
 import { AppearanceContext } from "../AppearanceContext";
 import CarouselContainerCard from "../elements/CarouselContainerCard";
 import { useRouter, useSearchParams } from "next/navigation";
+import { LinksService } from "@/lib/services/serviceLinks/client/LinksService.js";
 
 export default function CarouselManager() {
     const { t, isInitialized } = useTranslation();
@@ -45,8 +46,21 @@ export default function CarouselManager() {
 
         updateAppearance('carousels', updatedCarousels);
 
-        // Note: The corresponding link will be automatically cleaned up
-        // when user refreshes or we can add logic to remove orphaned links
+        try {
+            const linksData = await LinksService.getLinks(true);
+            const links = linksData?.links || [];
+            const filteredLinks = links
+                .filter(link => !(link.type === 2 && link.carouselId === carouselId))
+                .map((link, index) => ({ ...link, order: index }));
+
+            if (filteredLinks.length !== links.length) {
+                await LinksService.saveLinks(filteredLinks);
+            }
+        } catch (error) {
+            console.error('Error removing linked carousel from links:', error);
+            toast.error('Failed to remove linked carousel link');
+        }
+
         toast.success('Carousel deleted');
     };
 

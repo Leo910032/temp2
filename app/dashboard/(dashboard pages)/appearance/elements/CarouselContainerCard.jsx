@@ -15,6 +15,8 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [showPreview, setShowPreview] = useState(false);
     const [isHighlighted, setIsHighlighted] = useState(false);
+    const hasItems = Array.isArray(localData.items) && localData.items.length > 0;
+    const enableBlocked = !localData.enabled && !hasItems;
 
     // Highlight effect when navigated from links page
     useEffect(() => {
@@ -27,7 +29,12 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
 
     // Toggle carousel enabled/disabled
     const handleToggleEnabled = () => {
-        const updatedCarousel = { ...localData, enabled: !localData.enabled };
+        const nextEnabled = !localData.enabled;
+        if (nextEnabled && !hasItems) {
+            toast.error('Add at least one carousel item before enabling.');
+            return;
+        }
+        const updatedCarousel = { ...localData, enabled: nextEnabled };
         setLocalData(updatedCarousel);
         onUpdate(updatedCarousel);
         toast.success(updatedCarousel.enabled ? 'Carousel enabled' : 'Carousel disabled');
@@ -86,9 +93,24 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
         const updatedItems = localData.items
             .filter(item => item.id !== itemId)
             .map((item, index) => ({ ...item, order: index }));
-        const updatedCarousel = { ...localData, items: updatedItems };
+
+        let updatedCarousel = { ...localData, items: updatedItems };
+        let disabledDueToEmpty = false;
+
+        if (updatedCarousel.enabled && updatedItems.length === 0) {
+            updatedCarousel = { ...updatedCarousel, enabled: false };
+            disabledDueToEmpty = true;
+        }
+
         setLocalData(updatedCarousel);
         onUpdate(updatedCarousel);
+
+        toast.success('Item removed');
+        if (disabledDueToEmpty) {
+            toast('Carousel disabled because it has no items.', {
+                icon: 'ℹ️'
+            });
+        }
     };
 
     // Change carousel style
@@ -173,11 +195,13 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
                     {/* Enable/Disable Toggle */}
                     <button
                         onClick={handleToggleEnabled}
-                        disabled={disabled}
+                        disabled={disabled || enableBlocked}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                             localData.enabled
                                 ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                : enableBlocked
+                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
                     >
                         {localData.enabled ? <FaToggleOn className="text-xl" /> : <FaToggleOff className="text-xl" />}
@@ -185,6 +209,11 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
                             {localData.enabled ? 'Enabled' : 'Disabled'}
                         </span>
                     </button>
+                    {enableBlocked && (
+                        <p className="text-xs text-gray-500 text-right">
+                            Add carousel items to enable
+                        </p>
+                    )}
 
                     {/* Preview Toggle */}
                     {localData.items.length > 0 && (

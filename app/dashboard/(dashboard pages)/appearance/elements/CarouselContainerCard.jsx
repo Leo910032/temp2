@@ -34,6 +34,8 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
 
     const hasItems = Array.isArray(localData.items) && localData.items.length > 0;
     const backgroundType = localData.backgroundType || 'Color';
+    const isTitleVisible = localData.showTitle !== false;
+    const isDescriptionVisible = localData.showDescription !== false;
     const enableBlocked = !localData.enabled && !hasItems;
 
     const commitUpdate = useCallback((updates) => {
@@ -269,6 +271,11 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
         }
     };
 
+    const handleToggleContentVisibility = (field) => {
+        const currentlyVisible = localData[field] !== false;
+        commitUpdate({ [field]: !currentlyVisible });
+    };
+
     // Navigate to linked link item
     const handleGoToLink = () => {
         router.push(`/dashboard#carousel-${carousel.id}`);
@@ -385,6 +392,8 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
                         backgroundColor={localData.backgroundColor}
                         backgroundImage={localData.backgroundImage}
                         backgroundVideo={localData.backgroundVideo}
+                        showTitle={isTitleVisible}
+                        showDescription={isDescriptionVisible}
                     />
                 </div>
             )}
@@ -537,6 +546,39 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
                         Carousel background will be transparent and inherit the page background. Remove any uploaded media automatically.
                     </div>
                 )}
+            </div>
+
+            {/* Content Visibility */}
+            <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Content Visibility
+                </label>
+                <div className="flex flex-wrap gap-3">
+                    <button
+                        type="button"
+                        onClick={() => handleToggleContentVisibility('showTitle')}
+                        disabled={disabled}
+                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                            isTitleVisible
+                                ? 'border-green-500 bg-green-50 text-green-700'
+                                : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
+                        } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    >
+                        {isTitleVisible ? 'Hide Title' : 'Show Title'}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => handleToggleContentVisibility('showDescription')}
+                        disabled={disabled}
+                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                            isDescriptionVisible
+                                ? 'border-green-500 bg-green-50 text-green-700'
+                                : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
+                        } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    >
+                        {isDescriptionVisible ? 'Hide Description' : 'Show Description'}
+                    </button>
+                </div>
             </div>
 
             {/* Items List */}

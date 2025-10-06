@@ -95,6 +95,8 @@ export default function MyLinks() {
                                     backgroundColor={linkedCarousel.backgroundColor}
                                     backgroundImage={linkedCarousel.backgroundImage}
                                     backgroundVideo={linkedCarousel.backgroundVideo}
+                                    showTitle={linkedCarousel.showTitle !== false}
+                                    showDescription={linkedCarousel.showDescription !== false}
                                 />
                             </div>
                         );

@@ -135,6 +135,8 @@ export default function ManageLinks() {
                 title: 'New Carousel',
                 enabled: true,
                 style: 'modern',
+                showTitle: true,
+                showDescription: true,
                 backgroundType: 'Color',
                 backgroundColor: '#FFFFFF',
                 backgroundImage: '',

@@ -11,7 +11,9 @@ export default function ProfileCarousel({
     backgroundType = 'Color',
     backgroundColor = '#FFFFFF',
     backgroundImage = '',
-    backgroundVideo = ''
+    backgroundVideo = '',
+    showTitle = true,
+    showDescription = true
 }) {
     // Filter out items without images FIRST (before any hooks)
     const validItems = useMemo(() => (Array.isArray(items) ? items.filter(item => item.image) : []), [items]);
@@ -265,6 +267,8 @@ export default function ProfileCarousel({
                             style={style}
                             onClick={() => goToSlide(index)}
                             onVideoClick={openVideoModal}
+                            showTitle={showTitle}
+                            showDescription={showDescription}
                         />
                     ))}
                 </div>
@@ -297,7 +301,7 @@ export default function ProfileCarousel({
 }
 
 // Individual Carousel Card Component
-function CarouselCard({ item, isActive, style, onClick, onVideoClick }) {
+function CarouselCard({ item, isActive, style, onClick, onVideoClick, showTitle, showDescription }) {
     const [isPortrait, setIsPortrait] = useState(false);
 
     const widthActiveLandscape = 'md:w-80 w-72';
@@ -401,45 +405,49 @@ function CarouselCard({ item, isActive, style, onClick, onVideoClick }) {
             </div>
 
             {/* Card Content */}
-            <div className="p-5 space-y-3">
-                {/* Category Label */}
-                {item.category && (
-                    <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full uppercase tracking-wide">
-                        {item.category}
-                    </span>
-                )}
+            {(showTitle && item.title) || (showDescription && item.description) || (item.author || item.readTime) || item.category ? (
+                <div className="p-5 space-y-3">
+                    {/* Category Label */}
+                    {item.category && (
+                        <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full uppercase tracking-wide">
+                            {item.category}
+                        </span>
+                    )}
 
-                {/* Title */}
-                <h3 className="font-bold text-lg text-gray-900 line-clamp-2 leading-tight">
-                    {item.title}
-                </h3>
+                    {/* Title */}
+                    {showTitle && item.title && (
+                        <h3 className="font-bold text-lg text-gray-900 line-clamp-2 leading-tight">
+                            {item.title}
+                        </h3>
+                    )}
 
-                {/* Description */}
-                {item.description && (
-                    <p className="text-sm text-gray-600 line-clamp-3">
-                        {item.description}
-                    </p>
-                )}
+                    {/* Description */}
+                    {showDescription && item.description && (
+                        <p className="text-sm text-gray-600 line-clamp-3">
+                            {item.description}
+                        </p>
+                    )}
 
-                {/* Metadata */}
-                {(item.author || item.readTime) && (
-                    <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
-                        {item.author && (
-                            <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                                    {item.author.charAt(0).toUpperCase()}
+                    {/* Metadata */}
+                    {(item.author || item.readTime) && (
+                        <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
+                            {item.author && (
+                                <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                        {item.author.charAt(0).toUpperCase()}
+                                    </div>
+                                    <span className="text-xs font-medium text-gray-700">{item.author}</span>
                                 </div>
-                                <span className="text-xs font-medium text-gray-700">{item.author}</span>
-                            </div>
-                        )}
-                        {item.readTime && (
-                            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                                {item.readTime}
-                            </span>
-                        )}
-                    </div>
-                )}
-            </div>
+                            )}
+                            {item.readTime && (
+                                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                                    {item.readTime}
+                                </span>
+                            )}
+                        </div>
+                    )}
+                </div>
+            ) : null}
         </div>
     );
 }

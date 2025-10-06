@@ -298,22 +298,32 @@ export default function ProfileCarousel({
 
 // Individual Carousel Card Component
 function CarouselCard({ item, isActive, style, onClick, onVideoClick }) {
+    const [isPortrait, setIsPortrait] = useState(false);
+
+    const widthActiveLandscape = 'md:w-80 w-72';
+    const widthInactiveLandscape = 'md:w-72 w-64';
+    const widthActivePortrait = 'md:w-64 w-56';
+    const widthInactivePortrait = 'md:w-56 w-48';
+
+    const widthActive = isPortrait ? widthActivePortrait : widthActiveLandscape;
+    const widthInactive = isPortrait ? widthInactivePortrait : widthInactiveLandscape;
+
     const getCardStyles = () => {
         const baseStyles = "flex-shrink-0 bg-white rounded-2xl shadow-xl overflow-hidden transition-all duration-300 cursor-pointer select-none border-4";
 
         switch (style) {
             case 'modern':
-                return `${baseStyles} ${isActive ? 'md:w-80 w-72 scale-105 shadow-2xl border-blue-500' : 'md:w-72 w-64 scale-95 opacity-70 border-gray-400'}`;
+                return `${baseStyles} ${isActive ? `${widthActive} scale-105 shadow-2xl border-blue-500` : `${widthInactive} scale-95 opacity-70 border-gray-400`}`;
             case 'minimal':
-                return `${baseStyles} ${isActive ? 'md:w-80 w-72 shadow-2xl border-gray-500' : 'md:w-72 w-64 opacity-60 border-gray-400'}`;
+                return `${baseStyles} ${isActive ? `${widthActive} shadow-2xl border-gray-500` : `${widthInactive} opacity-60 border-gray-400`}`;
             case 'bold':
-                return `${baseStyles} ${isActive ? 'md:w-80 w-72 scale-110 shadow-2xl ring-4 ring-blue-500 border-blue-700' : 'md:w-72 w-64 scale-90 opacity-50 border-gray-500'}`;
+                return `${baseStyles} ${isActive ? `${widthActive} scale-110 shadow-2xl ring-4 ring-blue-500 border-blue-700` : `${widthInactive} scale-90 opacity-50 border-gray-500`}`;
             case 'showcase':
-                return `${baseStyles} backdrop-blur bg-white/90 ${isActive ? 'md:w-96 w-80 scale-105 shadow-2xl border-white/70' : 'md:w-80 w-72 opacity-75 border-white/40'}`;
+                return `${baseStyles} backdrop-blur bg-white/90 ${isActive ? `${widthActive} scale-105 shadow-2xl border-white/70` : `${widthInactive} opacity-75 border-white/40`}`;
             case 'spotlight':
-                return `${baseStyles} bg-gradient-to-b from-white via-white to-purple-100 ${isActive ? 'md:w-80 w-72 scale-105 shadow-2xl border-purple-300' : 'md:w-72 w-64 opacity-70 border-purple-100'}`;
+                return `${baseStyles} bg-gradient-to-b from-white via-white to-purple-100 ${isActive ? `${widthActive} scale-105 shadow-2xl border-purple-300` : `${widthInactive} opacity-70 border-purple-100`}`;
             default:
-                return `${baseStyles} ${isActive ? 'md:w-80 w-72 border-gray-500' : 'md:w-72 w-64 border-gray-400'}`;
+                return `${baseStyles} ${isActive ? `${widthActive} border-gray-500` : `${widthInactive} border-gray-400`}`;
         }
     };
 
@@ -352,14 +362,19 @@ function CarouselCard({ item, isActive, style, onClick, onVideoClick }) {
             }}
         >
             {/* Hero Image */}
-            <div className="relative h-48 bg-gradient-to-br from-blue-400 to-purple-500">
+            <div className={`relative bg-gradient-to-br from-blue-400 to-purple-500 ${isPortrait ? 'h-72' : 'h-48'}`}>
                 {item.image && (
                     <Image
                         src={item.image}
                         alt={item.title || 'Carousel item'}
                         fill
-                        style={{ objectFit: 'cover' }}
-                        sizes="(max-width: 768px) 288px, 320px"
+                        style={{ objectFit: isPortrait ? 'contain' : 'cover', objectPosition: 'center' }}
+                        sizes={isPortrait ? '(max-width: 768px) 240px, 288px' : '(max-width: 768px) 288px, 320px'}
+                        onLoadingComplete={({ naturalWidth, naturalHeight }) => {
+                            if (naturalWidth && naturalHeight) {
+                                setIsPortrait(naturalHeight > naturalWidth);
+                            }
+                        }}
                         priority={isActive}
                     />
                 )}

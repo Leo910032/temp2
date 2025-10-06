@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { FaPlus, FaToggleOn, FaToggleOff, FaEdit, FaSave, FaTimes, FaExternalLinkAlt, FaImages, FaVideo } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import CarouselItemCard from "./CarouselItemCard";
 import CarouselPreview from "../components/CarouselPreview";
 import { CAROUSEL_STYLES } from "@/lib/services/constants";
@@ -460,11 +461,13 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
                             )}
                         </div>
                         {localData.backgroundImage ? (
-                            <div className="relative">
-                                <img
+                            <div className="relative w-full h-48">
+                                <Image
                                     src={localData.backgroundImage}
                                     alt="Carousel background"
-                                    className="w-full max-h-48 object-cover rounded-lg border"
+                                    fill
+                                    className="object-cover rounded-lg border"
+                                    sizes="(max-width: 768px) 100vw, 600px"
                                 />
                             </div>
                         ) : (

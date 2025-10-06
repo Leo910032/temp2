@@ -449,7 +449,7 @@ export function AppearanceProvider({ children }) {
         return () => {
             console.log(`👋 [${id}] Cleaning up AppearanceContext`);
         };
-    }, [currentUser, isInitialized, isSessionLoading, fetchAppearanceData, clearLatestAppearanceEvent, getLatestAppearanceEvent]);
+}, [currentUser, isInitialized, isSessionLoading, fetchAppearanceData, createAppearanceHash]);
 
     // Listen for local appearance updates triggered outside of this provider (e.g., Manage Links page)
     useEffect(() => {
@@ -553,7 +553,7 @@ export function AppearanceProvider({ children }) {
                 unsubscribe();
             }
         };
-    }, [currentUser, fetchAppearanceData, createAppearanceHash, subscribeToAppearanceChanges, clearLatestAppearanceEvent]);
+}, [currentUser, fetchAppearanceData, createAppearanceHash]);
 
 // ... rest of the component
     // Debounced auto-save effect

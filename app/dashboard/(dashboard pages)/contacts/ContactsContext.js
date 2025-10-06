@@ -261,11 +261,12 @@ const [stats, setStats] = useState({
     useEffect(() => {
         if (!currentUser) return;
 
-        console.log(`👂 [${componentId.current}] Setting up contacts listener`);
+        const id = componentId.current;
+        console.log(`👂 [${id}] Setting up contacts listener`);
 
         // Subscribe to ContactsService updates
         const unsubscribe = ContactsService.subscribe((updatedData) => {
-            console.log(`🔔 [${componentId.current}] Contacts updated via listener`, updatedData);
+            console.log(`🔔 [${id}] Contacts updated via listener`, updatedData);
 
             // Update local state with fresh data
             if (updatedData.contacts) setContacts(updatedData.contacts);
@@ -276,7 +277,7 @@ const [stats, setStats] = useState({
 
         // Cleanup subscription on unmount or user change
         return () => {
-            console.log(`🔕 [${componentId.current}] Removing contacts listener`);
+            console.log(`🔕 [${id}] Removing contacts listener`);
             unsubscribe();
         };
     }, [currentUser]);

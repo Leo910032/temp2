@@ -88,15 +88,6 @@ export default function CarouselPreview({
         }
     };
 
-    // Early return AFTER all hooks
-    if (validItems.length === 0) {
-        return (
-            <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
-                <p className="text-gray-500">Add images to carousel items to see preview</p>
-            </div>
-        );
-    }
-
     const renderBackgroundMedia = () => {
         if (backgroundType === 'Video' && backgroundVideo) {
             return (
@@ -161,6 +152,14 @@ export default function CarouselPreview({
             (backgroundType === 'Video' && backgroundVideo)
         );
     }, [backgroundType, backgroundColor, backgroundImage, backgroundVideo]);
+
+    if (validItems.length === 0) {
+        return (
+            <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
+                <p className="text-gray-500">Add images to carousel items to see preview</p>
+            </div>
+        );
+    }
 
     const headingTextClass = useLightText ? 'text-white' : 'text-gray-700';
     const subTextClass = useLightText ? 'text-white/80' : 'text-gray-500';
@@ -251,35 +250,51 @@ export default function CarouselPreview({
 
 // Individual Carousel Card Component
 function CarouselCard({ item, isActive, style, onClick }) {
+    const [isPortrait, setIsPortrait] = useState(false);
+
+    const widthActiveLandscape = 'md:w-80 w-72';
+    const widthInactiveLandscape = 'md:w-72 w-64';
+    const widthActivePortrait = 'md:w-64 w-56';
+    const widthInactivePortrait = 'md:w-56 w-48';
+
+    const widthActive = isPortrait ? widthActivePortrait : widthActiveLandscape;
+    const widthInactive = isPortrait ? widthInactivePortrait : widthInactiveLandscape;
+
     const getCardStyles = () => {
         const baseStyles = "flex-shrink-0 bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 cursor-pointer";
 
         switch (style) {
             case 'modern':
-                return `${baseStyles} ${isActive ? 'w-80 scale-105' : 'w-72 scale-95 opacity-70'}`;
+                return `${baseStyles} ${isActive ? widthActive : widthInactive} ${isActive ? 'scale-105' : 'scale-95 opacity-70'}`;
             case 'minimal':
-                return `${baseStyles} ${isActive ? 'w-80' : 'w-72 opacity-60'}`;
+                return `${baseStyles} ${isActive ? widthActive : widthInactive} ${isActive ? '' : 'opacity-60'}`;
             case 'bold':
-                return `${baseStyles} ${isActive ? 'w-80 scale-110 shadow-2xl' : 'w-72 scale-90 opacity-50'}`;
+                return `${baseStyles} ${isActive ? widthActive : widthInactive} ${isActive ? 'scale-110 shadow-2xl' : 'scale-90 opacity-50'}`;
             case 'showcase':
-                return `${baseStyles} border-4 border-white/40 backdrop-blur ${isActive ? 'w-96 scale-105 shadow-2xl' : 'w-80 opacity-75'}`;
+                return `${baseStyles} border-4 border-white/40 backdrop-blur ${isActive ? widthActive : widthInactive} ${isActive ? 'scale-105 shadow-2xl' : 'opacity-75'}`;
             case 'spotlight':
-                return `${baseStyles} bg-gradient-to-b from-white via-white to-purple-100 ${isActive ? 'w-80 scale-105 shadow-xl' : 'w-72 opacity-70'}`;
+                return `${baseStyles} bg-gradient-to-b from-white via-white to-purple-100 ${isActive ? widthActive : widthInactive} ${isActive ? 'scale-105 shadow-xl' : 'opacity-70'}`;
             default:
-                return `${baseStyles} ${isActive ? 'w-80' : 'w-72'}`;
+                return `${baseStyles} ${isActive ? widthActive : widthInactive}`;
         }
     };
 
     return (
         <div className={getCardStyles()} onClick={onClick}>
             {/* Hero Image */}
-            <div className="relative h-48 bg-gradient-to-br from-blue-400 to-purple-500">
+            <div className={`relative bg-gradient-to-br from-blue-400 to-purple-500 ${isPortrait ? 'h-72' : 'h-48'}`}>
                 {item.image && (
                     <Image
                         src={item.image}
                         alt={item.title}
                         fill
-                        style={{ objectFit: 'cover' }}
+                        style={{ objectFit: isPortrait ? 'contain' : 'cover', objectPosition: 'center' }}
+                        sizes={isPortrait ? '(max-width: 768px) 240px, 288px' : '(max-width: 768px) 288px, 320px'}
+                        onLoadingComplete={({ naturalWidth, naturalHeight }) => {
+                            if (naturalWidth && naturalHeight) {
+                                setIsPortrait(naturalHeight > naturalWidth);
+                            }
+                        }}
                     />
                 )}
 

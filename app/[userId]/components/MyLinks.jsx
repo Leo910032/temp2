@@ -91,6 +91,10 @@ export default function MyLinks() {
                                 <ProfileCarousel
                                     items={linkedCarousel.items}
                                     style={linkedCarousel.style || 'modern'}
+                                    backgroundType={linkedCarousel.backgroundType}
+                                    backgroundColor={linkedCarousel.backgroundColor}
+                                    backgroundImage={linkedCarousel.backgroundImage}
+                                    backgroundVideo={linkedCarousel.backgroundVideo}
                                 />
                             </div>
                         );

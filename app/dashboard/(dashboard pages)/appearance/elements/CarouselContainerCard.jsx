@@ -1,13 +1,22 @@
 // app/dashboard/(dashboard pages)/appearance/elements/CarouselContainerCard.jsx
 "use client"
 
-import React, { useState, useEffect } from "react";
-import { FaPlus, FaToggleOn, FaToggleOff, FaEdit, FaSave, FaTimes, FaExternalLinkAlt } from "react-icons/fa";
+import React, { useState, useEffect, useCallback } from "react";
+import { FaPlus, FaToggleOn, FaToggleOff, FaEdit, FaSave, FaTimes, FaExternalLinkAlt, FaImages, FaVideo } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import CarouselItemCard from "./CarouselItemCard";
 import CarouselPreview from "../components/CarouselPreview";
 import { CAROUSEL_STYLES } from "@/lib/services/constants";
+import ColorPickerFlat from "./ColorPickerFlat.jsx";
+import { AppearanceService } from "@/lib/services/serviceAppearance/client/appearanceService.js";
+import { LinksService } from "@/lib/services/serviceLinks/client/LinksService.js";
+
+const BACKGROUND_TYPES = ['Color', 'Image', 'Video', 'Transparent'];
+
+function formatStyleName(style) {
+    return style.charAt(0).toUpperCase() + style.slice(1);
+}
 
 export default function CarouselContainerCard({ carousel, onUpdate, onDelete, disabled, highlightId }) {
     const router = useRouter();
@@ -15,8 +24,47 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [showPreview, setShowPreview] = useState(false);
     const [isHighlighted, setIsHighlighted] = useState(false);
+    const [isUploadingBackgroundImage, setIsUploadingBackgroundImage] = useState(false);
+    const [isUploadingBackgroundVideo, setIsUploadingBackgroundVideo] = useState(false);
+
+    useEffect(() => {
+        setLocalData(carousel);
+    }, [carousel]);
+
     const hasItems = Array.isArray(localData.items) && localData.items.length > 0;
+    const backgroundType = localData.backgroundType || 'Color';
     const enableBlocked = !localData.enabled && !hasItems;
+
+    const commitUpdate = useCallback((updates) => {
+        setLocalData((prev) => {
+            const updated = { ...prev, ...updates };
+            onUpdate(updated);
+            return updated;
+        });
+    }, [onUpdate]);
+
+    const syncLinkActiveState = useCallback(async (enabled) => {
+        try {
+            const linksData = await LinksService.getLinks(true);
+            const links = linksData?.links || [];
+            let didChange = false;
+            const updatedLinks = links.map(link => {
+                if (link.type === 2 && link.carouselId === carousel.id) {
+                    if (link.isActive !== enabled) {
+                        didChange = true;
+                        return { ...link, isActive: enabled };
+                    }
+                }
+                return link;
+            });
+
+            if (didChange) {
+                await LinksService.saveLinks(updatedLinks);
+            }
+        } catch (error) {
+            console.error('Error synchronising carousel link state:', error);
+        }
+    }, [carousel.id]);
 
     // Highlight effect when navigated from links page
     useEffect(() => {
@@ -34,10 +82,9 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
             toast.error('Add at least one carousel item before enabling.');
             return;
         }
-        const updatedCarousel = { ...localData, enabled: nextEnabled };
-        setLocalData(updatedCarousel);
-        onUpdate(updatedCarousel);
-        toast.success(updatedCarousel.enabled ? 'Carousel enabled' : 'Carousel disabled');
+        commitUpdate({ enabled: nextEnabled });
+        syncLinkActiveState(nextEnabled);
+        toast.success(nextEnabled ? 'Carousel enabled' : 'Carousel disabled');
     };
 
     // Update carousel title
@@ -46,7 +93,8 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
             toast.error('Title cannot be empty');
             return;
         }
-        onUpdate(localData);
+        const trimmedTitle = localData.title.trim();
+        commitUpdate({ title: trimmedTitle });
         setIsEditingTitle(false);
         toast.success('Title updated');
     };
@@ -71,54 +119,153 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
             order: localData.items.length
         };
 
-        const updatedItems = [...localData.items, newItem];
-        const updatedCarousel = { ...localData, items: updatedItems };
-        setLocalData(updatedCarousel);
-        onUpdate(updatedCarousel);
+        const updatedItems = [...(localData.items || []), newItem];
+        commitUpdate({ items: updatedItems });
         toast.success('Item added');
     };
 
     // Update an item within this carousel
     const handleUpdateItem = (itemId, updatedData) => {
-        const updatedItems = localData.items.map(item =>
+        const updatedItems = (localData.items || []).map(item =>
             item.id === itemId ? { ...item, ...updatedData } : item
         );
-        const updatedCarousel = { ...localData, items: updatedItems };
-        setLocalData(updatedCarousel);
-        onUpdate(updatedCarousel);
+        commitUpdate({ items: updatedItems });
     };
 
     // Delete an item from this carousel
     const handleDeleteItem = (itemId) => {
-        const updatedItems = localData.items
+        const updatedItems = (localData.items || [])
             .filter(item => item.id !== itemId)
             .map((item, index) => ({ ...item, order: index }));
 
-        let updatedCarousel = { ...localData, items: updatedItems };
-        let disabledDueToEmpty = false;
-
-        if (updatedCarousel.enabled && updatedItems.length === 0) {
-            updatedCarousel = { ...updatedCarousel, enabled: false };
-            disabledDueToEmpty = true;
-        }
-
-        setLocalData(updatedCarousel);
-        onUpdate(updatedCarousel);
+        const disabledDueToEmpty = localData.enabled && updatedItems.length === 0;
+        commitUpdate({
+            items: updatedItems,
+            ...(disabledDueToEmpty ? { enabled: false } : {})
+        });
 
         toast.success('Item removed');
         if (disabledDueToEmpty) {
             toast('Carousel disabled because it has no items.', {
                 icon: 'ℹ️'
             });
+            syncLinkActiveState(false);
         }
     };
 
     // Change carousel style
     const handleStyleChange = (style) => {
-        const updatedCarousel = { ...localData, style };
-        setLocalData(updatedCarousel);
-        onUpdate(updatedCarousel);
-        toast.success('Style updated');
+        if (localData.style === style) return;
+        commitUpdate({ style });
+        toast.success(`Style set to ${formatStyleName(style)}`);
+    };
+
+    const handleBackgroundTypeChange = (type) => {
+        if (!BACKGROUND_TYPES.includes(type)) return;
+        if (type === 'Color') {
+            commitUpdate({
+                backgroundType: 'Color',
+                backgroundColor: localData.backgroundColor || '#FFFFFF',
+                backgroundImage: '',
+                backgroundVideo: ''
+            });
+            return;
+        }
+
+        if (type === 'Image') {
+            commitUpdate({
+                backgroundType: 'Image',
+                backgroundVideo: ''
+            });
+        } else if (type === 'Video') {
+            commitUpdate({
+                backgroundType: 'Video',
+                backgroundImage: ''
+            });
+        } else if (type === 'Transparent') {
+            commitUpdate({
+                backgroundType: 'Transparent',
+                backgroundColor: 'transparent',
+                backgroundImage: '',
+                backgroundVideo: ''
+            });
+            return;
+        }
+    };
+
+    const handleBackgroundColorChange = (color) => {
+        commitUpdate({
+            backgroundType: 'Color',
+            backgroundColor: color,
+            backgroundImage: '',
+            backgroundVideo: ''
+        });
+    };
+
+    const handleBackgroundImageUpload = async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        try {
+            setIsUploadingBackgroundImage(true);
+            const result = await AppearanceService.uploadCarouselBackgroundImage(file);
+            if (result?.downloadURL) {
+                commitUpdate({
+                    backgroundType: 'Image',
+                    backgroundImage: result.downloadURL,
+                    backgroundVideo: ''
+                });
+                toast.success('Background image updated');
+            }
+        } catch (error) {
+            console.error('Error uploading carousel background image:', error);
+            toast.error(error.message || 'Failed to upload background image');
+        } finally {
+            setIsUploadingBackgroundImage(false);
+            if (event.target) {
+                event.target.value = '';
+            }
+        }
+    };
+
+    const handleBackgroundVideoUpload = async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        try {
+            setIsUploadingBackgroundVideo(true);
+            const result = await AppearanceService.uploadCarouselBackgroundVideo(file);
+            if (result?.downloadURL) {
+                commitUpdate({
+                    backgroundType: 'Video',
+                    backgroundVideo: result.downloadURL,
+                    backgroundImage: ''
+                });
+                toast.success('Background video updated');
+            }
+        } catch (error) {
+            console.error('Error uploading carousel background video:', error);
+            toast.error(error.message || 'Failed to upload background video');
+        } finally {
+            setIsUploadingBackgroundVideo(false);
+            if (event.target) {
+                event.target.value = '';
+            }
+        }
+    };
+
+    const handleRemoveBackgroundAsset = (type) => {
+        if (type === 'Image') {
+            commitUpdate({
+                backgroundImage: '',
+                backgroundType: 'Color'
+            });
+            toast.success('Background image removed');
+        } else if (type === 'Video') {
+            commitUpdate({
+                backgroundVideo: '',
+                backgroundType: 'Color'
+            });
+            toast.success('Background video removed');
+        }
     };
 
     // Navigate to linked link item
@@ -230,7 +377,14 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
             {/* Preview */}
             {showPreview && localData.items.length > 0 && (
                 <div className="mb-6">
-                    <CarouselPreview items={localData.items} style={localData.style} />
+                    <CarouselPreview
+                        items={localData.items}
+                        style={localData.style}
+                        backgroundType={backgroundType}
+                        backgroundColor={localData.backgroundColor}
+                        backgroundImage={localData.backgroundImage}
+                        backgroundVideo={localData.backgroundVideo}
+                    />
                 </div>
             )}
 
@@ -251,10 +405,135 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
                                     : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
                             }`}
                         >
-                            {style}
+                            {formatStyleName(style)}
                         </button>
                     ))}
                 </div>
+            </div>
+
+            {/* Background Customization */}
+            <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Carousel Background
+                </label>
+
+                <div className="flex flex-wrap gap-2 mb-4">
+                    {BACKGROUND_TYPES.map((type) => (
+                        <button
+                            key={type}
+                            onClick={() => handleBackgroundTypeChange(type)}
+                            disabled={disabled}
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                                backgroundType === type
+                                    ? 'border-purple-600 bg-purple-50 text-purple-700'
+                                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                            } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+                        >
+                            {type}
+                        </button>
+                    ))}
+                </div>
+
+                {backgroundType === 'Color' && (
+                    <ColorPickerFlat
+                        currentColor={localData.backgroundColor || '#FFFFFF'}
+                        onColorChange={handleBackgroundColorChange}
+                        disabled={disabled}
+                        fieldName="Carousel Background"
+                    />
+                )}
+
+                {backgroundType === 'Image' && (
+                    <div className="space-y-3 p-4 border rounded-lg bg-gray-50">
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                <FaImages /> Background Image
+                            </span>
+                            {localData.backgroundImage && (
+                                <button
+                                    onClick={() => handleRemoveBackgroundAsset('Image')}
+                                    disabled={disabled}
+                                    className="text-xs text-red-600 hover:text-red-700 disabled:opacity-50"
+                                >
+                                    Remove
+                                </button>
+                            )}
+                        </div>
+                        {localData.backgroundImage ? (
+                            <div className="relative">
+                                <img
+                                    src={localData.backgroundImage}
+                                    alt="Carousel background"
+                                    className="w-full max-h-48 object-cover rounded-lg border"
+                                />
+                            </div>
+                        ) : (
+                            <p className="text-xs text-gray-500">
+                                Upload an image to use as the carousel background.
+                            </p>
+                        )}
+                        <div>
+                            <label className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer bg-white hover:bg-gray-100'}`}>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleBackgroundImageUpload}
+                                    disabled={disabled || isUploadingBackgroundImage}
+                                    className="hidden"
+                                />
+                                {isUploadingBackgroundImage ? 'Uploading...' : 'Upload Image'}
+                            </label>
+                        </div>
+                    </div>
+                )}
+
+                {backgroundType === 'Video' && (
+                    <div className="space-y-3 p-4 border rounded-lg bg-gray-50">
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                <FaVideo /> Background Video
+                            </span>
+                            {localData.backgroundVideo && (
+                                <button
+                                    onClick={() => handleRemoveBackgroundAsset('Video')}
+                                    disabled={disabled}
+                                    className="text-xs text-red-600 hover:text-red-700 disabled:opacity-50"
+                                >
+                                    Remove
+                                </button>
+                            )}
+                        </div>
+                        {localData.backgroundVideo ? (
+                            <video
+                                src={localData.backgroundVideo}
+                                controls
+                                className="w-full max-h-48 rounded-lg border"
+                            />
+                        ) : (
+                            <p className="text-xs text-gray-500">
+                                Upload a video to use as the carousel background.
+                            </p>
+                        )}
+                        <div>
+                            <label className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer bg-white hover:bg-gray-100'}`}>
+                                <input
+                                    type="file"
+                                    accept="video/*"
+                                    onChange={handleBackgroundVideoUpload}
+                                    disabled={disabled || isUploadingBackgroundVideo}
+                                    className="hidden"
+                                />
+                                {isUploadingBackgroundVideo ? 'Uploading...' : 'Upload Video'}
+                            </label>
+                        </div>
+                    </div>
+                )}
+
+                {backgroundType === 'Transparent' && (
+                    <div className="p-4 border rounded-lg bg-gray-50 text-sm text-gray-600">
+                        Carousel background will be transparent and inherit the page background. Remove any uploaded media automatically.
+                    </div>
+                )}
             </div>
 
             {/* Items List */}

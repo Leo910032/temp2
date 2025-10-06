@@ -1,11 +1,18 @@
 // app/dashboard/(dashboard pages)/appearance/components/CarouselPreview.jsx
 "use client"
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { FaPlay, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 
-export default function CarouselPreview({ items, style = 'modern' }) {
+export default function CarouselPreview({
+    items,
+    style = 'modern',
+    backgroundType = 'Color',
+    backgroundColor = '#FFFFFF',
+    backgroundImage = '',
+    backgroundVideo = ''
+}) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
     const [startX, setStartX] = useState(0);
@@ -13,7 +20,7 @@ export default function CarouselPreview({ items, style = 'modern' }) {
     const carouselRef = useRef(null);
 
     // Filter out items without images for preview
-    const validItems = items.filter(item => item.image);
+    const validItems = useMemo(() => (Array.isArray(items) ? items.filter(item => item.image) : []), [items]);
 
     // Auto-scroll carousel to center current item - MOVED BEFORE ANY RETURN
     useEffect(() => {
@@ -90,11 +97,88 @@ export default function CarouselPreview({ items, style = 'modern' }) {
         );
     }
 
+    const renderBackgroundMedia = () => {
+        if (backgroundType === 'Video' && backgroundVideo) {
+            return (
+                <video
+                    src={backgroundVideo}
+                    className="absolute inset-0 h-full w-full object-cover"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                />
+            );
+        }
+
+        if (backgroundType === 'Image' && backgroundImage) {
+            return (
+                <Image
+                    src={backgroundImage}
+                    alt="Carousel background"
+                    fill
+                    style={{ objectFit: 'cover' }}
+                />
+            );
+        }
+
+        return null;
+    };
+
+    const backgroundStyle = useMemo(() => {
+        if (backgroundType === 'Transparent') {
+            return { background: 'transparent' };
+        }
+
+        if (backgroundType === 'Color' || !backgroundImage && !backgroundVideo) {
+            return { background: backgroundColor || '#FFFFFF' };
+        }
+        return { backgroundColor: '#1f2937' };
+    }, [backgroundType, backgroundColor, backgroundImage, backgroundVideo]);
+
+    const useLightText = useMemo(() => {
+        if (backgroundType === 'Transparent') {
+            return false;
+        }
+
+        if (backgroundType === 'Color') {
+            if (!backgroundColor || typeof backgroundColor !== 'string') {
+                return false;
+            }
+            const hex = backgroundColor.replace('#', '');
+            const normalizedHex = hex.length === 3
+                ? hex.split('').map(char => char + char).join('')
+                : hex.padEnd(6, 'f');
+            const r = parseInt(normalizedHex.substring(0, 2), 16);
+            const g = parseInt(normalizedHex.substring(2, 4), 16);
+            const b = parseInt(normalizedHex.substring(4, 6), 16);
+            const brightness = (0.299 * r + 0.587 * g + 0.114 * b);
+            return brightness < 150;
+        }
+
+        return Boolean(
+            (backgroundType === 'Image' && backgroundImage) ||
+            (backgroundType === 'Video' && backgroundVideo)
+        );
+    }, [backgroundType, backgroundColor, backgroundImage, backgroundVideo]);
+
+    const headingTextClass = useLightText ? 'text-white' : 'text-gray-700';
+    const subTextClass = useLightText ? 'text-white/80' : 'text-gray-500';
+    const navButtonClass = useLightText
+        ? 'bg-white/80 hover:bg-white text-gray-800'
+        : 'bg-white shadow-lg hover:bg-gray-100';
+
     return (
-        <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6">
+        <div className="relative rounded-2xl p-6 overflow-hidden" style={backgroundStyle}>
+            <div className="absolute inset-0 -z-10">
+                {renderBackgroundMedia()}
+                {(backgroundType === 'Image' && backgroundImage) || (backgroundType === 'Video' && backgroundVideo) ? (
+                    <div className="absolute inset-0 bg-black/20" />
+                ) : null}
+            </div>
             <div className="text-center mb-4">
-                <h4 className="text-sm font-semibold text-gray-700">Carousel Preview</h4>
-                <p className="text-xs text-gray-500">This is how your carousel will appear on your profile</p>
+                <h4 className={`text-sm font-semibold ${headingTextClass}`}>Carousel Preview</h4>
+                <p className={`text-xs ${subTextClass}`}>This is how your carousel will appear on your profile</p>
             </div>
 
             {/* Carousel Container */}
@@ -104,15 +188,15 @@ export default function CarouselPreview({ items, style = 'modern' }) {
                     <>
                         <button
                             onClick={prevSlide}
-                            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white shadow-lg rounded-full p-3 hover:bg-gray-100 transition-colors"
+                            className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 rounded-full p-3 transition-colors ${navButtonClass}`}
                         >
-                            <FaChevronLeft className="text-gray-700" />
+                            <FaChevronLeft className={useLightText ? 'text-gray-900' : 'text-gray-700'} />
                         </button>
                         <button
                             onClick={nextSlide}
-                            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white shadow-lg rounded-full p-3 hover:bg-gray-100 transition-colors"
+                            className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 rounded-full p-3 transition-colors ${navButtonClass}`}
                         >
-                            <FaChevronRight className="text-gray-700" />
+                            <FaChevronRight className={useLightText ? 'text-gray-900' : 'text-gray-700'} />
                         </button>
                     </>
                 )}
@@ -149,8 +233,12 @@ export default function CarouselPreview({ items, style = 'modern' }) {
                                 onClick={() => goToSlide(index)}
                                 className={`transition-all ${
                                     index === currentIndex
-                                        ? 'w-8 h-2 bg-blue-600 rounded-full'
-                                        : 'w-2 h-2 bg-gray-400 rounded-full hover:bg-gray-600'
+                                        ? useLightText
+                                            ? 'w-8 h-2 bg-white rounded-full'
+                                            : 'w-8 h-2 bg-blue-600 rounded-full'
+                                        : useLightText
+                                            ? 'w-2 h-2 bg-white/70 rounded-full hover:bg-white'
+                                            : 'w-2 h-2 bg-gray-400 rounded-full hover:bg-gray-600'
                                 }`}
                             />
                         ))}
@@ -173,6 +261,10 @@ function CarouselCard({ item, isActive, style, onClick }) {
                 return `${baseStyles} ${isActive ? 'w-80' : 'w-72 opacity-60'}`;
             case 'bold':
                 return `${baseStyles} ${isActive ? 'w-80 scale-110 shadow-2xl' : 'w-72 scale-90 opacity-50'}`;
+            case 'showcase':
+                return `${baseStyles} border-4 border-white/40 backdrop-blur ${isActive ? 'w-96 scale-105 shadow-2xl' : 'w-80 opacity-75'}`;
+            case 'spotlight':
+                return `${baseStyles} bg-gradient-to-b from-white via-white to-purple-100 ${isActive ? 'w-80 scale-105 shadow-xl' : 'w-72 opacity-70'}`;
             default:
                 return `${baseStyles} ${isActive ? 'w-80' : 'w-72'}`;
         }

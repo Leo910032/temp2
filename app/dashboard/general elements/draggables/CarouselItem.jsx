@@ -143,9 +143,6 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
                 return;
             }
 
-            setCarouselEnabled(newEnabledState);
-            setHasItems(linkedCarouselHasItems);
-
             const updatedCarousels = carousels.map(carousel =>
                 carousel.id === item.carouselId
                     ? { ...carousel, enabled: newEnabledState }
@@ -153,6 +150,13 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
             );
 
             await AppearanceService.updateAppearanceData({ carousels: updatedCarousels }, { origin: 'manage-links', userId: currentUser?.uid });
+
+            setCarouselEnabled(newEnabledState);
+            setHasItems(linkedCarouselHasItems);
+            setData(prevData => prevData.map(link =>
+                link.id === item.id ? { ...link, isActive: newEnabledState } : link
+            ));
+
             toast.success(newEnabledState ? 'Carousel enabled' : 'Carousel disabled');
         } catch (error) {
             console.error('Error updating carousel state:', error);

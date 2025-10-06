@@ -135,6 +135,10 @@ export default function ManageLinks() {
                 title: 'New Carousel',
                 enabled: true,
                 style: 'modern',
+                backgroundType: 'Color',
+                backgroundColor: '#FFFFFF',
+                backgroundImage: '',
+                backgroundVideo: '',
                 items: [], // Empty items array - user will add items later
                 order: carousels.length
             };

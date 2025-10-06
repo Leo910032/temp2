@@ -519,6 +519,10 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
                             <video
                                 src={localData.backgroundVideo}
                                 controls
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
                                 className="w-full max-h-48 rounded-lg border"
                             />
                         ) : (

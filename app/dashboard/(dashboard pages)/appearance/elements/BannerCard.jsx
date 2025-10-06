@@ -237,6 +237,7 @@ export default function BannerCard({
                                         alt="Banner Preview"
                                         fill
                                         style={{ objectFit: 'cover' }}
+                                        sizes="(max-width: 768px) 100vw, 640px"
                                         priority 
                                     />
                                 )}
@@ -247,6 +248,7 @@ export default function BannerCard({
                                         autoPlay 
                                         loop
                                         muted
+                                        playsInline
                                         src={uploadedFilePreview}
                                     >
                                         Your browser does not support the video tag.

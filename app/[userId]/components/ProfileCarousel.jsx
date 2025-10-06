@@ -126,6 +126,7 @@ export default function ProfileCarousel({
                     alt="Carousel background"
                     fill
                     style={{ objectFit: 'cover' }}
+                    sizes="(max-width: 1024px) 100vw, 1024px"
                 />
             );
         }
@@ -215,14 +216,14 @@ export default function ProfileCarousel({
             )}
 
             {/* Outer border container */}
-            <div className="max-w-6xl mx-auto rounded-3xl overflow-hidden relative" style={backgroundStyle}>
-                <div className="absolute inset-0 -z-10">
+            <div className={`max-w-6xl mx-auto rounded-3xl overflow-hidden relative ${backgroundType === 'Transparent' ? 'border border-transparent bg-transparent shadow-none' : 'border-2 border-gray-300 bg-gradient-to-br from-gray-50 to-white'}`} style={backgroundStyle}>
+                <div className="absolute inset-0 z-0 pointer-events-none">
                     {renderBackgroundMedia()}
                     {(backgroundType === 'Image' && backgroundImage) || (backgroundType === 'Video' && backgroundVideo) ? (
                         <div className="absolute inset-0 bg-black/25" />
                     ) : null}
                 </div>
-                <div className={`relative border-2 border-white/40 rounded-3xl p-8 shadow-lg ${validItems.length === 1 ? 'flex justify-center' : ''} ${useLightText ? 'text-white' : 'text-gray-900'}`}>
+                <div className={`relative z-10 rounded-3xl p-8 ${backgroundType === 'Transparent' ? 'border border-transparent shadow-none' : 'border-2 border-white/40 shadow-lg'} ${validItems.length === 1 ? 'flex justify-center' : ''} ${useLightText ? 'text-white' : 'text-gray-900'}`}>
                     {/* Navigation Arrows - Only show on desktop for multi-item carousels */}
                     {validItems.length > 1 && (
                         <>
@@ -269,6 +270,7 @@ export default function ProfileCarousel({
                             onVideoClick={openVideoModal}
                             showTitle={showTitle}
                             showDescription={showDescription}
+                            isTransparent={backgroundType === 'Transparent'}
                         />
                     ))}
                 </div>
@@ -301,7 +303,7 @@ export default function ProfileCarousel({
 }
 
 // Individual Carousel Card Component
-function CarouselCard({ item, isActive, style, onClick, onVideoClick, showTitle, showDescription }) {
+function CarouselCard({ item, isActive, style, onClick, onVideoClick, showTitle, showDescription, isTransparent }) {
     const [isPortrait, setIsPortrait] = useState(false);
 
     const widthActiveLandscape = 'md:w-80 w-72';
@@ -313,21 +315,35 @@ function CarouselCard({ item, isActive, style, onClick, onVideoClick, showTitle,
     const widthInactive = isPortrait ? widthInactivePortrait : widthInactiveLandscape;
 
     const getCardStyles = () => {
-        const baseStyles = "flex-shrink-0 bg-white rounded-2xl shadow-xl overflow-hidden transition-all duration-300 cursor-pointer select-none border-4";
+        const baseStyles = isTransparent
+            ? "flex-shrink-0 rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer select-none"
+            : "flex-shrink-0 bg-white rounded-2xl shadow-xl overflow-hidden transition-all duration-300 cursor-pointer select-none border-4";
 
         switch (style) {
             case 'modern':
-                return `${baseStyles} ${isActive ? `${widthActive} scale-105 shadow-2xl border-blue-500` : `${widthInactive} scale-95 opacity-70 border-gray-400`}`;
+                return `${baseStyles} ${isActive ? widthActive : widthInactive} ${
+                    isTransparent ? '' : (isActive ? 'scale-105 shadow-2xl border-blue-500' : 'scale-95 opacity-70 border-gray-400')
+                }`;
             case 'minimal':
-                return `${baseStyles} ${isActive ? `${widthActive} shadow-2xl border-gray-500` : `${widthInactive} opacity-60 border-gray-400`}`;
+                return `${baseStyles} ${isActive ? widthActive : widthInactive} ${
+                    isTransparent ? '' : (isActive ? 'shadow-2xl border-gray-500' : 'opacity-60 border-gray-400')
+                }`;
             case 'bold':
-                return `${baseStyles} ${isActive ? `${widthActive} scale-110 shadow-2xl ring-4 ring-blue-500 border-blue-700` : `${widthInactive} scale-90 opacity-50 border-gray-500`}`;
+                return `${baseStyles} ${isActive ? widthActive : widthInactive} ${
+                    isTransparent ? '' : (isActive ? 'scale-110 shadow-2xl ring-4 ring-blue-500 border-blue-700' : 'scale-90 opacity-50 border-gray-500')
+                }`;
             case 'showcase':
-                return `${baseStyles} backdrop-blur bg-white/90 ${isActive ? `${widthActive} scale-105 shadow-2xl border-white/70` : `${widthInactive} opacity-75 border-white/40`}`;
+                return `${baseStyles} ${isTransparent ? '' : 'backdrop-blur bg-white/90'} ${
+                    isActive ? widthActive : widthInactive
+                } ${isTransparent ? '' : (isActive ? 'scale-105 shadow-2xl border-white/70' : 'opacity-75 border-white/40')}`;
             case 'spotlight':
-                return `${baseStyles} bg-gradient-to-b from-white via-white to-purple-100 ${isActive ? `${widthActive} scale-105 shadow-2xl border-purple-300` : `${widthInactive} opacity-70 border-purple-100`}`;
+                return `${baseStyles} ${isTransparent ? '' : 'bg-gradient-to-b from-white via-white to-purple-100'} ${
+                    isActive ? widthActive : widthInactive
+                } ${isTransparent ? '' : (isActive ? 'scale-105 shadow-2xl border-purple-300' : 'opacity-70 border-purple-100')}`;
             default:
-                return `${baseStyles} ${isActive ? `${widthActive} border-gray-500` : `${widthInactive} border-gray-400`}`;
+                return `${baseStyles} ${isActive ? widthActive : widthInactive} ${
+                    isTransparent ? '' : (isActive ? 'border-gray-500' : 'border-gray-400')
+                }`;
         }
     };
 
@@ -366,7 +382,7 @@ function CarouselCard({ item, isActive, style, onClick, onVideoClick, showTitle,
             }}
         >
             {/* Hero Image */}
-            <div className={`relative bg-gradient-to-br from-blue-400 to-purple-500 ${isPortrait ? 'h-72' : 'h-48'}`}>
+            <div className={`relative ${isPortrait ? 'h-72' : 'h-48'} ${isTransparent ? '' : 'bg-gradient-to-br from-blue-400 to-purple-500'}`}>
                 {item.image && (
                     <Image
                         src={item.image}
@@ -374,7 +390,8 @@ function CarouselCard({ item, isActive, style, onClick, onVideoClick, showTitle,
                         fill
                         style={{ objectFit: isPortrait ? 'contain' : 'cover', objectPosition: 'center' }}
                         sizes={isPortrait ? '(max-width: 768px) 240px, 288px' : '(max-width: 768px) 288px, 320px'}
-                        onLoadingComplete={({ naturalWidth, naturalHeight }) => {
+                        onLoad={({ currentTarget }) => {
+                            const { naturalWidth, naturalHeight } = currentTarget;
                             if (naturalWidth && naturalHeight) {
                                 setIsPortrait(naturalHeight > naturalWidth);
                             }

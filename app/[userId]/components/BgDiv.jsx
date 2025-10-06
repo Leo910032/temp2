@@ -78,7 +78,7 @@ export default function BgDiv() {
 
     const backgroundPicture = useMemo(() => {
         if (profilePhoto) {
-            return <Image src={profilePhoto} alt={translations.altProfile} fill className="object-cover scale-[1.25]" priority />;
+            return <Image src={profilePhoto} alt={translations.altProfile} fill className="object-cover scale-[1.25]" priority sizes="100vw" />;
         }
         return (
             <div className="h-full w-full bg-gray-300 grid place-items-center">

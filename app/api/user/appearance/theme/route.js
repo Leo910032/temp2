@@ -5,7 +5,8 @@
 import { NextResponse } from 'next/server';
 import { createApiSession } from '@/lib/server/session';
 import { AppearanceService } from '@/lib/services/serviceAppearance/server/appearanceService.js';
-import { revalidateUserPage } from '@/lib/server/revalidation';
+//import { revalidateUserPage } from '@/lib/server/revalidation';
+import { revalidatePath } from 'next/cache'; // 👈 1. Import revalidatePath
 
 /**
  * GET /api/user/appearance/theme
@@ -91,9 +92,13 @@ export async function POST(request) {
         // Trigger on-demand revalidation of the user's public page
         const username = session.userData?.username;
         if (username) {
-            await revalidateUserPage(username);
-        }
+            // 2. Replace the old function call...
+            // await revalidateUserPage(username); 
 
+            // 3. ...with the direct Next.js function.
+            revalidatePath(`/${username}`);
+         
+        }
         // Step D: Return response
         return NextResponse.json({
             success: true,

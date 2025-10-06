@@ -217,6 +217,7 @@ export default function BackgroundCard({ text, identifier, colorValue, backImg }
                                     alt="Preview"
                                     fill // ✅ REPLACES layout="fill"
                                     style={{ objectFit: 'contain' }} // ✅ REPLACES objectFit="contain"
+                                    sizes="(max-width: 768px) 90vw, 480px"
                                     priority 
                                 />
                             )}
@@ -226,6 +227,8 @@ export default function BackgroundCard({ text, identifier, colorValue, backImg }
                                     controls 
                                     autoPlay 
                                     loop
+                                    muted
+                                    playsInline
                                     src={uploadedFilePreview}
                                 >
                                     Your browser does not support the video tag.

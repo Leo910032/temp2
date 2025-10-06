@@ -147,6 +147,7 @@ export default function CarouselItemCard({ item, onUpdate, onDelete, disabled })
                                     alt={localData.title}
                                     fill
                                     style={{ objectFit: 'cover' }}
+                                    sizes="(max-width: 768px) 100vw, 50vw"
                                 />
                             ) : (
                                 <div className="absolute inset-0 flex items-center justify-center text-gray-400">
@@ -299,6 +300,7 @@ export default function CarouselItemCard({ item, onUpdate, onDelete, disabled })
                                     alt={localData.title}
                                     fill
                                     style={{ objectFit: 'cover' }}
+                                    sizes="(max-width: 768px) 100vw, 50vw"
                                 />
                                 {localData.videoUrl && (
                                     <div className="absolute top-2 left-2 bg-white bg-opacity-90 rounded-full p-2">

@@ -111,6 +111,7 @@ export default function CarouselPreview({
                     alt="Carousel background"
                     fill
                     style={{ objectFit: 'cover' }}
+                    sizes="(max-width: 1024px) 100vw, 1024px"
                 />
             );
         }
@@ -169,91 +170,101 @@ export default function CarouselPreview({
         ? 'bg-white/80 hover:bg-white text-gray-800'
         : 'bg-white shadow-lg hover:bg-gray-100';
 
+    const containerClasses = useMemo(() => {
+        const baseClasses = "relative rounded-2xl p-6 overflow-hidden";
+        return backgroundType === 'Transparent'
+            ? `${baseClasses} border border-transparent bg-transparent`
+            : `${baseClasses} border border-gray-200`;
+    }, [backgroundType]);
+
     return (
-        <div className="relative rounded-2xl p-6 overflow-hidden" style={backgroundStyle}>
-            <div className="absolute inset-0 -z-10">
+        <div className={containerClasses} style={backgroundStyle}>
+            <div className="absolute inset-0 z-0 pointer-events-none">
                 {renderBackgroundMedia()}
                 {(backgroundType === 'Image' && backgroundImage) || (backgroundType === 'Video' && backgroundVideo) ? (
                     <div className="absolute inset-0 bg-black/20" />
                 ) : null}
             </div>
-            <div className="text-center mb-4">
-                <h4 className={`text-sm font-semibold ${headingTextClass}`}>Carousel Preview</h4>
-                <p className={`text-xs ${subTextClass}`}>This is how your carousel will appear on your profile</p>
-            </div>
-
-            {/* Carousel Container */}
-            <div className="relative max-w-5xl mx-auto">
-                {/* Navigation Arrows */}
-                {validItems.length > 1 && (
-                    <>
-                        <button
-                            onClick={prevSlide}
-                            className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 rounded-full p-3 transition-colors ${navButtonClass}`}
-                        >
-                            <FaChevronLeft className={useLightText ? 'text-gray-900' : 'text-gray-700'} />
-                        </button>
-                        <button
-                            onClick={nextSlide}
-                            className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 rounded-full p-3 transition-colors ${navButtonClass}`}
-                        >
-                            <FaChevronRight className={useLightText ? 'text-gray-900' : 'text-gray-700'} />
-                        </button>
-                    </>
-                )}
-
-                {/* Carousel Track */}
-                <div
-                    ref={carouselRef}
-                    className="flex gap-6 overflow-x-auto scrollbar-hide cursor-grab active:cursor-grabbing px-12 py-4"
-                    onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseUp}
-                    onTouchStart={handleTouchStart}
-                    onTouchMove={handleTouchMove}
-                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                >
-                    {validItems.map((item, index) => (
-                        <CarouselCard
-                            key={item.id}
-                            item={item}
-                            isActive={index === currentIndex}
-                            style={style}
-                            showTitle={showTitle}
-                            showDescription={showDescription}
-                            onClick={() => goToSlide(index)}
-                        />
-                    ))}
+            <div className="relative z-10">
+                <div className="text-center mb-4">
+                    <h4 className={`text-sm font-semibold ${headingTextClass}`}>Carousel Preview</h4>
+                    <p className={`text-xs ${subTextClass}`}>This is how your carousel will appear on your profile</p>
                 </div>
 
-                {/* Pagination Dots */}
-                {validItems.length > 1 && (
-                    <div className="flex items-center justify-center gap-2 mt-6">
-                        {validItems.map((_, index) => (
+                {/* Carousel Container */}
+                <div className="relative max-w-5xl mx-auto">
+                    {/* Navigation Arrows */}
+                    {validItems.length > 1 && (
+                        <>
                             <button
-                                key={index}
+                                onClick={prevSlide}
+                                className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 rounded-full p-3 transition-colors ${navButtonClass}`}
+                            >
+                                <FaChevronLeft className={useLightText ? 'text-gray-900' : 'text-gray-700'} />
+                            </button>
+                            <button
+                                onClick={nextSlide}
+                                className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 rounded-full p-3 transition-colors ${navButtonClass}`}
+                            >
+                                <FaChevronRight className={useLightText ? 'text-gray-900' : 'text-gray-700'} />
+                            </button>
+                        </>
+                    )}
+
+                    {/* Carousel Track */}
+                    <div
+                        ref={carouselRef}
+                        className="flex gap-6 overflow-x-auto scrollbar-hide cursor-grab active:cursor-grabbing px-12 py-4"
+                        onMouseDown={handleMouseDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseUp}
+                        onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    >
+                        {validItems.map((item, index) => (
+                            <CarouselCard
+                                key={item.id}
+                                item={item}
+                                isActive={index === currentIndex}
+                                style={style}
+                                showTitle={showTitle}
+                                showDescription={showDescription}
+                                isTransparent={backgroundType === 'Transparent'}
                                 onClick={() => goToSlide(index)}
-                                className={`transition-all ${
-                                    index === currentIndex
-                                        ? useLightText
-                                            ? 'w-8 h-2 bg-white rounded-full'
-                                            : 'w-8 h-2 bg-blue-600 rounded-full'
-                                        : useLightText
-                                            ? 'w-2 h-2 bg-white/70 rounded-full hover:bg-white'
-                                            : 'w-2 h-2 bg-gray-400 rounded-full hover:bg-gray-600'
-                                }`}
                             />
                         ))}
                     </div>
-                )}
+
+                    {/* Pagination Dots */}
+                    {validItems.length > 1 && (
+                        <div className="flex items-center justify-center gap-2 mt-6">
+                            {validItems.map((_, index) => (
+                                <button
+                                    key={index}
+                                    onClick={() => goToSlide(index)}
+                                    className={`transition-all ${
+                                        index === currentIndex
+                                            ? useLightText
+                                                ? 'w-8 h-2 bg-white rounded-full'
+                                                : 'w-8 h-2 bg-blue-600 rounded-full'
+                                            : useLightText
+                                                ? 'w-2 h-2 bg-white/70 rounded-full hover:bg-white'
+                                                : 'w-2 h-2 bg-gray-400 rounded-full hover:bg-gray-600'
+                                    }`}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
 }
 
 // Individual Carousel Card Component
-function CarouselCard({ item, isActive, style, onClick, showTitle, showDescription }) {
+function CarouselCard({ item, isActive, style, onClick, showTitle, showDescription, isTransparent }) {
     const [isPortrait, setIsPortrait] = useState(false);
 
     const widthActiveLandscape = 'md:w-80 w-72';
@@ -265,19 +276,31 @@ function CarouselCard({ item, isActive, style, onClick, showTitle, showDescripti
     const widthInactive = isPortrait ? widthInactivePortrait : widthInactiveLandscape;
 
     const getCardStyles = () => {
-        const baseStyles = "flex-shrink-0 bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 cursor-pointer";
+        const baseStyles = isTransparent
+            ? "flex-shrink-0 rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer"
+            : "flex-shrink-0 bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 cursor-pointer";
 
         switch (style) {
             case 'modern':
-                return `${baseStyles} ${isActive ? widthActive : widthInactive} ${isActive ? 'scale-105' : 'scale-95 opacity-70'}`;
+                return `${baseStyles} ${isActive ? widthActive : widthInactive} ${
+                    isTransparent ? '' : (isActive ? 'scale-105' : 'scale-95 opacity-70')
+                }`;
             case 'minimal':
-                return `${baseStyles} ${isActive ? widthActive : widthInactive} ${isActive ? '' : 'opacity-60'}`;
+                return `${baseStyles} ${isActive ? widthActive : widthInactive} ${
+                    isTransparent ? '' : (isActive ? '' : 'opacity-60')
+                }`;
             case 'bold':
-                return `${baseStyles} ${isActive ? widthActive : widthInactive} ${isActive ? 'scale-110 shadow-2xl' : 'scale-90 opacity-50'}`;
+                return `${baseStyles} ${isActive ? widthActive : widthInactive} ${
+                    isTransparent ? '' : (isActive ? 'scale-110 shadow-2xl' : 'scale-90 opacity-50')
+                }`;
             case 'showcase':
-                return `${baseStyles} border-4 border-white/40 backdrop-blur ${isActive ? widthActive : widthInactive} ${isActive ? 'scale-105 shadow-2xl' : 'opacity-75'}`;
+                return `${baseStyles} ${isTransparent ? '' : 'border-4 border-white/40 backdrop-blur'} ${
+                    isActive ? widthActive : widthInactive
+                } ${isTransparent ? '' : (isActive ? 'scale-105 shadow-2xl' : 'opacity-75')}`;
             case 'spotlight':
-                return `${baseStyles} bg-gradient-to-b from-white via-white to-purple-100 ${isActive ? widthActive : widthInactive} ${isActive ? 'scale-105 shadow-xl' : 'opacity-70'}`;
+                return `${baseStyles} ${isTransparent ? '' : 'bg-gradient-to-b from-white via-white to-purple-100'} ${
+                    isActive ? widthActive : widthInactive
+                } ${isTransparent ? '' : (isActive ? 'scale-105 shadow-xl' : 'opacity-70')}`;
             default:
                 return `${baseStyles} ${isActive ? widthActive : widthInactive}`;
         }
@@ -286,7 +309,11 @@ function CarouselCard({ item, isActive, style, onClick, showTitle, showDescripti
     return (
         <div className={getCardStyles()} onClick={onClick}>
             {/* Hero Image */}
-            <div className={`relative bg-gradient-to-br from-blue-400 to-purple-500 ${isPortrait ? 'h-72' : 'h-48'}`}>
+            <div
+                className={`relative ${isPortrait ? 'h-72' : 'h-48'} ${
+                    isTransparent ? '' : 'bg-gradient-to-br from-blue-400 to-purple-500'
+                }`}
+            >
                 {item.image && (
                     <Image
                         src={item.image}
@@ -294,7 +321,8 @@ function CarouselCard({ item, isActive, style, onClick, showTitle, showDescripti
                         fill
                         style={{ objectFit: isPortrait ? 'contain' : 'cover', objectPosition: 'center' }}
                         sizes={isPortrait ? '(max-width: 768px) 240px, 288px' : '(max-width: 768px) 288px, 320px'}
-                        onLoadingComplete={({ naturalWidth, naturalHeight }) => {
+                        onLoad={({ currentTarget }) => {
+                            const { naturalWidth, naturalHeight } = currentTarget;
                             if (naturalWidth && naturalHeight) {
                                 setIsPortrait(naturalHeight > naturalWidth);
                             }

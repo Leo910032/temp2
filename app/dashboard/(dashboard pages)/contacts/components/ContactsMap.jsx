@@ -76,20 +76,30 @@ export default function ContacctsMap({
     // Filter groups to only include those with contacts that have location data
     const filteredGroups = useMemo(() => {
         if (!groups || groups.length === 0) return [];
-        
+
         const contactIdsWithLocation = new Set(
             contactsWithLocation.map(c => c.id)
         );
-        
+
         return groups
             .map(group => ({
                 ...group,
-                contactIds: (group.contactIds || []).filter(id => 
+                contactIds: (group.contactIds || []).filter(id =>
                     contactIdsWithLocation.has(id)
                 )
             }))
             .filter(group => group.contactIds.length > 0);
     }, [groups, contactsWithLocation]);
+
+    // Color generator for groups (stable hash)
+    const getGroupColor = useCallback((groupId) => {
+        let hash = 0;
+        for (let i = 0; i < groupId.length; i++) {
+            hash = groupId.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+        return "#" + "00000".substring(0, 6 - c.length) + c;
+    }, []);
 
     // Group statistics for legend
     const groupStats = useMemo(() => {
@@ -102,22 +112,13 @@ export default function ContacctsMap({
                 color: getGroupColor(group.id)
             }))
             .sort((a, b) => b.contactCount - a.contactCount);
-}, [filteredGroups, getGroupColor]);    
+    }, [filteredGroups, getGroupColor]);
+
     // Contact count statistics
     const contactCounts = useMemo(() => ({
         total: contacts.length,
         withLocation: contactsWithLocation.length
     }), [contacts.length, contactsWithLocation.length]);
-
-    // Color generator for groups (stable hash)
-    const getGroupColor = useCallback((groupId) => {
-        let hash = 0;
-        for (let i = 0; i < groupId.length; i++) {
-            hash = groupId.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
-        return "#" + "00000".substring(0, 6 - c.length) + c;
-    }, []);
 
     // Centralized marker click handler
     const handleMarkerClick = useCallback((contact) => {

@@ -40,13 +40,20 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
     }, []);
 
     const shouldShowContactExchange = useMemo(() => {
-        if (isPreviewMode) return false;
         const settings = userData?.settings || {};
         const contactExchangeEnabled = settings.contactExchangeEnabled !== false;
         const profile = userData?.profile || {};
-        const hasContactInfo = profile.displayName || userData?.email;
+        const hasContactInfo = profile.displayName || userData?.displayName || userData?.email;
+
+        console.log('🔍 Contact Exchange Check:', {
+            isPreviewMode,
+            contactExchangeEnabled,
+            hasContactInfo,
+            shouldShow: contactExchangeEnabled && hasContactInfo
+        });
+
         return contactExchangeEnabled && hasContactInfo;
-    }, [isPreviewMode, userData?.profile, userData?.settings, userData?.email]);
+    }, [isPreviewMode, userData?.profile, userData?.displayName, userData?.settings, userData?.email]);
 
     // Check if banner is active
     const hasBanner = useMemo(() => {
@@ -57,18 +64,14 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
         const settings = userData?.settings || {};
         setShowSensitiveWarning(settings.sensitiveStatus || false);
     }, [userData?.settings?.sensitiveStatus, userData?.settings]);
-  // ✅ THIS IS THE FIX: A CONDITIONAL REAL-TIME LISTENER
+    // Real-time listener for BOTH preview and public pages
     useEffect(() => {
-        // Only set up the listener if we are in PREVIEW MODE.
-        if (!isPreviewMode || !userData?.uid) {
-            // For public visitors, do nothing. Updates are handled by revalidation on the next page load.
-            return;
-        }
+        if (!userData?.uid) return;
 
-        console.log('🔄 Setting up REAL-TIME PREVIEW listener for user:', userData.uid);
-        
+        console.log('🔄 Setting up real-time listener for user:', userData.uid);
+
         const docRef = doc(fireApp, "users", userData.uid);
-        const unsubscribe = onSnapshot(docRef, 
+        const unsubscribe = onSnapshot(docRef,
             (docSnap) => {
                 if (docSnap.exists()) {
                     const latestData = docSnap.data();
@@ -76,24 +79,32 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
                     const appearance = latestData.appearance || {};
                     const settings = latestData.settings || {};
 
-                    // This flattened structure should match what fetchProfileByUsername creates
                     const flattenedData = {
                         uid: userData.uid,
                         username: latestData.username,
                         email: latestData.email,
-                        accountType: latestData.accountType || 'base', // Make sure this is included
-                        subscriptionLevel: latestData.accountType || 'base', // Add this for consistency with your MyLinks component
+                        accountType: latestData.accountType || 'base',
+                        subscriptionLevel: latestData.accountType || 'base',
                         displayName: profile.displayName || '',
                         bio: profile.bio || '',
                         avatarUrl: profile.avatarUrl || '',
                         links: latestData.links || [],
                         socials: latestData.socials || [],
-                        // ... copy ALL other fields from your fetchProfileByUsername function here
                         selectedTheme: appearance.selectedTheme || 'Lake White',
                         themeFontColor: appearance.themeFontColor || '#000000',
                         fontType: appearance.fontType || 0,
                         backgroundColor: appearance.backgroundColor || '#FFFFFF',
                         backgroundType: appearance.backgroundType || 'Color',
+                        gradientDirection: appearance.gradientDirection || 0,
+                        gradientColorStart: appearance.gradientColorStart || '#FFFFFF',
+                        gradientColorEnd: appearance.gradientColorEnd || '#000000',
+                        bannerType: appearance.bannerType || 'None',
+                        bannerColor: appearance.bannerColor || '#3B82F6',
+                        bannerGradientStart: appearance.bannerGradientStart || '#667eea',
+                        bannerGradientEnd: appearance.bannerGradientEnd || '#764ba2',
+                        bannerGradientDirection: appearance.bannerGradientDirection || 'to right',
+                        bannerImage: appearance.bannerImage || null,
+                        bannerVideo: appearance.bannerVideo || null,
                         btnColor: appearance.btnColor || '#000000',
                         btnFontColor: appearance.btnFontColor || '#FFFFFF',
                         btnShadowColor: appearance.btnShadowColor || '#dcdbdb',
@@ -101,28 +112,40 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
                         carousels: appearance.carousels || [],
                         videoEmbedEnabled: appearance.videoEmbedEnabled || false,
                         videoEmbedItems: appearance.videoEmbedItems || [],
+                        cvDocument: appearance.cvDocument || null,
+                        christmasAccessory: appearance.christmasAccessory || null,
                         isPublic: settings.isPublic !== false,
+                        sensitiveStatus: settings.sensitiveStatus || false,
+                        sensitivetype: settings.sensitivetype || 0,
+                        supportBanner: settings.supportBanner || '',
+                        supportBannerStatus: settings.supportBannerStatus || false,
+                        socialPosition: settings.socialPosition || 0,
+                        contactExchangeEnabled: settings.contactExchangeEnabled !== false,
+                        profile: profile, // Keep the nested profile object too
+                        settings: settings, // Keep the nested settings object too
                     };
-                    
-                    console.log('🎨 House (Preview): Live update received.', flattenedData);
-                    
+
+                    console.log('🎨 House: Updated data:', {
+                        bannerType: flattenedData.bannerType,
+                        contactExchangeEnabled: flattenedData.contactExchangeEnabled,
+                        hasDisplayName: !!flattenedData.displayName
+                    });
+
                     setUserData(flattenedData);
                 } else {
                     console.warn('❌ User document not found in real-time update');
                 }
             },
             (error) => {
-                // This error is expected for anyone not logged in, but since this
-                // only runs in preview mode (where the user IS logged in), it indicates a real problem.
-                console.error('❌ Real-time listener error (in preview mode):', error);
+                console.error('❌ Real-time listener error:', error);
             }
         );
 
         return () => {
-            console.log('🧹 Cleaning up real-time preview listener');
+            console.log('🧹 Cleaning up real-time listener');
             unsubscribe();
         };
-    }, [isPreviewMode, userData?.uid]);
+    }, [userData?.uid]);
     useEffect(() => {
         if (viewTracked) return;
         if (isPreviewMode) {
@@ -246,12 +269,8 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
                             {shouldShowContactExchange && (
                                 <div className="w-full max-w-lg px-4 mt-6 space-y-3">
                                     <div className="text-center mb-4">
-                                        <h3 className="text-lg font-semibold text-gray-800 mb-1">
-                                            🤝 Connect with Me
-                                        </h3>
-                                        <p className="text-sm text-gray-600">
-                                            Exchange contact information quickly and easily
-                                        </p>
+                                        
+                                    
                                         
                                         {scanAvailable && (
                                             <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full">
@@ -264,7 +283,7 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
                                     </div>
                                     
                                     <div className="space-y-3">
-                                        <ExchangeButton 
+                                        <ExchangeButton
                                             username={userData.username}
                                             userInfo={{
                                                 userId: userData.uid,
@@ -276,6 +295,15 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
                                             scanAvailable={scanAvailable}
                                             preVerified={profileVerificationStatus.verified}
                                             verificationLoading={profileVerificationStatus.loading}
+                                            themeData={{
+                                                btnType: userData.btnType,
+                                                btnShadowColor: userData.btnShadowColor,
+                                                btnFontColor: userData.btnFontColor,
+                                                btnColor: userData.btnColor,
+                                                selectedTheme: userData.selectedTheme,
+                                                themeFontColor: userData.themeFontColor,
+                                                fontType: userData.fontType
+                                            }}
                                         />
                                     </div>
 

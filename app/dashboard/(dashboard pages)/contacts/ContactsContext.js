@@ -245,7 +245,7 @@ const [stats, setStats] = useState({
                 fetchUsageInfo();
             }
         }
-        
+
         // Cleanup on user change
         if (!currentUser && !isSessionLoading) {
             console.log(`👋 [${componentId.current}] User logged out, clearing data`);
@@ -256,6 +256,30 @@ const [stats, setStats] = useState({
             hasInitiallyLoaded.current = false;
         }
     }, [currentUser, isSessionLoading, fetchContactsData, fetchUsageInfo]);
+
+    // Subscribe to real-time contacts updates
+    useEffect(() => {
+        if (!currentUser) return;
+
+        console.log(`👂 [${componentId.current}] Setting up contacts listener`);
+
+        // Subscribe to ContactsService updates
+        const unsubscribe = ContactsService.subscribe((updatedData) => {
+            console.log(`🔔 [${componentId.current}] Contacts updated via listener`, updatedData);
+
+            // Update local state with fresh data
+            if (updatedData.contacts) setContacts(updatedData.contacts);
+            if (updatedData.groups) setGroups(updatedData.groups);
+            if (updatedData.stats) setStats(updatedData.stats);
+            if (updatedData.pagination) setPagination(updatedData.pagination);
+        });
+
+        // Cleanup subscription on unmount or user change
+        return () => {
+            console.log(`🔕 [${componentId.current}] Removing contacts listener`);
+            unsubscribe();
+        };
+    }, [currentUser]);
     
     // Context value
     const contextValue = useMemo(() => ({

@@ -11,83 +11,47 @@ import { availableFonts_Classic } from "@/lib/FontsList";
 import Image from "next/image";
 import { toast } from 'react-hot-toast';
 
-export default function ExchangeButton({ 
-    username, 
-    userInfo, 
-    fastLookupUsed, 
-    userId, 
+export default function ExchangeButton({
+    username,
+    userInfo,
+    fastLookupUsed,
+    userId,
     scanToken = null,
     scanAvailable = false,
     preVerified = false,
-    verificationLoading = false
+    verificationLoading = false,
+    themeData = {}
 }) {
     const { t } = useTranslation();
     const [isModalOpen, setIsModalOpen] = useState(false);
-    
-    // Theme state - COMPLETE THEME SUPPORT like Button.jsx
-    const [btnType, setBtnType] = useState(0);
-    const [btnShadowColor, setBtnShadowColor] = useState('');
-    const [btnFontColor, setBtnFontColor] = useState('');
-    const [btnColor, setBtnColor] = useState('');
-    const [selectedTheme, setSelectedTheme] = useState('');
-    const [themeTextColour, setThemeTextColour] = useState("");
-    const [selectedFontClass, setSelectedFontClass] = useState("");
+
+    // Theme state - Get from props passed from House.jsx
+    const [btnType, setBtnType] = useState(themeData.btnType || 0);
+    const [btnShadowColor, setBtnShadowColor] = useState(themeData.btnShadowColor || '#000');
+    const [btnFontColor, setBtnFontColor] = useState(themeData.btnFontColor || '#000');
+    const [btnColor, setBtnColor] = useState(themeData.btnColor || '#fff');
+    const [selectedTheme, setSelectedTheme] = useState(themeData.selectedTheme || '');
+    const [themeTextColour, setThemeTextColour] = useState(themeData.themeFontColor || '');
+    const [selectedFontClass, setSelectedFontClass] = useState('');
     const [isHovered, setIsHovered] = useState(false);
 
+    // Update theme when props change
     useEffect(() => {
-        async function fetchThemeData() {
-            try {
-                console.log("🔍 ExchangeButton: Fetching theme data for userId:", userId);
-                
-                const currentUser = await fetchUserData(userId);
-                if (!currentUser) {
-                    console.warn("❌ ExchangeButton: No current user found");
-                    return;
-                }
+        if (themeData) {
+            console.log("📊 ExchangeButton: Received theme data from props:", themeData);
 
-                console.log("✅ ExchangeButton: Current user found:", currentUser);
+            setBtnType(themeData.btnType || 0);
+            setBtnShadowColor(themeData.btnShadowColor || "#000");
+            setBtnFontColor(themeData.btnFontColor || "#000");
+            setBtnColor(themeData.btnColor || "#fff");
+            setSelectedTheme(themeData.selectedTheme || '');
+            setThemeTextColour(themeData.themeFontColor || "");
 
-                const collectionRef = collection(fireApp, "AccountData");
-                const docRef = doc(collectionRef, currentUser);
-
-                const unsubscribe = onSnapshot(docRef, (docSnapshot) => {
-                    if (docSnapshot.exists()) {
-                        const data = docSnapshot.data();
-                        console.log("📊 ExchangeButton: Theme data received:", {
-                            btnType: data.btnType,
-                            btnColor: data.btnColor,
-                            btnFontColor: data.btnFontColor,
-                            selectedTheme: data.selectedTheme,
-                            fontType: data.fontType
-                        });
-                        
-                        setBtnType(data.btnType || 0);
-                        setBtnShadowColor(data.btnShadowColor || "#000");
-                        setBtnFontColor(data.btnFontColor || "#000");
-                        setBtnColor(data.btnColor || "#fff");
-                        setSelectedTheme(data.selectedTheme || '');
-                        setThemeTextColour(data.themeFontColor || "");
-                        
-                        // Set font class
-                        const fontName = availableFonts_Classic[data.fontType ? data.fontType - 1 : 0];
-                        setSelectedFontClass(fontName?.class || '');
-                    } else {
-                        console.warn("❌ ExchangeButton: Document does not exist");
-                    }
-                });
-
-                return () => unsubscribe();
-            } catch (error) {
-                console.error("❌ ExchangeButton: Error fetching theme data:", error);
-            }
+            // Set font class
+            const fontName = availableFonts_Classic[themeData.fontType ? themeData.fontType - 1 : 0];
+            setSelectedFontClass(fontName?.class || '');
         }
-
-        if (userId) {
-            fetchThemeData();
-        } else {
-            console.warn("⚠️ ExchangeButton: No userId provided");
-        }
-    }, [userId]);
+    }, [themeData]);
 
     // Handle button click with verification check
     const handleButtonClick = () => {
@@ -348,13 +312,7 @@ export default function ExchangeButton({
 
     return (
         <>
-            {/* Debug info in development */}
-            {process.env.NODE_ENV === 'development' && (
-                <div className="text-xs text-gray-500 mb-1">
-                    ExchangeButton Debug: Type={btnType}, PreVerified={preVerified}, Loading={verificationLoading}, ScanAvailable={scanAvailable}
-                </div>
-            )}
-            
+           
             {/* Mario Theme Rendering */}
             {selectedTheme === "New Mario" ? (
                 <div className={getButtonClasses()}>         

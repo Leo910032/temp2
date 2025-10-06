@@ -298,36 +298,76 @@ export default function ExchangeModal({
 
         try {
             console.log('Processing business card scan...');
-            
-            // Prepare image data based on scan mode
-            const imageDataToScan = scanMode === 'single' 
-                ? cardData.front.image
-                : [cardData.front.image, cardData.back.image];
+            console.log('Scan mode:', scanMode);
 
-            // Use the enhanced service to scan the business card
-            const result = await exchangeService.current.scanBusinessCard(imageDataToScan, {
-                profileIdentifier: profileOwnerUsername || profileOwnerId,
-                identifierType: profileOwnerUsername ? 'username' : 'userId',
-                language: locale || 'en',
-                scanMode
-            });
+            let result;
+
+            if (scanMode === 'single') {
+                // Single-sided scan
+                console.log('Scanning front side only...');
+                result = await exchangeService.current.scanBusinessCard(cardData.front.image, {
+                    profileIdentifier: profileOwnerUsername || profileOwnerId,
+                    identifierType: profileOwnerUsername ? 'username' : 'userId',
+                    language: locale || 'en',
+                    side: 'front'
+                });
+            } else {
+                // Double-sided scan - scan both sides separately
+                console.log('Scanning both sides...');
+
+                const frontResult = await exchangeService.current.scanBusinessCard(cardData.front.image, {
+                    profileIdentifier: profileOwnerUsername || profileOwnerId,
+                    identifierType: profileOwnerUsername ? 'username' : 'userId',
+                    language: locale || 'en',
+                    side: 'front'
+                });
+
+                const backResult = await exchangeService.current.scanBusinessCard(cardData.back.image, {
+                    profileIdentifier: profileOwnerUsername || profileOwnerId,
+                    identifierType: profileOwnerUsername ? 'username' : 'userId',
+                    language: locale || 'en',
+                    side: 'back'
+                });
+
+                // Merge results from both sides
+                result = {
+                    success: frontResult.success || backResult.success,
+                    parsedFields: [
+                        ...(frontResult.parsedFields || []),
+                        ...(backResult.parsedFields || [])
+                    ],
+                    personalizedMessage: frontResult.personalizedMessage || backResult.personalizedMessage,
+                    metadata: {
+                        ...frontResult.metadata,
+                        ...backResult.metadata,
+                        sidesProcessed: ['front', 'back'],
+                        bothSides: true
+                    }
+                };
+
+                console.log('Both sides scanned. Merged results:', {
+                    totalFields: result.parsedFields.length,
+                    frontFields: frontResult.parsedFields?.length || 0,
+                    backFields: backResult.parsedFields?.length || 0
+                });
+            }
 
             if (result.success) {
                 console.log('Business card scan completed successfully');
                 setScanResult(result);
                 setScanMetadata(result.metadata);
-                
+
                 // Process the scan results using the enhanced data structure
                 const processedFields = processEnhancedScanResults(result.parsedFields, result.dynamicFields);
                 populateFormFromEnhancedScan(processedFields.standardFields, processedFields.dynamicFields);
-                
+
                 if (result.personalizedMessage) {
                     setPersonalizedMessage(result.personalizedMessage);
                 }
-                
+
                 const totalFieldCount = (result.parsedFields?.length || 0) + (result.dynamicFields?.length || 0);
                 toast.success(`Scan complete! Found ${totalFieldCount} fields.`, { duration: 4000 });
-                
+
                 setShowScanner(false);
             } else {
                 throw new Error(result.error || 'No data extracted from card');
@@ -535,7 +575,13 @@ export default function ExchangeModal({
         
         setIsSubmitting(true);
         console.log("Submitting enhanced contact form...");
-        
+        console.log("🔍 Profile info:", {
+            profileOwnerId,
+            profileOwnerUsername,
+            hasProfileId: !!profileOwnerId,
+            hasUsername: !!profileOwnerUsername
+        });
+
         try {
             const exchangeData = {
                 targetUserId: profileOwnerId,
@@ -556,7 +602,14 @@ export default function ExchangeModal({
                     hasPersonalizedMessage: !!personalizedMessage
                 }
             };
-            
+
+            console.log("📦 Prepared exchangeData:", {
+                targetUserId: exchangeData.targetUserId,
+                targetUsername: exchangeData.targetUsername,
+                contactName: exchangeData.contact?.name,
+                contactEmail: exchangeData.contact?.email
+            });
+
             const result = await exchangeService.current.submitExchangeContact(exchangeData);
             
             console.log("Enhanced contact submitted successfully:", result.contactId);

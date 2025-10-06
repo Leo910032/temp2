@@ -19,9 +19,7 @@ export default function MyLinks() {
         themeFontColor = "",
         themeTextColour = "",
         sensitiveStatus = false,
-        carouselEnabled = false,
-        carouselItems = [],
-        carouselStyle = 'modern',
+        carousels = [],
         cvEnabled = false,
         cvItems = [],
         cvDocument = null,
@@ -81,13 +79,18 @@ export default function MyLinks() {
                         </span>
                     );
                 } else if (link.type === 2) { // Carousel type
-                    // Only render carousel if user has permission, it's enabled and has items
-                    if (canUseCarousel && carouselEnabled && carouselItems && carouselItems.length > 0) {
+                    // Find the specific carousel linked to this link
+                    const linkedCarousel = carousels?.find(
+                        carousel => carousel.id === link.carouselId
+                    );
+
+                    // Only render if user has permission, carousel exists, is enabled, and has items
+                    if (canUseCarousel && linkedCarousel && linkedCarousel.enabled && linkedCarousel.items?.length > 0) {
                         return (
                             <div key={`carousel-${link.id}`} className="w-full max-w-2xl">
                                 <ProfileCarousel
-                                    items={carouselItems}
-                                    style={carouselStyle}
+                                    items={linkedCarousel.items}
+                                    style={linkedCarousel.style || 'modern'}
                                 />
                             </div>
                         );

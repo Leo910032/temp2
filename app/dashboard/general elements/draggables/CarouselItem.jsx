@@ -20,10 +20,9 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
     const { currentUser, permissions, subscriptionLevel } = useDashboard();
     const [wantsToDelete, setWantsToDelete] = useState(false);
     const [carouselEnabled, setCarouselEnabled] = useState(false);
-    const [isLoadingToggle, setIsLoadingToggle] = useState(true);
-    const [userToggledCarousel, setUserToggledCarousel] = useState(false);
+    const [linkedCarouselName, setLinkedCarouselName] = useState(null);
+    const [isLoadingCarousel, setIsLoadingCarousel] = useState(true);
     const router = useRouter();
-    const debouncedCarouselEnabled = useDebounce(carouselEnabled, 500);
 
     // Check if user has permission to use carousel
     const canUseCarousel = permissions[APPEARANCE_FEATURES.CUSTOM_CAROUSEL];
@@ -53,10 +52,10 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
         };
     }, [t, isInitialized]);
 
-    // Load carousel enabled state on mount and listen for real-time updates
+    // Load linked carousel data on mount and listen for real-time updates
     useEffect(() => {
-        if (!currentUser?.uid) {
-            setIsLoadingToggle(false);
+        if (!currentUser?.uid || !item.carouselId) {
+            setIsLoadingCarousel(false);
             return;
         }
 
@@ -64,11 +63,22 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
         const loadInitialState = async () => {
             try {
                 const appearance = await AppearanceService.getAppearanceData();
-                setCarouselEnabled(appearance.carouselEnabled || false);
+                const carousels = appearance.carousels || [];
+
+                // Find the carousel this link is connected to
+                const linkedCarousel = carousels.find(c => c.id === item.carouselId);
+
+                if (linkedCarousel) {
+                    setCarouselEnabled(linkedCarousel.enabled || false);
+                    setLinkedCarouselName(linkedCarousel.title || 'Untitled Carousel');
+                } else {
+                    setCarouselEnabled(false);
+                    setLinkedCarouselName(null);
+                }
             } catch (error) {
                 console.error('Error loading carousel state:', error);
             } finally {
-                setIsLoadingToggle(false);
+                setIsLoadingCarousel(false);
             }
         };
 
@@ -78,8 +88,16 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
         const unsubscribe = AppearanceService.listenToAppearanceData(
             currentUser.uid,
             (appearance) => {
-                const newCarouselEnabled = appearance.carouselEnabled || false;
-                setCarouselEnabled(newCarouselEnabled);
+                const carousels = appearance.carousels || [];
+                const linkedCarousel = carousels.find(c => c.id === item.carouselId);
+
+                if (linkedCarousel) {
+                    setCarouselEnabled(linkedCarousel.enabled || false);
+                    setLinkedCarouselName(linkedCarousel.title || 'Untitled Carousel');
+                } else {
+                    setCarouselEnabled(false);
+                    setLinkedCarouselName(null);
+                }
             }
         );
 
@@ -87,25 +105,9 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
         return () => {
             unsubscribe();
         };
-    }, [currentUser?.uid]);
+    }, [currentUser?.uid, item.carouselId]);
 
-    // Save carousel enabled state when toggled by user
-    useEffect(() => {
-        if (isLoadingToggle || !userToggledCarousel) return; // Don't save on initial load or listener updates
-
-        const saveCarouselState = async () => {
-            try {
-                await AppearanceService.updateCarouselEnabled(carouselEnabled);
-                setUserToggledCarousel(false); // Reset flag after save
-            } catch (error) {
-                console.error('Error saving carousel state:', error);
-            }
-        };
-
-        saveCarouselState();
-    }, [debouncedCarouselEnabled, isLoadingToggle, carouselEnabled, userToggledCarousel]);
-
-    const handleToggleCarousel = (event) => {
+    const handleToggleCarousel = async (event) => {
         // Prevent toggle if user doesn't have permission
         if (!canUseCarousel) {
             const requiredTier = subscriptionLevel === 'base' ? 'Pro' : 'Pro';
@@ -119,8 +121,28 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
             });
             return;
         }
-        setCarouselEnabled(event.target.checked);
-        setUserToggledCarousel(true); // Mark as user action
+
+        const newEnabledState = event.target.checked;
+        setCarouselEnabled(newEnabledState);
+
+        // Update the carousel's enabled state in appearance
+        try {
+            const appearance = await AppearanceService.getAppearanceData();
+            const carousels = appearance.carousels || [];
+
+            const updatedCarousels = carousels.map(carousel =>
+                carousel.id === item.carouselId
+                    ? { ...carousel, enabled: newEnabledState }
+                    : carousel
+            );
+
+            await AppearanceService.updateAppearanceData({ carousels: updatedCarousels });
+            toast.success(newEnabledState ? 'Carousel enabled' : 'Carousel disabled');
+        } catch (error) {
+            console.error('Error updating carousel state:', error);
+            toast.error('Failed to update carousel state');
+            setCarouselEnabled(!newEnabledState); // Revert on error
+        }
     };
 
     const handleDelete = () => {
@@ -142,14 +164,14 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
             return;
         }
 
-        // Navigate to appearance page with carousel hash
-        router.push('/dashboard/appearance#carousel');
+        // Navigate to appearance page with highlight parameter for this specific carousel
+        router.push(`/dashboard/appearance?highlight=${item.carouselId}#carousel`);
 
-        // After navigation, scroll to the carousel section
+        // After navigation, scroll to the specific carousel
         setTimeout(() => {
-            const carouselSection = document.getElementById('carousel');
-            if (carouselSection) {
-                carouselSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            const carouselElement = document.getElementById(`carousel-${item.carouselId}`);
+            if (carouselElement) {
+                carouselElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         }, 300);
     };
@@ -215,7 +237,9 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
                     }`}>
                         {!canUseCarousel
                             ? 'Upgrade to Pro or Premium to use this feature'
-                            : 'Drag to position where your carousel will appear'
+                            : linkedCarouselName
+                                ? `Linked to: ${linkedCarouselName}`
+                                : 'Go to Appearance to add items to this carousel'
                         }
                     </div>
 
@@ -243,7 +267,7 @@ export default function CarouselItem({ item, itemRef, style, listeners, attribut
                                 type="checkbox"
                                 onChange={handleToggleCarousel}
                                 checked={carouselEnabled}
-                                disabled={isLoadingToggle || !canUseCarousel}
+                                disabled={isLoadingCarousel || !canUseCarousel}
                                 className="absolute left-1/2 -translate-x-1/2 w-full h-full peer appearance-none rounded-md"
                             />
                             <span className={`w-9 h-6 flex items-center flex-shrink-0 ml-4 p-1 rounded-full duration-300 ease-in-out after:w-4 after:h-4 after:bg-white after:rounded-full after:shadow-md after:duration-300 ${

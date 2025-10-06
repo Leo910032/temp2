@@ -110,8 +110,8 @@ export default function ManageLinks() {
             return;
         }
 
-        // Create a unique ID for the carousel item that will be created in appearance
-        const carouselItemId = `carousel_${Date.now()}`;
+        // Create a unique ID for the carousel container that will be created in appearance
+        const carouselId = `carousel_${Date.now()}`;
 
         // Create the link item
         const newCarousel = {
@@ -119,39 +119,34 @@ export default function ManageLinks() {
             title: "Content Carousel",
             isActive: true,
             type: 2,
-            carouselItemId: carouselItemId // Link to the carousel item in appearance
+            carouselId: carouselId // Link to the carousel container in appearance
         };
 
         // Add to links
         setData(prevData => [newCarousel, ...prevData]);
 
-        // Also create the corresponding carousel item in appearance
+        // Also create the corresponding carousel container in appearance
         try {
             const appearance = await AppearanceService.getAppearanceData();
-            const carouselItems = appearance.carouselItems || [];
+            const carousels = appearance.carousels || [];
 
-            const newCarouselItem = {
-                id: carouselItemId,
-                image: '',
-                title: 'New Item',
-                description: 'Click to edit this carousel item',
-                category: '',
-                link: '',
-                author: '',
-                readTime: '',
-                videoUrl: '',
-                order: carouselItems.length
+            const newCarouselContainer = {
+                id: carouselId,
+                title: 'New Carousel',
+                enabled: true,
+                style: 'modern',
+                items: [], // Empty items array - user will add items later
+                order: carousels.length
             };
 
             await AppearanceService.updateAppearanceData({
-                carouselItems: [...carouselItems, newCarouselItem],
-                carouselEnabled: true // Auto-enable when adding first carousel
+                carousels: [...carousels, newCarouselContainer]
             });
 
-            toast.success("Carousel link added - go to Appearance to configure carousel");
+            toast.success("Carousel link added - go to Appearance to add items");
         } catch (error) {
-            console.error("Error creating carousel item:", error);
-            toast.error("Carousel link added but failed to create carousel item slot");
+            console.error("Error creating carousel container:", error);
+            toast.error("Carousel link added but failed to create carousel container");
         }
     }, [data, permissions, subscriptionLevel]);
 

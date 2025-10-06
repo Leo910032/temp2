@@ -287,7 +287,7 @@ function AppearanceContent() {
                 </h2>
                 {canUseCarousel ? (
                     <CarouselManager />
-                ) : appearance?.carouselItems?.length > 0 || appearance?.carouselEnabled ? (
+                ) : appearance?.carousels?.length > 0 ? (
                     <LockedFeature feature="Content Carousel" requiredTier="Pro">
                         <CarouselManager />
                     </LockedFeature>

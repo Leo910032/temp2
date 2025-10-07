@@ -226,10 +226,13 @@ export default function ContacctsMap({
                 });
 
                 map.addListener('idle', () => {
-                    if (isMounted && !isMapReady) {
-                        setIsMapReady(true);
-                        console.log('✅ Map is ready');
-                    }
+                    if (!isMounted) return;
+                    setIsMapReady((prev) => {
+                        if (!prev) {
+                            console.log('✅ Map is ready');
+                        }
+                        return true;
+                    });
                 });
 
             } catch (e) {

@@ -196,23 +196,6 @@ export default function Buttons() {
     });
 
     // Render a skeleton loader if the context data isn't ready yet.
-    if (!appearance) {
-        return (
-            <div className="w-full bg-white rounded-3xl my-3 flex flex-col p-6 animate-pulse">
-                {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="mb-10">
-                        <div className="h-5 w-24 bg-gray-200 rounded-md mb-5"></div>
-                        <div className="flex gap-5">
-                            <div className="h-10 flex-1 bg-gray-200 rounded-lg"></div>
-                            <div className="h-10 flex-1 bg-gray-200 rounded-lg"></div>
-                            <div className="h-10 flex-1 bg-gray-200 rounded-lg"></div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        );
-    }
-
     const btnType = toNumber(appearance?.btnType, 0);
     const btnBorderColor = appearance?.btnBorderColor ?? '#000000';
     const btnOpacityValue = toNumber(appearance?.btnOpacity, 100, 0, 100);
@@ -262,6 +245,23 @@ export default function Buttons() {
         () => createSliderHandler('btnLuminanceRange', 0, 50),
         [createSliderHandler]
     );
+
+    if (!appearance) {
+        return (
+            <div className="w-full bg-white rounded-3xl my-3 flex flex-col p-6 animate-pulse">
+                {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="mb-10">
+                        <div className="h-5 w-24 bg-gray-200 rounded-md mb-5"></div>
+                        <div className="flex gap-5">
+                            <div className="h-10 flex-1 bg-gray-200 rounded-lg"></div>
+                            <div className="h-10 flex-1 bg-gray-200 rounded-lg"></div>
+                            <div className="h-10 flex-1 bg-gray-200 rounded-lg"></div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    }
 
     return (
         <div className={`w-full bg-white rounded-3xl my-3 flex flex-col p-6 transition-opacity ${isSaving ? 'opacity-75' : ''}`}>

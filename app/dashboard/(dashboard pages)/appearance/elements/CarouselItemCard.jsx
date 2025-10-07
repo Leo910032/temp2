@@ -117,6 +117,9 @@ export default function CarouselItemCard({ item, onUpdate, onDelete, disabled })
             toast.error(error.message || "Failed to upload image");
         } finally {
             setIsUploadingImage(false);
+            if (event?.target) {
+                event.target.value = "";
+            }
         }
     };
 
@@ -151,6 +154,9 @@ export default function CarouselItemCard({ item, onUpdate, onDelete, disabled })
             toast.error(error.message || "Failed to upload video");
         } finally {
             setIsUploadingVideo(false);
+            if (event?.target) {
+                event.target.value = "";
+            }
         }
     };
 
@@ -199,54 +205,68 @@ export default function CarouselItemCard({ item, onUpdate, onDelete, disabled })
     const editingMediaUrl = localData.mediaUrl || (isVideoSelected ? localData.videoUrl : localData.image);
     const previewMediaType = isVideoSelected ? MEDIA_TYPES.VIDEO : MEDIA_TYPES.IMAGE;
     const previewMediaUrl = editingMediaUrl;
+    const displayTitle = localData.title && localData.title.trim() ? localData.title.trim() : "Untitled";
+    const previewMediaLabel = previewMediaType === MEDIA_TYPES.VIDEO ? "Video" : "Image";
 
     return (
-        <div className="w-full border-2 border-gray-200 rounded-lg p-3 sm:p-4 bg-white hover:border-gray-300 transition-colors">
-<div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="flex flex-1 min-w-0 flex-wrap items-center gap-3">
-                    <FaGripVertical className="text-gray-400 cursor-grab" />
-                    <h5 className="font-semibold text-gray-800 truncate">
-                        {isEditing ? "Editing Item" : localData.title || "Untitled"}
-                    </h5>
+        <div className="w-full rounded-2xl border-2 border-gray-200 bg-white p-4 shadow-sm transition-colors hover:border-gray-300 md:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-start gap-3">
+                    <FaGripVertical className="mt-1 text-xl text-gray-300" />
+                    <div className="min-w-0">
+                        <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+                            {isEditing ? "Editing item" : "Carousel item"}
+                        </p>
+                        <h5 className="truncate text-base font-semibold text-gray-900 sm:text-lg">
+                            {displayTitle}
+                        </h5>
+                    </div>
                 </div>
-
-                <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
                     {!isEditing ? (
                         <>
                             <button
+                                type="button"
                                 onClick={() => setIsEditing(true)}
                                 disabled={disabled}
-                                className="p-2 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors"
+                                className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-50 px-4 py-2 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                                 title="Edit"
                             >
                                 <FaEdit />
+                                <span>Edit</span>
                             </button>
                             <button
+                                type="button"
                                 onClick={handleDelete}
                                 disabled={disabled}
-                                className="p-2 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
+                                className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-50 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                                 title="Delete"
                             >
                                 <FaTrash />
+                                <span>Delete</span>
                             </button>
                         </>
                     ) : (
                         <>
                             <button
+                                type="button"
                                 onClick={handleSave}
                                 disabled={disabled}
-                                className="p-2 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors"
+                                className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-100 px-4 py-2 text-sm font-medium text-green-700 transition-colors hover:bg-green-200 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                                 title="Save"
                             >
                                 <FaSave />
+                                <span>Save</span>
                             </button>
                             <button
+                                type="button"
                                 onClick={handleCancel}
                                 disabled={disabled}
-                                className="p-2 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition-colors"
+                                className="flex w-full items-center justify-center gap-2 rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                                 title="Cancel"
                             >
                                 <FaTimes />
+                                <span>Cancel</span>
                             </button>
                         </>
                     )}
@@ -254,179 +274,198 @@ export default function CarouselItemCard({ item, onUpdate, onDelete, disabled })
             </div>
 
             {isEditing ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                            <label className="block text-sm font-medium text-gray-700">
-                                Media
-                            </label>
-                            <div className="flex items-center gap-2">
+                <div className="mt-5 space-y-6">
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:items-start">
+                        <div className="space-y-4 md:max-w-sm">
+                            <div className="flex items-center justify-between">
+                                <label className="text-sm font-medium text-gray-700">
+                                    Media
+                                </label>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleMediaTypeChange(MEDIA_TYPES.IMAGE)}
+                                        className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                                            !isVideoSelected
+                                                ? "border border-blue-500 bg-blue-50 text-blue-600"
+                                                : "border border-gray-300 text-gray-600 hover:border-blue-400"
+                                        }`}
+                                    >
+                                        Image
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleMediaTypeChange(MEDIA_TYPES.VIDEO)}
+                                        className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                                            isVideoSelected
+                                                ? "border border-blue-500 bg-blue-50 text-blue-600"
+                                                : "border border-gray-300 text-gray-600 hover:border-blue-400"
+                                        }`}
+                                    >
+                                        Video
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="relative h-56 w-full overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 transition-colors hover:border-gray-400 sm:h-48">
+                                {previewMediaUrl ? (
+                                    isVideoSelected ? (
+                                        <video
+                                            src={previewMediaUrl}
+                                            className="absolute inset-0 h-full w-full object-cover"
+                                            autoPlay
+                                            loop
+                                            muted
+                                            controls
+                                            playsInline
+                                        />
+                                    ) : (
+                                        <Image
+                                            src={previewMediaUrl}
+                                            alt={displayTitle || "Carousel media"}
+                                            fill
+                                            style={{ objectFit: "cover" }}
+                                            sizes="(max-width: 768px) 100vw, 50vw"
+                                        />
+                                    )
+                                ) : (
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-400">
+                                        {isVideoSelected ? (
+                                            <>
+                                                <FaVideo className="text-3xl" />
+                                                <span className="text-xs font-medium">Upload a video</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <FaImage className="text-3xl" />
+                                                <span className="text-xs font-medium">Upload an image</span>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+
+                                {isUploadingMedia && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                                        <div className="h-10 w-10 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex flex-col gap-2 sm:flex-row">
                                 <button
                                     type="button"
-                                    onClick={() => handleMediaTypeChange(MEDIA_TYPES.IMAGE)}
-                                    className={`px-3 py-1 text-xs rounded-full border transition-colors ${isVideoSelected ? "border-gray-300 text-gray-600 hover:border-blue-400" : "border-blue-500 text-blue-600 bg-blue-50"}`}
+                                    onClick={() =>
+                                        (isVideoSelected
+                                            ? videoInputRef.current?.click()
+                                            : fileInputRef.current?.click())
+                                    }
+                                    disabled={disabled || isUploadingMedia}
+                                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
                                 >
-                                    Image
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => handleMediaTypeChange(MEDIA_TYPES.VIDEO)}
-                                    className={`px-3 py-1 text-xs rounded-full border transition-colors ${isVideoSelected ? "border-blue-500 text-blue-600 bg-blue-50" : "border-gray-300 text-gray-600 hover:border-blue-400"}`}
-                                >
-                                    Video
+                                    {isUploadingMedia ? "Uploading..." : "Upload Media"}
                                 </button>
                             </div>
-                        </div>
-
-                        <div className="relative w-full h-40 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden bg-gray-50 hover:border-gray-400 transition-colors">
-                            {previewMediaUrl ? (
-                                isVideoSelected ? (
-                                    <video
-                                        src={previewMediaUrl}
-                                        className="absolute inset-0 h-full w-full object-cover"
-                                        autoPlay
-                                        loop
-                                        muted
-                                        controls
-                                        playsInline
-                                    />
-                                ) : (
-                                    <Image
-                                        src={previewMediaUrl}
-                                        alt={localData.title || "Carousel media"}
-                                        fill
-                                        style={{ objectFit: "cover" }}
-                                        sizes="(max-width: 768px) 100vw, 50vw"
-                                    />
-                                )
-                            ) : (
-                                <div className="absolute inset-0 flex items-center justify-center text-gray-400">
-                                    {isVideoSelected ? (
-                                        <FaVideo className="text-4xl" />
-                                    ) : (
-                                        <FaImage className="text-4xl" />
-                                    )}
-                                </div>
-                            )}
-
-                            {isUploadingMedia && (
-                                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-                                </div>
-                            )}
-
-                            <button
-                                onClick={() => (isVideoSelected ? videoInputRef.current?.click() : fileInputRef.current?.click())}
-                                disabled={isUploadingMedia}
-                                className="absolute bottom-2 right-2 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-80"
-                            >
-                                Upload
-                            </button>
-                        </div>
-
-                        <p className="text-xs text-gray-500">
-                            {isVideoSelected
-                                ? "MP4, WEBM or MOV up to 50MB. We’ll autoplay the video muted in your carousel."
-                                : "JPEG, PNG, WEBP or GIF up to 5MB."}
-                        </p>
-
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            className="hidden"
-                        />
-                        <input
-                            ref={videoInputRef}
-                            type="file"
-                            accept="video/*"
-                            onChange={handleVideoUpload}
-                            className="hidden"
-                        />
-                    </div>
-
-                    <div className="space-y-3">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Title *
-                            </label>
                             <input
-                                type="text"
-                                value={localData.title}
-                                onChange={(e) => handleFieldChange("title", e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="Best tools used in UX/UI Designers"
-                                maxLength={100}
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageUpload}
+                                disabled={disabled || isUploadingImage}
+                                className="hidden"
                             />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Category
-                            </label>
                             <input
-                                type="text"
-                                value={localData.category}
-                                onChange={(e) => handleFieldChange("category", e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="Career, Design, Tech..."
-                                maxLength={50}
+                                ref={videoInputRef}
+                                type="file"
+                                accept="video/*"
+                                onChange={handleVideoUpload}
+                                disabled={disabled || isUploadingVideo}
+                                className="hidden"
                             />
+                            <p className="text-xs leading-relaxed text-gray-500">
+                                {isVideoSelected
+                                    ? "MP4, WEBM or MOV up to 50MB. Videos autoplay muted inside your carousel."
+                                    : "JPEG, PNG or WEBP up to 5MB. Use bright imagery that highlights your content."}
+                            </p>
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Description
-                            </label>
-                            <textarea
-                                value={localData.description}
-                                onChange={(e) => handleFieldChange("description", e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                                placeholder="A brief summary of the content..."
-                                rows={3}
-                                maxLength={200}
-                            />
+                        <div className="space-y-4">
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-gray-700">
+                                    Category
+                                </label>
+                                <input
+                                    type="text"
+                                    value={localData.category}
+                                    onChange={(e) => handleFieldChange("category", e.target.value)}
+                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    placeholder="News, Podcast, Product..."
+                                    maxLength={30}
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-gray-700">
+                                    Title
+                                </label>
+                                <input
+                                    type="text"
+                                    value={localData.title}
+                                    onChange={(e) => handleFieldChange("title", e.target.value)}
+                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    placeholder="Enter a concise title"
+                                    maxLength={80}
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-gray-700">
+                                    Description
+                                </label>
+                                <textarea
+                                    value={localData.description}
+                                    onChange={(e) => handleFieldChange("description", e.target.value)}
+                                    className="min-h-[120px] w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    placeholder="A brief summary of the content..."
+                                    rows={3}
+                                    maxLength={200}
+                                />
+                            </div>
                         </div>
                     </div>
 
-                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
                                 Link URL
                             </label>
                             <input
                                 type="url"
                                 value={localData.link}
                                 onChange={(e) => handleFieldChange("link", e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                 placeholder="https://example.com/article"
                             />
                         </div>
-
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
                                 Author
                             </label>
                             <input
                                 type="text"
                                 value={localData.author}
                                 onChange={(e) => handleFieldChange("author", e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                 placeholder="Olivia"
                                 maxLength={50}
                             />
                         </div>
-
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
                                 Read Time
                             </label>
                             <input
                                 type="text"
                                 value={localData.readTime}
                                 onChange={(e) => handleFieldChange("readTime", e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                 placeholder="3 MIN READ"
                                 maxLength={20}
                             />
@@ -434,8 +473,8 @@ export default function CarouselItemCard({ item, onUpdate, onDelete, disabled })
                     </div>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="relative w-full h-40 bg-gray-100 rounded-lg overflow-hidden">
+                <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-stretch sm:gap-6">
+                    <div className="relative h-48 w-full overflow-hidden rounded-xl bg-gray-100 shadow-inner sm:h-40 sm:max-w-[200px]">
                         {previewMediaUrl ? (
                             previewMediaType === MEDIA_TYPES.VIDEO ? (
                                 <>
@@ -447,14 +486,14 @@ export default function CarouselItemCard({ item, onUpdate, onDelete, disabled })
                                         muted
                                         playsInline
                                     />
-                                    <div className="absolute top-2 left-2 bg-white bg-opacity-90 rounded-full p-2">
+                                    <div className="absolute top-3 left-3 rounded-full bg-white/90 p-2 shadow-sm">
                                         <FaPlay className="text-blue-600" />
                                     </div>
                                 </>
                             ) : (
                                 <Image
                                     src={previewMediaUrl}
-                                    alt={localData.title || "Carousel media"}
+                                    alt={displayTitle || "Carousel media"}
                                     fill
                                     style={{ objectFit: "cover" }}
                                     sizes="(max-width: 768px) 100vw, 50vw"
@@ -467,28 +506,38 @@ export default function CarouselItemCard({ item, onUpdate, onDelete, disabled })
                         )}
                     </div>
 
-                    <div className="space-y-2">
-                        {localData.category && (
-                            <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
-                                {localData.category}
+                    <div className="flex flex-1 flex-col gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                            {localData.category && (
+                                <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+                                    {localData.category}
+                                </span>
+                            )}
+                            <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+                                {previewMediaLabel}
                             </span>
-                        )}
-                        <h4 className="font-semibold text-gray-900">{localData.title}</h4>
-                        {localData.description && (
-                            <p className="text-sm text-gray-600 line-clamp-2">{localData.description}</p>
-                        )}
-                        <div className="flex items-center gap-3 text-xs text-gray-500">
-                            {localData.author && <span>{localData.author}</span>}
-                            {localData.readTime && <span>• {localData.readTime}</span>}
                         </div>
+
+                        <h4 className="text-lg font-semibold text-gray-900">{displayTitle}</h4>
+
+                        {localData.description && (
+                            <p className="text-sm leading-relaxed text-gray-600">{localData.description}</p>
+                        )}
+
+                        <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-gray-500">
+                            {localData.author && <span>{localData.author}</span>}
+                            {localData.author && localData.readTime && <span className="text-gray-400">•</span>}
+                            {localData.readTime && <span>{localData.readTime}</span>}
+                        </div>
+
                         {localData.link && (
                             <a
                                 href={localData.link}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-xs text-blue-600 hover:underline"
+                                className="break-all text-sm font-medium text-blue-600 hover:underline"
                             >
-                                {localData.link.substring(0, 50)}...
+                                {localData.link}
                             </a>
                         )}
                     </div>

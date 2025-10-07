@@ -112,6 +112,8 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
         const newItem = {
             id: `carousel_item_${Date.now()}`,
             image: '',
+            mediaType: 'image',
+            mediaUrl: '',
             title: 'New Item',
             description: 'Click to edit this item',
             category: '',

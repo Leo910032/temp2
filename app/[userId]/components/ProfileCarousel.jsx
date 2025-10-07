@@ -5,6 +5,43 @@ import React, { useState, useRef, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { FaPlay, FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 
+const MEDIA_TYPES = {
+    IMAGE: 'image',
+    VIDEO: 'video'
+};
+
+const getMediaInfo = (item = {}) => {
+    const fallbackImage = typeof item.image === 'string' ? item.image : '';
+    const fallbackVideo = typeof item.videoUrl === 'string' ? item.videoUrl : '';
+    const rawMediaType = typeof item.mediaType === 'string' ? item.mediaType.toLowerCase() : '';
+
+    let mediaType = rawMediaType === MEDIA_TYPES.VIDEO ? MEDIA_TYPES.VIDEO : MEDIA_TYPES.IMAGE;
+    let mediaUrl = typeof item.mediaUrl === 'string' ? item.mediaUrl : '';
+
+    if (mediaType === MEDIA_TYPES.VIDEO && !mediaUrl) {
+        mediaUrl = fallbackVideo;
+    }
+
+    if (mediaType === MEDIA_TYPES.IMAGE && !mediaUrl) {
+        mediaUrl = fallbackImage;
+    }
+
+    if (!mediaUrl) {
+        if (fallbackImage) {
+            mediaType = MEDIA_TYPES.IMAGE;
+            mediaUrl = fallbackImage;
+        } else if (fallbackVideo) {
+            mediaType = MEDIA_TYPES.VIDEO;
+            mediaUrl = fallbackVideo;
+        }
+    }
+
+    return {
+        mediaType,
+        mediaUrl: typeof mediaUrl === 'string' ? mediaUrl : ''
+    };
+};
+
 export default function ProfileCarousel({
     items = [],
     style = 'modern',
@@ -15,8 +52,20 @@ export default function ProfileCarousel({
     showTitle = true,
     showDescription = true
 }) {
-    // Filter out items without images FIRST (before any hooks)
-    const validItems = useMemo(() => (Array.isArray(items) ? items.filter(item => item.image) : []), [items]);
+    // Filter out items without media first (before any hooks)
+    const validItems = useMemo(() => {
+        if (!Array.isArray(items)) return [];
+        return items
+            .map(item => {
+                const { mediaType, mediaUrl } = getMediaInfo(item);
+                return {
+                    ...item,
+                    mediaType,
+                    mediaUrl
+                };
+            })
+            .filter(item => Boolean(item.mediaUrl));
+    }, [items]);
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
@@ -305,6 +354,9 @@ export default function ProfileCarousel({
 // Individual Carousel Card Component
 function CarouselCard({ item, isActive, style, onClick, onVideoClick, showTitle, showDescription, isTransparent }) {
     const [isPortrait, setIsPortrait] = useState(false);
+    const { mediaType, mediaUrl } = useMemo(() => getMediaInfo(item), [item]);
+    const hasInlineVideo = mediaType === MEDIA_TYPES.VIDEO && Boolean(mediaUrl);
+    const legacyVideoUrl = mediaType !== MEDIA_TYPES.VIDEO ? item.videoUrl : '';
 
     const widthActiveLandscape = 'md:w-80 w-72';
     const widthInactiveLandscape = 'md:w-72 w-64';
@@ -347,6 +399,12 @@ function CarouselCard({ item, isActive, style, onClick, onVideoClick, showTitle,
         }
     };
 
+    useEffect(() => {
+        if (mediaType === MEDIA_TYPES.VIDEO && isPortrait) {
+            setIsPortrait(false);
+        }
+    }, [mediaType, isPortrait]);
+
     const handleCardClick = () => {
         // If item has a link, open it
         if (item.link) {
@@ -358,10 +416,10 @@ function CarouselCard({ item, isActive, style, onClick, onVideoClick, showTitle,
 
     const handlePlayClick = (e) => {
         e.stopPropagation(); // Prevent card click
-        if (item.videoUrl) {
+        if (legacyVideoUrl) {
             // Convert YouTube URLs to embed format
-            let embedUrl = item.videoUrl;
-            const youtubeMatch = item.videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/);
+            let embedUrl = legacyVideoUrl;
+            const youtubeMatch = legacyVideoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/);
             if (youtubeMatch) {
                 embedUrl = `https://www.youtube.com/embed/${youtubeMatch[1]}?autoplay=1`;
             }
@@ -381,27 +439,42 @@ function CarouselCard({ item, isActive, style, onClick, onVideoClick, showTitle,
                 }
             }}
         >
-            {/* Hero Image */}
-            <div className={`relative ${isPortrait ? 'h-72' : 'h-48'} ${isTransparent ? '' : 'bg-gradient-to-br from-blue-400 to-purple-500'}`}>
-                {item.image && (
-                    <Image
-                        src={item.image}
-                        alt={item.title || 'Carousel item'}
-                        fill
-                        style={{ objectFit: isPortrait ? 'contain' : 'cover', objectPosition: 'center' }}
-                        sizes={isPortrait ? '(max-width: 768px) 240px, 288px' : '(max-width: 768px) 288px, 320px'}
-                        onLoad={({ currentTarget }) => {
-                            const { naturalWidth, naturalHeight } = currentTarget;
-                            if (naturalWidth && naturalHeight) {
-                                setIsPortrait(naturalHeight > naturalWidth);
-                            }
-                        }}
-                        priority={isActive}
-                    />
-                )}
+            {/* Hero Media */}
+            <div className={`relative ${(mediaType === MEDIA_TYPES.IMAGE && isPortrait) ? 'h-72' : 'h-48'} ${isTransparent ? '' : 'bg-gradient-to-br from-blue-400 to-purple-500'}`}>
+                {mediaUrl ? (
+                    mediaType === MEDIA_TYPES.VIDEO ? (
+                        <>
+                            <video
+                                src={mediaUrl}
+                                className="absolute inset-0 h-full w-full object-cover"
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                            />
+                            <div className="absolute top-3 left-3 bg-white bg-opacity-95 rounded-full p-2.5 shadow-md">
+                                <FaPlay className="text-blue-600 text-sm" />
+                            </div>
+                        </>
+                    ) : (
+                        <Image
+                            src={mediaUrl}
+                            alt={item.title || 'Carousel item'}
+                            fill
+                            style={{ objectFit: isPortrait ? 'contain' : 'cover', objectPosition: 'center' }}
+                            sizes={isPortrait ? '(max-width: 768px) 240px, 288px' : '(max-width: 768px) 288px, 320px'}
+                            onLoad={({ currentTarget }) => {
+                                const { naturalWidth, naturalHeight } = currentTarget;
+                                if (naturalWidth && naturalHeight) {
+                                    setIsPortrait(naturalHeight > naturalWidth);
+                                }
+                            }}
+                            priority={isActive}
+                        />
+                    )
+                ) : null}
 
-                {/* Play Icon for Video */}
-                {item.videoUrl && (
+                {legacyVideoUrl && !hasInlineVideo && (
                     <button
                         onClick={handlePlayClick}
                         className="absolute top-3 left-3 bg-white bg-opacity-95 rounded-full p-2.5 shadow-md hover:bg-opacity-100 hover:scale-110 transition-all z-10"

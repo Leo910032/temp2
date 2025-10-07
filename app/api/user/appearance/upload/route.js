@@ -29,7 +29,7 @@ export async function POST(request) {
             return NextResponse.json({ error: 'No file provided' }, { status: 400 });
         }
 
-        if (!uploadType || !['profile', 'backgroundImage', 'backgroundVideo', 'bannerImage', 'bannerVideo', 'carouselImage', 'carouselBackgroundImage', 'carouselBackgroundVideo', 'cv'].includes(uploadType)) {
+        if (!uploadType || !['profile', 'backgroundImage', 'backgroundVideo', 'bannerImage', 'bannerVideo', 'carouselImage', 'carouselVideo', 'carouselBackgroundImage', 'carouselBackgroundVideo', 'cv'].includes(uploadType)) {
             return NextResponse.json({ error: 'Invalid upload type' }, { status: 400 });
         }
 

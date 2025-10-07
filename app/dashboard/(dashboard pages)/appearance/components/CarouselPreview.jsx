@@ -5,6 +5,43 @@ import React, { useState, useRef, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { FaPlay, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 
+const MEDIA_TYPES = {
+    IMAGE: 'image',
+    VIDEO: 'video'
+};
+
+const getMediaInfo = (item = {}) => {
+    const fallbackImage = typeof item.image === 'string' ? item.image : '';
+    const fallbackVideo = typeof item.videoUrl === 'string' ? item.videoUrl : '';
+    const rawMediaType = typeof item.mediaType === 'string' ? item.mediaType.toLowerCase() : '';
+
+    let mediaType = rawMediaType === MEDIA_TYPES.VIDEO ? MEDIA_TYPES.VIDEO : MEDIA_TYPES.IMAGE;
+    let mediaUrl = typeof item.mediaUrl === 'string' ? item.mediaUrl : '';
+
+    if (mediaType === MEDIA_TYPES.VIDEO && !mediaUrl) {
+        mediaUrl = fallbackVideo;
+    }
+
+    if (mediaType === MEDIA_TYPES.IMAGE && !mediaUrl) {
+        mediaUrl = fallbackImage;
+    }
+
+    if (!mediaUrl) {
+        if (fallbackImage) {
+            mediaType = MEDIA_TYPES.IMAGE;
+            mediaUrl = fallbackImage;
+        } else if (fallbackVideo) {
+            mediaType = MEDIA_TYPES.VIDEO;
+            mediaUrl = fallbackVideo;
+        }
+    }
+
+    return {
+        mediaType,
+        mediaUrl: typeof mediaUrl === 'string' ? mediaUrl : ''
+    };
+};
+
 export default function CarouselPreview({
     items,
     style = 'modern',
@@ -21,8 +58,20 @@ export default function CarouselPreview({
     const [scrollLeft, setScrollLeft] = useState(0);
     const carouselRef = useRef(null);
 
-    // Filter out items without images for preview
-    const validItems = useMemo(() => (Array.isArray(items) ? items.filter(item => item.image) : []), [items]);
+    // Filter out items without media for preview
+    const validItems = useMemo(() => {
+        if (!Array.isArray(items)) return [];
+        return items
+            .map(item => {
+                const { mediaType, mediaUrl } = getMediaInfo(item);
+                return {
+                    ...item,
+                    mediaType,
+                    mediaUrl
+                };
+            })
+            .filter(item => Boolean(item.mediaUrl));
+    }, [items]);
 
     // Auto-scroll carousel to center current item - MOVED BEFORE ANY RETURN
     useEffect(() => {
@@ -166,7 +215,7 @@ export default function CarouselPreview({
     if (validItems.length === 0) {
         return (
             <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
-                <p className="text-gray-500">Add images to carousel items to see preview</p>
+                <p className="text-gray-500">Add media to carousel items to see preview</p>
             </div>
         );
     }
@@ -266,6 +315,13 @@ export default function CarouselPreview({
 // Individual Carousel Card Component
 function CarouselCard({ item, isActive, style, onClick, showTitle, showDescription, isTransparent }) {
     const [isPortrait, setIsPortrait] = useState(false);
+    const { mediaType, mediaUrl } = useMemo(() => getMediaInfo(item), [item]);
+
+    useEffect(() => {
+        if (mediaType === MEDIA_TYPES.VIDEO && isPortrait) {
+            setIsPortrait(false);
+        }
+    }, [mediaType, isPortrait]);
 
     const widthActiveLandscape = 'md:w-80 w-72';
     const widthInactiveLandscape = 'md:w-72 w-64';
@@ -310,32 +366,41 @@ function CarouselCard({ item, isActive, style, onClick, showTitle, showDescripti
         <div className={getCardStyles()} onClick={onClick}>
             {/* Hero Image */}
             <div
-                className={`relative ${isPortrait ? 'h-72' : 'h-48'} ${
+                className={`relative ${(mediaType === MEDIA_TYPES.IMAGE && isPortrait) ? 'h-72' : 'h-48'} ${
                     isTransparent ? '' : 'bg-gradient-to-br from-blue-400 to-purple-500'
                 }`}
             >
-                {item.image && (
-                    <Image
-                        src={item.image}
-                        alt={item.title}
-                        fill
-                        style={{ objectFit: isPortrait ? 'contain' : 'cover', objectPosition: 'center' }}
-                        sizes={isPortrait ? '(max-width: 768px) 240px, 288px' : '(max-width: 768px) 288px, 320px'}
-                        onLoad={({ currentTarget }) => {
-                            const { naturalWidth, naturalHeight } = currentTarget;
-                            if (naturalWidth && naturalHeight) {
-                                setIsPortrait(naturalHeight > naturalWidth);
-                            }
-                        }}
-                    />
-                )}
-
-                {/* Play Icon for Video */}
-                {item.videoUrl && (
-                    <div className="absolute top-3 left-3 bg-white bg-opacity-95 rounded-full p-2 shadow-md">
-                        <FaPlay className="text-blue-600 text-sm" />
-                    </div>
-                )}
+                {mediaUrl ? (
+                    mediaType === MEDIA_TYPES.VIDEO ? (
+                        <>
+                            <video
+                                src={mediaUrl}
+                                className="absolute inset-0 h-full w-full object-cover"
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                            />
+                            <div className="absolute top-3 left-3 bg-white bg-opacity-95 rounded-full p-2 shadow-md">
+                                <FaPlay className="text-blue-600 text-sm" />
+                            </div>
+                        </>
+                    ) : (
+                        <Image
+                            src={mediaUrl}
+                            alt={item.title}
+                            fill
+                            style={{ objectFit: isPortrait ? 'contain' : 'cover', objectPosition: 'center' }}
+                            sizes={isPortrait ? '(max-width: 768px) 240px, 288px' : '(max-width: 768px) 288px, 320px'}
+                            onLoad={({ currentTarget }) => {
+                                const { naturalWidth, naturalHeight } = currentTarget;
+                                if (naturalWidth && naturalHeight) {
+                                    setIsPortrait(naturalHeight > naturalWidth);
+                                }
+                            }}
+                        />
+                    )
+                ) : null}
             </div>
 
             {/* Card Content */}

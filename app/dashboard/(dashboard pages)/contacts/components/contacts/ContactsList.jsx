@@ -11,6 +11,7 @@ export default function ContactsList({
     onToggleSelection,
     onEdit,
     onAction,
+    onMapView,
     hasMore,
     onLoadMore,
     loading,
@@ -115,7 +116,8 @@ export default function ContactsList({
                         <ContactCard 
                             contact={contact} 
                             onEdit={onEdit}
-                            onAction={onAction}
+                            onContactAction={onAction}
+                            onMapView={onMapView}
                             groups={groups}
                             isAiResult={isAiSearch}
                         />

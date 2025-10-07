@@ -154,7 +154,7 @@ export default function ContacctsMap({
         });
     }, []);
 
-    // Initialize Google Map
+    // Initialize Google Map once per open; avoid feeding readiness state back into dependencies
     useEffect(() => {
         if (!isOpen || mapInstanceRef.current) return;
         
@@ -252,7 +252,7 @@ export default function ContacctsMap({
             setIsMapReady(false);
             console.log('🧹 Cleaned up map resources');
         };
-    }, [isOpen, selectedContactId, contactsWithLocation,isMapReady]);
+    }, [isOpen, selectedContactId, contactsWithLocation]);
 
     // Initialize and update GroupClusterManager
     useEffect(() => {

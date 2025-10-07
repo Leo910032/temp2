@@ -1,7 +1,7 @@
 "use client"
 import { useContext, useEffect, useRef, useState, useMemo } from "react";
 import { HouseContext } from "../House";
-import { hexToRgba, makeValidUrl } from "@/lib/utilities";
+import { makeValidUrl } from "@/lib/utilities";
 import { getCompanyFromUrl } from "@/lib/BrandLinks";
 import { availableFonts_Classic } from "@/lib/FontsList";
 import { useTranslation } from "@/lib/translation/useTranslation";
@@ -11,8 +11,194 @@ import Link from "next/link";
 import Image from "next/image";
 import IconDiv from "./IconDiv";
 import ButtonText from "./ButtonText";
-import "./style/3d.css";
 import { trackClick } from '@/lib/services/analyticsService'; // ✅ IMPORT the new analytics service
+import "./style/3d.css";
+
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+const normalizeHex = (hex = "") => {
+    if (typeof hex !== "string") return null;
+    const trimmed = hex.trim();
+    if (!trimmed) return null;
+    let normalized = trimmed.startsWith("#") ? trimmed.slice(1) : trimmed;
+    if (normalized.length === 3) {
+        normalized = normalized.split("").map(char => char + char).join("");
+    }
+    if (normalized.length !== 6) return null;
+    return normalized.toLowerCase();
+};
+
+const hexToRgb = (hex = "") => {
+    const normalized = normalizeHex(hex);
+    if (!normalized) return null;
+    const intVal = parseInt(normalized, 16);
+    return {
+        r: (intVal >> 16) & 255,
+        g: (intVal >> 8) & 255,
+        b: intVal & 255
+    };
+};
+
+const rgbToHex = (r, g, b) => {
+    const safe = (value) => clamp(Math.round(Number.isFinite(value) ? value : 0), 0, 255);
+    const toHex = (component) => component.toString(16).padStart(2, "0");
+    return `#${toHex(safe(r))}${toHex(safe(g))}${toHex(safe(b))}`;
+};
+
+const toRgba = (hex = "#000000", alpha = 1) => {
+    const numericAlpha = Number(alpha);
+    const safeAlpha = clamp(Number.isFinite(numericAlpha) ? numericAlpha : 1, 0, 1);
+    const rgb = hexToRgb(hex);
+    if (!rgb) {
+        return `rgba(0, 0, 0, ${safeAlpha})`;
+    }
+
+    return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${safeAlpha})`;
+};
+
+const mixChannel = (channel, target, amount) => {
+    return Math.round(channel * (1 - amount) + target * amount);
+};
+
+const adjustLuminance = (hex = "", level = 50) => {
+    const rgb = hexToRgb(hex);
+    if (!rgb) return "#000000";
+    const normalizedLevel = clamp(level, 0, 100);
+    const amount = Math.abs(normalizedLevel - 50) / 50;
+    if (amount === 0) return `#${normalizeHex(hex)}`;
+
+    const target = normalizedLevel >= 50 ? { r: 255, g: 255, b: 255 } : { r: 0, g: 0, b: 0 };
+    const adjusted = {
+        r: mixChannel(rgb.r, target.r, amount),
+        g: mixChannel(rgb.g, target.g, amount),
+        b: mixChannel(rgb.b, target.b, amount)
+    };
+    return rgbToHex(adjusted.r, adjusted.g, adjusted.b);
+};
+
+const buildLuminanceBoxShadow = (borderColor = "#000000", level = 50, range = 20) => {
+    const normalizedRange = clamp(range, 0, 50);
+    const luminanceHex = adjustLuminance(borderColor, level);
+    const alpha = clamp(0.25 + (level / 200), 0.25, 0.85);
+    const blurRadius = Math.max(4, normalizedRange);
+    const spreadRadius = Math.max(2, Math.round(normalizedRange / 2));
+    const overlayAlpha = clamp(0.08 + (level / 400), 0.05, 0.35);
+
+    return {
+        backgroundOverlay: toRgba(borderColor, overlayAlpha),
+        boxShadow: `0 0 ${blurRadius}px ${spreadRadius}px ${toRgba(luminanceHex, alpha)}`
+    };
+};
+
+const ROUNDED_TYPES = new Set([1, 4, 7, 10]);
+const PILL_TYPES = new Set([2, 5, 8, 11, 15]);
+const LEFT_PILL_TYPES = new Set([17]);
+
+const radiusPreferenceToClass = (preference) => {
+    if (preference === undefined || preference === null) {
+        return undefined;
+    }
+
+    if (typeof preference === 'number') {
+        switch (preference) {
+            case 0: return '';
+            case 1: return 'rounded-lg';
+            case 2: return 'rounded-3xl';
+            default: return undefined;
+        }
+    }
+
+    if (typeof preference === 'string') {
+        const trimmed = preference.trim();
+        if (!trimmed) {
+            return undefined;
+        }
+
+        const normalized = trimmed.toLowerCase();
+
+        const directMap = new Map([
+            ['rounded-none', ''],
+            ['rounded-0', ''],
+            ['square', ''],
+            ['sharp', ''],
+            ['none', ''],
+            ['rounded', 'rounded-lg'],
+            ['rounded-md', 'rounded-lg'],
+            ['rounded-lg', 'rounded-lg'],
+            ['rounded-xl', 'rounded-lg'],
+            ['round', 'rounded-lg'],
+            ['rounded-3xl', 'rounded-3xl'],
+            ['rounded-full', 'rounded-3xl'],
+            ['pill', 'rounded-3xl'],
+            ['full', 'rounded-3xl'],
+            ['circle', 'rounded-3xl'],
+            ['rounded-left', 'rounded-l-3xl'],
+            ['rounded-l', 'rounded-l-3xl'],
+            ['rounded-l-3xl', 'rounded-l-3xl'],
+            ['left-pill', 'rounded-l-3xl'],
+            ['left', 'rounded-l-3xl']
+        ]);
+
+        if (directMap.has(normalized)) {
+            return directMap.get(normalized);
+        }
+
+        const numericCandidate = Number(normalized);
+        if (Number.isFinite(numericCandidate)) {
+            return radiusPreferenceToClass(numericCandidate);
+        }
+
+        if (normalized.startsWith('rounded-')) {
+            return trimmed;
+        }
+
+        if (normalized.includes('pill') || normalized.includes('full') || normalized.includes('circle')) {
+            return 'rounded-3xl';
+        }
+
+        if (normalized.includes('left')) {
+            return 'rounded-l-3xl';
+        }
+
+        if (normalized.includes('round')) {
+            return 'rounded-lg';
+        }
+
+        if (normalized.includes('square') || normalized.includes('sharp')) {
+            return '';
+        }
+
+        return undefined;
+    }
+
+    if (typeof preference === 'object') {
+        const candidateKeys = ['value', 'shape', 'radius', 'className', 'class'];
+        for (const key of candidateKeys) {
+            if (key in preference) {
+                const derived = radiusPreferenceToClass(preference[key]);
+                if (derived !== undefined) {
+                    return derived;
+                }
+            }
+        }
+    }
+
+    return undefined;
+};
+
+const determineBorderRadiusClass = (type, preference) => {
+    const resolvedPreference = radiusPreferenceToClass(preference);
+    if (resolvedPreference !== undefined) {
+        return resolvedPreference;
+    }
+
+    if (type === 18 || type === 19) return 'rounded-3xl';
+    if (PILL_TYPES.has(type)) return 'rounded-3xl';
+    if (ROUNDED_TYPES.has(type)) return 'rounded-lg';
+    if (LEFT_PILL_TYPES.has(type)) return 'rounded-l-3xl';
+
+    return '';
+};
 
 // Special font component for the "New Mario" theme
 const SuperFont = ({ text, isHovered }) => {
@@ -32,16 +218,46 @@ const SuperFont = ({ text, isHovered }) => {
 
 export default function Button({ linkData, content }) {
     // --- Data from Central Context ---
-   const { userData } = useContext(HouseContext);
+    const { userData } = useContext(HouseContext);
+
+    const appearance = userData?.appearance || {};
+
     const {
         btnType = 0,
-        btnShadowColor = '#000',
-        btnFontColor = '#000',
-        btnColor = '#fff',
+        btnShadowColor = '#000000',
+        btnFontColor = '#000000',
+        btnColor = '#ffffff',
+        btnBorderColor = '#000000',
+        btnOpacity = 100,
+        btnLuminanceLevel = 50,
+        btnLuminanceRange = 20,
         selectedTheme = 'Lake White',
         fontType = 0,
-        themeTextColour = ''
-    } = userData;
+        themeFontColor = '#000000',
+        themeTextColour: appearanceThemeTextColour,
+        btnAdvancedRadius,
+        btnRadiusPreference,
+        btnRadiusStyle,
+        btnCornerStyle,
+        btnShape,
+        buttonShape
+    } = appearance;
+
+    const themeTextColour = appearanceThemeTextColour ?? themeFontColor;
+
+    const radiusPreferenceCandidates = [
+        btnAdvancedRadius,
+        btnRadiusPreference,
+        btnRadiusStyle,
+        btnCornerStyle,
+        btnShape,
+        buttonShape
+    ];
+
+    const advancedRadiusPreference =
+        radiusPreferenceCandidates.find((value) => value !== undefined && value !== null) ?? null;
+
+    const borderRadiusClass = determineBorderRadiusClass(btnType, advancedRadiusPreference);
     const { url, id: linkId, type: linkType } = linkData; // Destructure link data from props
 
   // State for styling and interaction
@@ -195,6 +411,41 @@ export default function Button({ linkData, content }) {
                 newModifierStyles.backgroundColor = btnColor;
                 break;
 
+            case 18: {
+                const numericOpacity = Number(btnOpacity);
+                const safeOpacity = Number.isFinite(numericOpacity) ? clamp(numericOpacity, 0, 100) : 100;
+                const opacityAlpha = safeOpacity / 100;
+                const advancedClassNames = ['border', borderRadiusClass].filter(Boolean).join(' ');
+                newModifierClass = advancedClassNames || 'border';
+                newModifierStyles = {
+                    backgroundColor: toRgba(btnColor, opacityAlpha),
+                    color: btnFontColor,
+                    borderColor: btnBorderColor,
+                    borderWidth: '2px',
+                    transition: 'background-color 150ms ease, border-color 150ms ease, opacity 150ms ease'
+                };
+                break;
+            }
+
+            case 19: {
+                const { backgroundOverlay, boxShadow } = buildLuminanceBoxShadow(
+                    btnBorderColor,
+                    btnLuminanceLevel,
+                    btnLuminanceRange
+                );
+                const advancedClassNames = ['border', borderRadiusClass].filter(Boolean).join(' ');
+                newModifierClass = advancedClassNames || 'border';
+                newModifierStyles = {
+                    backgroundColor: backgroundOverlay,
+                    color: btnFontColor,
+                    borderColor: btnBorderColor,
+                    borderWidth: '2px',
+                    boxShadow,
+                    transition: 'box-shadow 150ms ease, border-color 150ms ease, background-color 150ms ease'
+                };
+                break;
+            }
+
             default:
                 newModifierClass = "bg-black";
                 newModifierStyles.backgroundColor = btnColor;
@@ -207,7 +458,20 @@ export default function Button({ linkData, content }) {
         setSpecialElements(newSpecialElements);
         setBtnFontStyle({ color: btnFontColor });
 
-    }, [btnType, btnColor, btnFontColor, btnShadowColor, selectedTheme, themeTextColour, url]);
+    }, [
+        btnBorderColor,
+        btnColor,
+        btnFontColor,
+        btnLuminanceLevel,
+        btnLuminanceRange,
+        btnOpacity,
+        btnShadowColor,
+        btnType,
+        selectedTheme,
+        themeTextColour,
+        url,
+        borderRadiusClass
+    ]);
 
     // --- Render Logic ---
     const fontName = availableFonts_Classic[fontType] || availableFonts_Classic[0];

@@ -128,6 +128,11 @@ function ContactsPage() {
         }
     }, [updateContact, deleteContact]);
 
+    const handleMapView = useCallback((contact) => {
+        if (!contact) return;
+        handleContactAction('map', contact);
+    }, [handleContactAction]);
+
     console.log(
         'FEATURE CHECK: Business Card Scanner ->', 
         hasFeature(CONTACT_FEATURES.BUSINESS_CARD_SCANNER)
@@ -296,6 +301,7 @@ function ContactsPage() {
                         setShowEditModal(true);
                     }}
                     onAction={handleContactAction}
+                    onMapView={handleMapView}
                     hasMore={pagination.hasMore}
                     onLoadMore={() => refreshData({ append: true })}
                     loading={isLoading}

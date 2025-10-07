@@ -260,8 +260,8 @@ export default function ContactCard({ contact, onEdit, onStatusUpdate, onDelete,
                             )}
                         </div>
                         <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-                             <button 
-                                onClick={() => onContactAction('email', contact)} 
+                            <button 
+                                onClick={() => onContactAction?.('email', contact)} 
                                 className="flex items-center justify-center gap-1 px-2 py-2 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
                             >
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -272,7 +272,7 @@ export default function ContactCard({ contact, onEdit, onStatusUpdate, onDelete,
                             </button>
                             {contact.phone && (
                                 <button 
-                                    onClick={() => onContactAction('phone', contact)} 
+                                    onClick={() => onContactAction?.('phone', contact)} 
                                     className="flex items-center justify-center gap-1 px-2 py-2 text-xs text-green-600 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
                                 >
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -284,7 +284,7 @@ export default function ContactCard({ contact, onEdit, onStatusUpdate, onDelete,
                             )}
                             {contact.location?.latitude && (
                                 <button 
-                                    onClick={() => onMapView(contact)} 
+                                    onClick={() => onMapView?.(contact)} 
                                     className="flex items-center justify-center gap-1 px-2 py-2 text-xs text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
                                 >
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

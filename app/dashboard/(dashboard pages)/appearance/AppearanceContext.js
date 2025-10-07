@@ -28,6 +28,28 @@ import { APPEARANCE_FEATURES } from '@/lib/services/constants';
 const appearanceCache = new Map();
 const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes for appearance data
 const MAX_CACHE_ENTRIES = 20; // Reasonable limit for appearance cache
+const DEFAULT_APPEARANCE_VALUES = {
+    btnBorderColor: '#000000',
+    btnOpacity: 100,
+    btnLuminanceLevel: 50,
+    btnLuminanceRange: 20
+};
+
+function applyAppearanceDefaults(data) {
+    if (!data || typeof data !== 'object') return data;
+
+    let hasChanges = false;
+    const patched = { ...data };
+
+    Object.entries(DEFAULT_APPEARANCE_VALUES).forEach(([key, defaultValue]) => {
+        if (patched[key] === undefined || patched[key] === null) {
+            patched[key] = defaultValue;
+            hasChanges = true;
+        }
+    });
+
+    return hasChanges ? patched : data;
+}
 
 // Cache cleanup utility
 function cleanupOldCacheEntries() {
@@ -159,8 +181,15 @@ export function AppearanceProvider({ children }) {
         
         if (cachedEntry && !forceRefresh && (now - cachedEntry.timestamp < CACHE_DURATION)) {
             console.log(`[AppearanceProvider] ⚡ Loading from cache (${Math.round((now - cachedEntry.timestamp) / 1000)}s old)`);
-            setAppearance(cachedEntry.data);
-            lastSavedHashRef.current = createAppearanceHash(cachedEntry.data);
+            const cachedWithDefaults = applyAppearanceDefaults(cachedEntry.data);
+            if (cachedWithDefaults !== cachedEntry.data) {
+                appearanceCache.set(cacheKey, {
+                    data: cachedWithDefaults,
+                    timestamp: cachedEntry.timestamp
+                });
+            }
+            setAppearance(cachedWithDefaults);
+            lastSavedHashRef.current = createAppearanceHash(cachedWithDefaults);
             setIsFromCache(true);
             setIsLoading(false);
             setHasLoadError(false);
@@ -194,15 +223,16 @@ export function AppearanceProvider({ children }) {
                     cacheKey
                 }
             };
+            const enhancedWithDefaults = applyAppearanceDefaults(enhancedData);
             
             // Update cache
             appearanceCache.set(cacheKey, {
-                data: enhancedData,
+                data: enhancedWithDefaults,
                 timestamp: Date.now()
             });
             
-            setAppearance(enhancedData);
-            lastSavedHashRef.current = createAppearanceHash(enhancedData);
+            setAppearance(enhancedWithDefaults);
+            lastSavedHashRef.current = createAppearanceHash(enhancedWithDefaults);
             
             console.log(`✅ [${componentId.current}] Appearance data loaded and cached`);
             
@@ -395,29 +425,36 @@ export function AppearanceProvider({ children }) {
         if (cacheIsFresh) {
             console.log(`[AppearanceProvider] ⚡ Loading from cache (${Math.round((now - cachedEntry.timestamp) / 1000)}s old)`);
 
-            let dataToUse = cachedEntry.data;
+            let dataToUse = applyAppearanceDefaults(cachedEntry.data);
+            let cacheTimestamp = cachedEntry.timestamp;
 
             if (cacheStaleFromEvent && Array.isArray(eventCarousels)) {
                 console.log('[AppearanceProvider] ♻️ Applying pending local carousel update over cached data');
                 dataToUse = {
-                    ...cachedEntry.data,
+                    ...dataToUse,
                     carousels: eventCarousels,
                     _meta: {
-                        ...cachedEntry.data?._meta,
+                        ...dataToUse?._meta,
                         lastSynced: Date.now(),
                         fromCache: false,
                         lastUpdatedBy: latestLocalEvent?.origin || 'external'
                     }
                 };
+                dataToUse = applyAppearanceDefaults(dataToUse);
 
-                const mergedTimestamp = Date.now();
+                cacheTimestamp = Date.now();
                 appearanceCache.set(cacheKey, {
                     data: dataToUse,
-                    timestamp: mergedTimestamp
+                    timestamp: cacheTimestamp
                 });
                 if (typeof clearLocalEvent === 'function') {
                     clearLocalEvent();
                 }
+            } else if (dataToUse !== cachedEntry.data) {
+                appearanceCache.set(cacheKey, {
+                    data: dataToUse,
+                    timestamp: cacheTimestamp
+                });
             }
 
             setAppearance(dataToUse);

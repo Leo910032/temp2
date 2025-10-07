@@ -156,6 +156,13 @@ export default function CarouselPreview({
         );
     }, [backgroundType, backgroundColor, backgroundImage, backgroundVideo]);
 
+    const containerClasses = useMemo(() => {
+        const baseClasses = "relative rounded-2xl p-6 overflow-hidden";
+        return backgroundType === 'Transparent'
+            ? `${baseClasses} border border-transparent bg-transparent`
+            : `${baseClasses} border border-gray-200`;
+    }, [backgroundType]);
+
     if (validItems.length === 0) {
         return (
             <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
@@ -169,13 +176,6 @@ export default function CarouselPreview({
     const navButtonClass = useLightText
         ? 'bg-white/80 hover:bg-white text-gray-800'
         : 'bg-white shadow-lg hover:bg-gray-100';
-
-    const containerClasses = useMemo(() => {
-        const baseClasses = "relative rounded-2xl p-6 overflow-hidden";
-        return backgroundType === 'Transparent'
-            ? `${baseClasses} border border-transparent bg-transparent`
-            : `${baseClasses} border border-gray-200`;
-    }, [backgroundType]);
 
     return (
         <div className={containerClasses} style={backgroundStyle}>

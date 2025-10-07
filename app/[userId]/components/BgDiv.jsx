@@ -87,15 +87,21 @@ export default function BgDiv() {
         );
     }, [profilePhoto, displayName, translations.altProfile]);
 
+    const resolvedImageUrl = useMemo(() => {
+        if (backgroundImage) return backgroundImage;
+        if (backgroundColor?.startsWith('http')) return backgroundColor;
+        return undefined;
+    }, [backgroundImage, backgroundColor]);
+
     const contextValue = useMemo(() => ({
         bgTheme: backgroundType,
         bgColor: backgroundColor,
         gradientDirection,
         gradientColorStart,
         gradientColorEnd,
-        bgImage: backgroundImage,
+        bgImage: resolvedImageUrl,
         bgVideo: backgroundVideo
-    }), [backgroundType, backgroundColor, gradientDirection, gradientColorStart, gradientColorEnd, backgroundImage, backgroundVideo]);
+    }), [backgroundType, backgroundColor, gradientDirection, gradientColorStart, gradientColorEnd, resolvedImageUrl, backgroundVideo]);
 
     if (!isInitialized) {
         return <div className="fixed inset-0 h-full w-full bg-gray-200 animate-pulse -z-10"></div>;
@@ -134,24 +140,26 @@ export default function BgDiv() {
         }
 
         // ✅ NEW: Handle Image background
-       if (backgroundType === 'Image') {
-    // ...
-    return (
-        <BgContext.Provider value={contextValue}>
-            <div className="fixed inset-0 w-full h-full -z-10">
-                {imageUrl && (
-                    <Image 
-                        src={imageUrl}
-                        alt="Background"
-                        fill
-                        priority
-                        className="object-cover"
-                    />
-                )}
-            </div>
-        </BgContext.Provider>
-    );
-}
+        if (backgroundType === 'Image') {
+            const imageUrl = resolvedImageUrl;
+            console.log('🎨 BgDiv: Rendering image background:', imageUrl?.substring(0, 50));
+            
+            return (
+                <BgContext.Provider value={contextValue}>
+                    <div className="fixed inset-0 w-full h-full -z-10">
+                        {imageUrl && (
+                            <Image 
+                                src={imageUrl}
+                                alt="Background"
+                                fill
+                                priority
+                                className="object-cover"
+                            />
+                        )}
+                    </div>
+                </BgContext.Provider>
+            );
+        }
 
         // ✅ NEW: Handle Video background
         if (backgroundType === 'Video') {

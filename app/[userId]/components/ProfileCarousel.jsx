@@ -3,7 +3,8 @@
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import Image from "next/image";
-import { FaPlay, FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
+import { FaPlay, FaChevronLeft, FaChevronRight, FaTimes, FaSearchPlus } from "react-icons/fa";
+import CarouselItemModal from "./CarouselItemModal";
 
 const MEDIA_TYPES = {
     IMAGE: 'image',
@@ -73,6 +74,7 @@ export default function ProfileCarousel({
     const [scrollLeft, setScrollLeft] = useState(0);
     const [videoModalOpen, setVideoModalOpen] = useState(false);
     const [currentVideoUrl, setCurrentVideoUrl] = useState('');
+    const [expandedItem, setExpandedItem] = useState(null);
     const carouselRef = useRef(null);
 
     // ✅ ALL HOOKS MUST BE BEFORE ANY RETURN - Auto-scroll carousel to center current item
@@ -156,6 +158,15 @@ export default function ProfileCarousel({
     const closeVideoModal = () => {
         setVideoModalOpen(false);
         setCurrentVideoUrl('');
+    };
+
+    const openExpandedModal = (item) => {
+        if (!item) return;
+        setExpandedItem(item);
+    };
+
+    const closeExpandedModal = () => {
+        setExpandedItem(null);
     };
 
     const renderBackgroundMedia = () => {
@@ -322,6 +333,9 @@ export default function ProfileCarousel({
                             style={style}
                             onClick={() => goToSlide(index)}
                             onVideoClick={openVideoModal}
+                            onLongPress={openExpandedModal}
+                            onExpandClick={openExpandedModal}
+                            expandIcon={<FaSearchPlus className="text-white text-xs" />}
                             showTitle={showTitle}
                             showDescription={showDescription}
                             isTransparent={backgroundType === 'Transparent'}
@@ -352,13 +366,20 @@ export default function ProfileCarousel({
                 )}
                 </div>
             </div>
+            <CarouselItemModal
+                item={expandedItem}
+                isOpen={Boolean(expandedItem)}
+                onClose={closeExpandedModal}
+            />
         </div>
     );
 }
 
 // Individual Carousel Card Component
-function CarouselCard({ item, isActive, style, onClick, onVideoClick, showTitle, showDescription, isTransparent }) {
+function CarouselCard({ item, isActive, style, onClick, onVideoClick, onLongPress, onExpandClick, expandIcon, showTitle, showDescription, isTransparent }) {
     const [isPortrait, setIsPortrait] = useState(false);
+    const longPressTimeoutRef = useRef(null);
+    const longPressTriggeredRef = useRef(false);
     const { mediaType, mediaUrl } = useMemo(() => getMediaInfo(item), [item]);
     const hasInlineVideo = mediaType === MEDIA_TYPES.VIDEO && Boolean(mediaUrl);
     const legacyVideoUrl = mediaType !== MEDIA_TYPES.VIDEO ? item.videoUrl : '';
@@ -410,7 +431,47 @@ function CarouselCard({ item, isActive, style, onClick, onVideoClick, showTitle,
         }
     }, [mediaType, isPortrait]);
 
+    const clearLongPressTimer = () => {
+        if (longPressTimeoutRef.current) {
+            clearTimeout(longPressTimeoutRef.current);
+            longPressTimeoutRef.current = null;
+        }
+    };
+
+    useEffect(() => {
+        return () => clearLongPressTimer();
+    }, []);
+
+    const handlePressStart = (event) => {
+        if (!onLongPress) return;
+        const isTouch = event.type === 'touchstart';
+        const isPrimaryMouse = event.type === 'mousedown' && event.button === 0;
+
+        if (!isTouch && !isPrimaryMouse) return;
+
+        longPressTriggeredRef.current = false;
+        clearLongPressTimer();
+
+        longPressTimeoutRef.current = setTimeout(() => {
+            longPressTriggeredRef.current = true;
+            clearLongPressTimer();
+            onLongPress(item);
+        }, 500);
+    };
+
+    const cancelLongPress = () => {
+        clearLongPressTimer();
+    };
+
+    const handlePressEnd = () => {
+        clearLongPressTimer();
+    };
+
     const handleCardClick = () => {
+        if (longPressTriggeredRef.current) {
+            longPressTriggeredRef.current = false;
+            return;
+        }
         // If item has a link, open it
         if (item.link) {
             window.open(item.link, '_blank', 'noopener,noreferrer');
@@ -442,6 +503,19 @@ function CarouselCard({ item, isActive, style, onClick, onVideoClick, showTitle,
                 if (e.key === 'Enter' || e.key === ' ') {
                     handleCardClick();
                 }
+            }}
+            onTouchStart={handlePressStart}
+            onTouchEnd={handlePressEnd}
+            onTouchMove={cancelLongPress}
+            onTouchCancel={cancelLongPress}
+            onMouseDown={handlePressStart}
+            onMouseUp={handlePressEnd}
+            onMouseLeave={cancelLongPress}
+            onContextMenu={(e) => {
+                if (longPressTriggeredRef.current) {
+                    e.preventDefault();
+                }
+                cancelLongPress();
             }}
         >
             {/* Hero Media */}
@@ -489,12 +563,29 @@ function CarouselCard({ item, isActive, style, onClick, onVideoClick, showTitle,
                     </button>
                 )}
 
-                {/* Link indicator */}
-                {item.link && (
-                    <div className="absolute top-3 right-3 bg-white bg-opacity-95 rounded-full p-2 shadow-md">
-                        <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
+                {(onExpandClick || item.link) && (
+                    <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
+                        {onExpandClick && (
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    cancelLongPress();
+                                    onExpandClick(item);
+                                }}
+                                className="hidden md:flex items-center justify-center w-9 h-9 rounded-full bg-black/50 text-white shadow-md hover:bg-black/70 transition"
+                                aria-label="Expand item"
+                            >
+                                {expandIcon || <FaSearchPlus className="text-white text-sm" />}
+                            </button>
+                        )}
+                        {item.link && (
+                            <div className="bg-white bg-opacity-95 rounded-full p-2 shadow-md">
+                                <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

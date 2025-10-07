@@ -75,7 +75,7 @@ export default function CarouselManager() {
     }
 
     return (
-        <div className="w-full max-w-full bg-white rounded-3xl my-3 flex flex-col p-4 sm:p-6">
+<div className="w-full bg-white rounded-3xl my-3 flex flex-col p-4 sm:p-6">
             {/* Header */}
             <div className="mb-4">
                 <h3 className="text-xl font-semibold">{translations.title}</h3>

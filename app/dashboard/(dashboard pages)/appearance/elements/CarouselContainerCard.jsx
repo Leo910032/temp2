@@ -291,16 +291,16 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
     };
 
     return (
-        <div
-            className={`w-full max-w-full bg-white rounded-2xl p-4 sm:p-6 border-2 transition-all ${
-                isHighlighted
-                    ? 'border-blue-500 shadow-lg shadow-blue-200'
-                    : 'border-gray-200 hover:border-gray-300'
-            }`}
-            id={`carousel-${carousel.id}`}
-        >
-            {/* Header */}
-            <div className="flex flex-col gap-4 mb-4 sm:flex-row sm:items-start sm:justify-between">
+    <div
+    className={`w-full max-w-full bg-white rounded-2xl p-4 sm:p-6 border-2 transition-all ${
+        isHighlighted
+            ? 'border-blue-500 shadow-lg shadow-blue-200'
+            : 'border-gray-200 hover:border-gray-300'
+    }`}
+    id={`carousel-${carousel.id}`}
+>
+    {/* Header */}
+    <div className="flex flex-col gap-4 mb-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex flex-1 min-w-0 flex-wrap items-center gap-3 sm:flex-nowrap">
                     {isEditingTitle ? (
                         <div className="flex flex-1 flex-wrap items-center gap-2">

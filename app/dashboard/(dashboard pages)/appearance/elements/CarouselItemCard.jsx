@@ -202,7 +202,7 @@ export default function CarouselItemCard({ item, onUpdate, onDelete, disabled })
 
     return (
         <div className="w-full border-2 border-gray-200 rounded-lg p-3 sm:p-4 bg-white hover:border-gray-300 transition-colors">
-            <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-start sm:justify-between">
+<div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="flex flex-1 min-w-0 flex-wrap items-center gap-3">
                     <FaGripVertical className="text-gray-400 cursor-grab" />
                     <h5 className="font-semibold text-gray-800 truncate">

@@ -87,7 +87,7 @@ export default function MyLinks() {
                     // Only render if user has permission, carousel exists, is enabled, and has items
                     if (canUseCarousel && linkedCarousel && linkedCarousel.enabled && linkedCarousel.items?.length > 0) {
                         return (
-                            <div key={`carousel-${link.id}`} className="w-full max-w-2xl">
+                            <div key={`carousel-${link.id}`} className="w-full flex justify-center md:block md:max-w-2xl">
                                 <ProfileCarousel
                                     items={linkedCarousel.items}
                                     style={linkedCarousel.style || 'modern'}

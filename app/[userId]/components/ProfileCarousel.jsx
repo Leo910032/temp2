@@ -234,7 +234,7 @@ export default function ProfileCarousel({
     }
 
     return (
-        <div className="w-full my-8 px-4">
+        <div className="w-full my-8 px-0 sm:px-2 md:px-4 flex justify-center md:block">
             {/* Video Modal */}
             {videoModalOpen && (
                 <div
@@ -269,7 +269,7 @@ export default function ProfileCarousel({
             )}
 
             {/* Outer border container */}
-            <div className={`max-w-6xl mx-auto rounded-3xl overflow-hidden relative ${backgroundType === 'Transparent' ? 'border border-transparent bg-transparent shadow-none' : 'border-2 border-gray-300 bg-gradient-to-br from-gray-50 to-white'}`} style={backgroundStyle}>
+            <div className={`w-[92vw] sm:w-[88vw] md:w-full max-w-xl md:max-w-6xl mx-auto rounded-3xl overflow-hidden relative ${backgroundType === 'Transparent' ? 'border border-transparent bg-transparent shadow-none' : 'border-2 border-gray-300 bg-gradient-to-br from-gray-50 to-white'}`} style={backgroundStyle}>
                 <div className="absolute inset-0 z-0 pointer-events-none">
                     {renderBackgroundMedia()}
                     {(backgroundType === 'Image' && backgroundImage) || (backgroundType === 'Video' && backgroundVideo) ? (

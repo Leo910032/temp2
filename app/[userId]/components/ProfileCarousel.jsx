@@ -142,6 +142,10 @@ export default function ProfileCarousel({
         }
     };
 
+    const handleTouchEnd = () => {
+        setStartX(0);
+    };
+
     // Open video modal
     const openVideoModal = (videoUrl) => {
         setCurrentVideoUrl(videoUrl);
@@ -272,7 +276,7 @@ export default function ProfileCarousel({
                         <div className="absolute inset-0 bg-black/25" />
                     ) : null}
                 </div>
-                <div className={`relative z-10 rounded-3xl p-8 ${backgroundType === 'Transparent' ? 'border border-transparent shadow-none' : 'border-2 border-white/40 shadow-lg'} ${validItems.length === 1 ? 'flex justify-center' : ''} ${useLightText ? 'text-white' : 'text-gray-900'}`}>
+                <div className={`relative z-10 rounded-3xl px-4 py-6 sm:px-6 md:p-8 ${backgroundType === 'Transparent' ? 'border border-transparent shadow-none' : 'border-2 border-white/40 shadow-lg'} ${validItems.length === 1 ? 'flex justify-center' : ''} ${useLightText ? 'text-white' : 'text-gray-900'}`}>
                     {/* Navigation Arrows - Only show on desktop for multi-item carousels */}
                     {validItems.length > 1 && (
                         <>
@@ -296,13 +300,14 @@ export default function ProfileCarousel({
                 {/* Carousel Track */}
                 <div
                     ref={carouselRef}
-                    className="flex gap-6 overflow-x-auto scrollbar-hide cursor-grab active:cursor-grabbing py-4 px-2"
+                    className="flex gap-4 md:gap-6 overflow-x-auto scrollbar-hide md:cursor-grab md:active:cursor-grabbing py-3 sm:py-4 px-1 sm:px-2 snap-x snap-mandatory md:snap-none touch-pan-y"
                     onMouseDown={handleMouseDown}
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
                     style={{
                         scrollbarWidth: 'none',
                         msOverflowStyle: 'none',
@@ -358,40 +363,40 @@ function CarouselCard({ item, isActive, style, onClick, onVideoClick, showTitle,
     const hasInlineVideo = mediaType === MEDIA_TYPES.VIDEO && Boolean(mediaUrl);
     const legacyVideoUrl = mediaType !== MEDIA_TYPES.VIDEO ? item.videoUrl : '';
 
-    const widthActiveLandscape = 'md:w-80 w-72';
-    const widthInactiveLandscape = 'md:w-72 w-64';
-    const widthActivePortrait = 'md:w-64 w-56';
-    const widthInactivePortrait = 'md:w-56 w-48';
+    const widthActiveLandscape = 'w-full md:w-80';
+    const widthInactiveLandscape = 'w-full md:w-72';
+    const widthActivePortrait = 'w-full md:w-64';
+    const widthInactivePortrait = 'w-full md:w-56';
 
     const widthActive = isPortrait ? widthActivePortrait : widthActiveLandscape;
     const widthInactive = isPortrait ? widthInactivePortrait : widthInactiveLandscape;
 
     const getCardStyles = () => {
         const baseStyles = isTransparent
-            ? "flex-shrink-0 rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer select-none"
-            : "flex-shrink-0 bg-white rounded-2xl shadow-xl overflow-hidden transition-all duration-300 cursor-pointer select-none border-4";
+            ? "flex-shrink-0 basis-full md:basis-auto snap-center rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer select-none"
+            : "flex-shrink-0 basis-full md:basis-auto snap-center bg-white rounded-2xl shadow-xl overflow-hidden transition-all duration-300 cursor-pointer select-none border-4";
 
         switch (style) {
             case 'modern':
                 return `${baseStyles} ${isActive ? widthActive : widthInactive} ${
-                    isTransparent ? '' : (isActive ? 'scale-105 shadow-2xl border-blue-500' : 'scale-95 opacity-70 border-gray-400')
+                    isTransparent ? '' : (isActive ? 'md:scale-105 md:shadow-2xl border-blue-500' : 'md:scale-95 md:opacity-70 border-gray-400')
                 }`;
             case 'minimal':
                 return `${baseStyles} ${isActive ? widthActive : widthInactive} ${
-                    isTransparent ? '' : (isActive ? 'shadow-2xl border-gray-500' : 'opacity-60 border-gray-400')
+                    isTransparent ? '' : (isActive ? 'md:shadow-2xl border-gray-500' : 'md:opacity-60 border-gray-400')
                 }`;
             case 'bold':
                 return `${baseStyles} ${isActive ? widthActive : widthInactive} ${
-                    isTransparent ? '' : (isActive ? 'scale-110 shadow-2xl ring-4 ring-blue-500 border-blue-700' : 'scale-90 opacity-50 border-gray-500')
+                    isTransparent ? '' : (isActive ? 'md:scale-110 md:shadow-2xl ring-4 ring-blue-500 border-blue-700' : 'md:scale-90 md:opacity-50 border-gray-500')
                 }`;
             case 'showcase':
                 return `${baseStyles} ${isTransparent ? '' : 'backdrop-blur bg-white/90'} ${
                     isActive ? widthActive : widthInactive
-                } ${isTransparent ? '' : (isActive ? 'scale-105 shadow-2xl border-white/70' : 'opacity-75 border-white/40')}`;
+                } ${isTransparent ? '' : (isActive ? 'md:scale-105 md:shadow-2xl border-white/70' : 'md:opacity-75 border-white/40')}`;
             case 'spotlight':
                 return `${baseStyles} ${isTransparent ? '' : 'bg-gradient-to-b from-white via-white to-purple-100'} ${
                     isActive ? widthActive : widthInactive
-                } ${isTransparent ? '' : (isActive ? 'scale-105 shadow-2xl border-purple-300' : 'opacity-70 border-purple-100')}`;
+                } ${isTransparent ? '' : (isActive ? 'md:scale-105 md:shadow-2xl border-purple-300' : 'md:opacity-70 border-purple-100')}`;
             default:
                 return `${baseStyles} ${isActive ? widthActive : widthInactive} ${
                     isTransparent ? '' : (isActive ? 'border-gray-500' : 'border-gray-400')
@@ -440,7 +445,7 @@ function CarouselCard({ item, isActive, style, onClick, onVideoClick, showTitle,
             }}
         >
             {/* Hero Media */}
-            <div className={`relative ${(mediaType === MEDIA_TYPES.IMAGE && isPortrait) ? 'h-72' : 'h-48'} ${isTransparent ? '' : 'bg-gradient-to-br from-blue-400 to-purple-500'}`}>
+            <div className={`relative ${(mediaType === MEDIA_TYPES.IMAGE && isPortrait) ? 'h-[22rem] md:h-72' : 'h-64 md:h-48'} ${isTransparent ? '' : 'bg-gradient-to-br from-blue-400 to-purple-500'}`}>
                 {mediaUrl ? (
                     mediaType === MEDIA_TYPES.VIDEO ? (
                         <>
@@ -462,7 +467,7 @@ function CarouselCard({ item, isActive, style, onClick, onVideoClick, showTitle,
                             alt={item.title || 'Carousel item'}
                             fill
                             style={{ objectFit: isPortrait ? 'contain' : 'cover', objectPosition: 'center' }}
-                            sizes={isPortrait ? '(max-width: 768px) 240px, 288px' : '(max-width: 768px) 288px, 320px'}
+                            sizes={isPortrait ? '(max-width: 768px) 90vw, 288px' : '(max-width: 768px) 90vw, 320px'}
                             onLoad={({ currentTarget }) => {
                                 const { naturalWidth, naturalHeight } = currentTarget;
                                 if (naturalWidth && naturalHeight) {

@@ -201,16 +201,16 @@ export default function CarouselItemCard({ item, onUpdate, onDelete, disabled })
     const previewMediaUrl = editingMediaUrl;
 
     return (
-        <div className="border-2 border-gray-200 rounded-lg p-4 bg-white hover:border-gray-300 transition-colors">
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
+        <div className="w-full border-2 border-gray-200 rounded-lg p-3 sm:p-4 bg-white hover:border-gray-300 transition-colors">
+            <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex flex-1 min-w-0 flex-wrap items-center gap-3">
                     <FaGripVertical className="text-gray-400 cursor-grab" />
-                    <h5 className="font-semibold text-gray-800">
+                    <h5 className="font-semibold text-gray-800 truncate">
                         {isEditing ? "Editing Item" : localData.title || "Untitled"}
                     </h5>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                     {!isEditing ? (
                         <>
                             <button

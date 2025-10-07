@@ -66,7 +66,7 @@ export default function CarouselManager() {
 
     if (!isInitialized) {
         return (
-            <div className="w-full bg-white rounded-3xl my-3 flex flex-col p-6 animate-pulse">
+            <div className="w-full max-w-full bg-white rounded-3xl my-3 flex flex-col p-4 sm:p-6 animate-pulse">
                 <div className="h-6 w-48 bg-gray-200 rounded mb-4"></div>
                 <div className="h-4 w-full bg-gray-200 rounded mb-6"></div>
                 <div className="h-32 w-full bg-gray-200 rounded"></div>
@@ -75,7 +75,7 @@ export default function CarouselManager() {
     }
 
     return (
-        <div className="w-full bg-white rounded-3xl my-3 flex flex-col p-6">
+        <div className="w-full max-w-full bg-white rounded-3xl my-3 flex flex-col p-4 sm:p-6">
             {/* Header */}
             <div className="mb-4">
                 <h3 className="text-xl font-semibold">{translations.title}</h3>

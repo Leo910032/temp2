@@ -292,7 +292,7 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
 
     return (
         <div
-            className={`w-full bg-white rounded-2xl p-6 border-2 transition-all ${
+            className={`w-full max-w-full bg-white rounded-2xl p-4 sm:p-6 border-2 transition-all ${
                 isHighlighted
                     ? 'border-blue-500 shadow-lg shadow-blue-200'
                     : 'border-gray-200 hover:border-gray-300'
@@ -300,10 +300,10 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
             id={`carousel-${carousel.id}`}
         >
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3 flex-1">
+            <div className="flex flex-col gap-4 mb-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex flex-1 min-w-0 flex-wrap items-center gap-3 sm:flex-nowrap">
                     {isEditingTitle ? (
-                        <div className="flex items-center gap-2 flex-1">
+                        <div className="flex flex-1 flex-wrap items-center gap-2">
                             <input
                                 type="text"
                                 value={localData.title}
@@ -327,7 +327,7 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
                         </div>
                     ) : (
                         <>
-                            <h3 className="text-xl font-semibold">{localData.title}</h3>
+                            <h3 className="text-xl font-semibold truncate">{localData.title}</h3>
                             <button
                                 onClick={() => setIsEditingTitle(true)}
                                 disabled={disabled}
@@ -339,11 +339,11 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
                     )}
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
                     {/* Go to Link button */}
                     <button
                         onClick={handleGoToLink}
-                        className="flex items-center gap-2 px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm"
+                        className="flex w-full items-center justify-center gap-2 px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm sm:w-auto"
                     >
                         <FaExternalLinkAlt />
                         <span>Go to Link</span>
@@ -353,7 +353,7 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
                     <button
                         onClick={handleToggleEnabled}
                         disabled={disabled || enableBlocked}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                        className={`flex w-full items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors sm:w-auto ${
                             localData.enabled
                                 ? 'bg-green-100 text-green-700 hover:bg-green-200'
                                 : enableBlocked
@@ -367,7 +367,7 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
                         </span>
                     </button>
                     {enableBlocked && (
-                        <p className="text-xs text-gray-500 text-right">
+                        <p className="text-xs text-gray-500 sm:text-right">
                             Add carousel items to enable
                         </p>
                     )}
@@ -376,7 +376,7 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
                     {localData.items.length > 0 && (
                         <button
                             onClick={() => setShowPreview(!showPreview)}
-                            className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                            className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:w-auto"
                         >
                             {showPreview ? 'Hide Preview' : 'Preview'}
                         </button>
@@ -589,14 +589,14 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
 
             {/* Items List */}
             <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <h4 className="text-sm font-semibold text-gray-700">
                         Carousel Items ({localData.items.length})
                     </h4>
                     <button
                         onClick={handleAddItem}
                         disabled={disabled}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        className="flex w-full items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors sm:w-auto"
                     >
                         <FaPlus />
                         <span className="text-sm font-medium">Add Item</span>

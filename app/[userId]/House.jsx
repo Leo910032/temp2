@@ -44,11 +44,16 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
         const profile = userData?.profile || {};
         const hasContactInfo = profile.displayName || userData?.displayName || userData?.email;
 
+        // NEW: More detailed debug log for contact exchange status
         console.log('🔍 Contact Exchange Check:', {
             isPreviewMode,
-            contactExchangeEnabled,
-            hasContactInfo,
-            shouldShow: contactExchangeEnabled && !!hasContactInfo
+            settingsContactExchangeEnabledRaw: userData?.settings?.contactExchangeEnabled,
+            contactExchangeEnabledCalculated: contactExchangeEnabled,
+            profileDisplayName: profile.displayName,
+            userDataDisplayName: userData?.displayName,
+            userDataEmail: userData?.email,
+            hasContactInfoCalculated: hasContactInfo,
+            finalShouldShow: contactExchangeEnabled && !!hasContactInfo
         });
 
         return contactExchangeEnabled && !!hasContactInfo;

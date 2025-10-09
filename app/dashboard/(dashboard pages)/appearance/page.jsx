@@ -12,7 +12,7 @@ import ProfileCard from './components/ProfileCard';
 import Themes from './components/Themes';
 import Banners from './components/Banners'; // 🆕 New Banner component
 import CarouselManager from './components/CarouselManager'; // 🆕 New Carousel component
-import VideoEmbedManager from './components/VideoEmbedManager'; // 🆕 New Video Embed component
+import MediaManager from './components/MediaManager'; // 🆕 New Media component
 import Backgrounds from './components/Backgrounds';
 import Buttons from './components/Buttons';
 import FontsOptions from './components/FontsOptions';
@@ -305,13 +305,13 @@ function AppearanceContent() {
                     </span>
                 </h2>
                 {canUseVideoEmbed ? (
-                    <VideoEmbedManager />
-                ) : appearance?.videoEmbedItems?.length > 0 || appearance?.videoEmbedEnabled ? (
-                    <LockedFeature feature="Video Embed" requiredTier="Pro">
-                        <VideoEmbedManager />
+                    <MediaManager />
+                ) : appearance?.mediaItems?.length > 0 || appearance?.mediaEnabled ? (
+                    <LockedFeature feature="Media" requiredTier="Pro">
+                        <MediaManager />
                     </LockedFeature>
                 ) : (
-                    <UpgradePrompt feature="Video Embed" requiredTier="Pro" />
+                    <UpgradePrompt feature="Media" requiredTier="Pro" />
                 )}
             </div>
 

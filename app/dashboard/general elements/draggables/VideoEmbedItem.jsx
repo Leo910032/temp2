@@ -17,7 +17,7 @@ import { toast } from 'react-hot-toast';
 export default function VideoEmbedItem({ item, itemRef, style, listeners, attributes, isOverlay = false }) {
     const { t, isInitialized } = useTranslation();
     const { setData } = useContext(ManageLinksContent);
-    const { currentUser, permissions, subscriptionLevel } = useDashboard();
+    const { currentUser, permissions, subscriptionLevel, isLoading: isSessionLoading } = useDashboard();
     const [wantsToDelete, setWantsToDelete] = useState(false);
     const [videoEmbedEnabled, setVideoEmbedEnabled] = useState(false);
     const [isLoadingToggle, setIsLoadingToggle] = useState(true);
@@ -27,8 +27,14 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
     const router = useRouter();
     const debouncedVideoEmbedEnabled = useDebounce(videoEmbedEnabled, 500);
 
-    // Check if user has permission to use video embed
-    const canUseVideoEmbed = permissions[APPEARANCE_FEATURES.CUSTOM_VIDEO_EMBED];
+    // Define the feature key for this component
+    const featureKey = APPEARANCE_FEATURES.CUSTOM_MEDIA_EMBED;
+
+    // 🔧 ROBUST FIX: Keep loading if session is busy OR if permissions object is still empty
+    const isStillLoading = isSessionLoading || Object.keys(permissions).length === 0;
+
+    // Check if user has permission to use video embed (only after permissions are fully loaded)
+    const canUseVideoEmbed = permissions[featureKey];
     const hasExistingVideoEmbeds = videoEmbedEnabled; // User had video embeds before downgrade
 
     // 🆕 Monitor permission changes in real-time
@@ -223,6 +229,27 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
     } ${isOverlay ? 'shadow-lg' : ''} ${
         isHighlighted ? 'ring-4 ring-amber-400 shadow-xl scale-[1.02]' : ''
     }`;
+
+    // 🔧 ROBUST FIX: Loading state while session/permissions are loading - PREVENTS RACE CONDITION
+    // This now checks BOTH isSessionLoading AND if permissions object is empty
+    if (isStillLoading) {
+        return (
+            <div
+                ref={itemRef}
+                style={style}
+                className="rounded-3xl border flex flex-col h-[8rem] bg-gradient-to-r from-red-50 to-orange-50 border-red-300 animate-pulse"
+            >
+                <div className="h-full flex items-center px-6">
+                    <div className="w-4 h-4 bg-gray-300 rounded mr-4"></div>
+                    <div className="flex-1 space-y-3">
+                        <div className="h-5 bg-gray-300 rounded w-1/3"></div>
+                        <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                        <div className="h-6 bg-gray-300 rounded w-24"></div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     // Loading state while translations load
     if (!isInitialized) {

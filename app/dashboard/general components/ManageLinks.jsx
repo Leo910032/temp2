@@ -17,7 +17,7 @@ import DraggableList from "./Drag";
 import { useDashboard } from '@/app/dashboard/DashboardContext.js';
 import { LinksService } from '@/lib/services/serviceLinks/client/LinksService.js';
 import { AppearanceService } from '@/lib/services/serviceAppearance/client/appearanceService.js';
-import { APPEARANCE_FEATURES, getMaxVideoEmbedItems, getMaxCarouselItems } from '@/lib/services/constants';
+import { APPEARANCE_FEATURES, getMaxMediaItems, getMaxCarouselItems } from '@/lib/services/constants';
 
 export const ManageLinksContent = createContext(null);
 
@@ -43,7 +43,7 @@ export default function ManageLinks() {
             addHeader: t('dashboard.links.add_header'),
             addCarousel: t('dashboard.links.add_carousel') || "Add Carousel",
             addCV: t('dashboard.links.add_cv') || "Add CV / Document",
-            addVideoEmbed: t('dashboard.links.add_video_embed') || "Add Video Embed",
+            addMedia: t('dashboard.links.add_media') || "Add Media",
             emptyStateTitle: t('dashboard.links.empty_state.title'),
             emptyStateSubtitle: t('dashboard.links.empty_state.subtitle'),
             linksSaved: t('dashboard.links.saved_success') || "Links saved!",
@@ -199,14 +199,14 @@ export default function ManageLinks() {
         }
 }, [currentUser?.uid]); // <-- Dependency array updated to include user
 
-    const addVideoEmbedItem = useCallback(async () => {
+    const addMediaItem = useCallback(async () => {
         // Check subscription permission
-        const canUseVideoEmbed = permissions[APPEARANCE_FEATURES.CUSTOM_VIDEO_EMBED];
+        const canUseMedia = permissions[APPEARANCE_FEATURES.CUSTOM_MEDIA_EMBED];
 
-        if (!canUseVideoEmbed) {
+        if (!canUseMedia) {
             // Show upgrade prompt for users without permission
             const requiredTier = subscriptionLevel === 'base' ? 'Pro' : 'Pro';
-            toast.error(`Upgrade to ${requiredTier} to use Video Embed feature`, {
+            toast.error(`Upgrade to ${requiredTier} to use Media feature`, {
                 duration: 4000,
                 style: {
                     background: '#FEF3C7',
@@ -217,14 +217,14 @@ export default function ManageLinks() {
             return;
         }
 
-        // Get max video embeds for user's subscription level
-        const maxVideoEmbeds = getMaxVideoEmbedItems(subscriptionLevel);
+        // Get max media items for user's subscription level
+        const maxMediaItems = getMaxMediaItems(subscriptionLevel);
 
-        // Count existing video embed links
-        const existingVideoEmbeds = data.filter(item => item.type === 4);
+        // Count existing media links
+        const existingMediaItems = data.filter(item => item.type === 4);
 
-        if (existingVideoEmbeds.length >= maxVideoEmbeds) {
-            toast.error(`Maximum ${maxVideoEmbeds} video embed link${maxVideoEmbeds > 1 ? 's' : ''} reached for ${subscriptionLevel} plan`, {
+        if (existingMediaItems.length >= maxMediaItems) {
+            toast.error(`Maximum ${maxMediaItems} media link${maxMediaItems > 1 ? 's' : ''} reached for ${subscriptionLevel} plan`, {
                 duration: 4000,
                 style: {
                     background: '#FEF3C7',
@@ -235,44 +235,45 @@ export default function ManageLinks() {
             return;
         }
 
-        // Create a unique ID for the video embed item that will be created in appearance
-        const videoEmbedItemId = `video_embed_${Date.now()}`;
+        // Create a unique ID for the media item that will be created in appearance
+        const mediaItemId = `media_${Date.now()}`;
 
         // Create the link item
-        const newVideoEmbed = {
+        const newMediaLink = {
             id: generateRandomId(),
-            title: "Video Embed",
+            title: "Media",
             isActive: true,
             type: 4,
-            videoEmbedItemId: videoEmbedItemId // Link to the video embed item in appearance
+            mediaItemId: mediaItemId // Link to the media item in appearance
         };
 
         // Add to links
-        setData(prevData => [newVideoEmbed, ...prevData]);
+        setData(prevData => [newMediaLink, ...prevData]);
 
-        // Also create the corresponding video embed item in appearance
+        // Also create the corresponding media item in appearance
         try {
             const appearance = await AppearanceService.getAppearanceData();
-            const videoEmbedItems = appearance.videoEmbedItems || [];
+            const mediaItems = appearance.mediaItems || [];
 
-            const newVideoItem = {
-                id: videoEmbedItemId,
-                title: 'New Video',
+            const newMediaItemData = {
+                id: mediaItemId,
+                mediaType: 'video', // Default to video
+                title: 'New Media Item',
                 url: '',
                 platform: 'youtube',
                 description: '',
-                order: videoEmbedItems.length
+                order: mediaItems.length
             };
 
             await AppearanceService.updateAppearanceData({
-                videoEmbedItems: [...videoEmbedItems, newVideoItem],
-                videoEmbedEnabled: true // Auto-enable when adding first video
+                mediaItems: [...mediaItems, newMediaItemData],
+                mediaEnabled: true // Auto-enable when adding first media
             }, { origin: 'manage-links', userId: currentUser?.uid });
 
-            toast.success("Video embed link added - go to Appearance to configure video");
+            toast.success("Media link added - go to Appearance to configure media");
         } catch (error) {
-            console.error("Error creating video embed item:", error);
-            toast.error("Video link added but failed to create video item slot");
+            console.error("Error creating media item:", error);
+            toast.error("Media link added but failed to create media item slot");
         }
     }, [currentUser?.uid, data, permissions, subscriptionLevel]);
 
@@ -425,11 +426,11 @@ useEffect(() => {
                     <span className="text-indigo-700 font-medium">{translations.addCV}</span>
                 </div>
 
-                <div className="flex items-center gap-3 justify-center rounded-3xl cursor-pointer active:scale-95 hover:scale-[1.005] border border-red-300 bg-red-50 hover:bg-red-100 w-fit text-sm p-3" onClick={addVideoEmbedItem}>
+                <div className="flex items-center gap-3 justify-center rounded-3xl cursor-pointer active:scale-95 hover:scale-[1.005] border border-red-300 bg-red-50 hover:bg-red-100 w-fit text-sm p-3" onClick={addMediaItem}>
                     <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
                     </svg>
-                    <span className="text-red-700 font-medium">{translations.addVideoEmbed}</span>
+                    <span className="text-red-700 font-medium">{translations.addMedia}</span>
                 </div>
                 
                 {/* Improved saving indicator */}

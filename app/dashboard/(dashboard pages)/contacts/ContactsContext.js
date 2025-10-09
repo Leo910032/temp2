@@ -7,6 +7,8 @@ import { useDashboard } from '@/app/dashboard/DashboardContext';
 import { ContactsService } from '@/lib/services/serviceContact/client/services/ContactService.js';
 import { SemanticSearchService } from '@/lib/services/serviceContact/client/services/SemanticSearchService';
 import { CONTACT_FEATURES } from '@/lib/services/constants';
+import { getFirestore, doc, onSnapshot } from 'firebase/firestore';
+import { app } from '@/important/firebase';
 
 const ContactsContext = createContext(null);
 
@@ -278,6 +280,65 @@ const [stats, setStats] = useState({
         // Cleanup subscription on unmount or user change
         return () => {
             console.log(`🔕 [${id}] Removing contacts listener`);
+            unsubscribe();
+        };
+    }, [currentUser]);
+
+    // Set up Firestore real-time listener for database changes
+    useEffect(() => {
+        if (!currentUser) return;
+
+        const db = getFirestore(app);
+        const contactsDocRef = doc(db, 'Contacts', currentUser.uid);
+        const id = componentId.current;
+
+        console.log(`🔥 [${id}] Setting up Firestore real-time listener for contacts`);
+
+        // Listen to Firestore document changes
+        const unsubscribe = onSnapshot(
+            contactsDocRef,
+            (docSnapshot) => {
+                if (docSnapshot.exists()) {
+                    console.log(`🔔 [${id}] Contacts document updated in Firestore`);
+
+                    const data = docSnapshot.data();
+                    const contactsList = data.contacts || [];
+                    const groupsList = data.groups || [];
+
+                    // Calculate stats from the updated data
+                    const newStats = {
+                        total: contactsList.length,
+                        new: contactsList.filter(c => c.status === 'new').length,
+                        viewed: contactsList.filter(c => c.status === 'viewed').length,
+                        withLocation: contactsList.filter(c => c.location?.latitude).length
+                    };
+
+                    // Update state with fresh data from Firestore
+                    setContacts(contactsList);
+                    setGroups(groupsList);
+                    setStats(newStats);
+
+                    // Also invalidate cache and notify listeners
+                    ContactsService.invalidateCache();
+                    ContactsService.notifyListeners({
+                        contacts: contactsList,
+                        groups: groupsList,
+                        stats: newStats,
+                        pagination: { hasMore: false, lastDoc: null }
+                    });
+                } else {
+                    console.log(`📭 [${id}] No contacts document found in Firestore`);
+                }
+            },
+            (error) => {
+                console.error(`❌ [${id}] Firestore listener error:`, error);
+                toast.error('Failed to sync contacts in real-time');
+            }
+        );
+
+        // Cleanup listener on unmount or user change
+        return () => {
+            console.log(`🔕 [${id}] Removing Firestore real-time listener`);
             unsubscribe();
         };
     }, [currentUser]);

@@ -5,6 +5,7 @@ import React, { useState, useEffect } from "react";
 import { FaTrash, FaEdit, FaSave, FaTimes, FaGripVertical, FaExternalLinkAlt, FaImage, FaVideo } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { LinksService } from '@/lib/services/serviceLinks/client/LinksService.js';
 import { AppearanceService } from '@/lib/services/serviceAppearance/client/appearanceService.js';
 
@@ -328,10 +329,11 @@ export default function MediaCard({ item, onUpdate, onDelete, disabled }) {
                                     allowFullScreen
                                 ></iframe>
                             ) : localData.mediaType === 'image' && displayImageUrl ? (
-                                <img
+                                <Image
                                     src={displayImageUrl}
                                     alt={localData.title || 'Media preview'}
-                                    className="absolute inset-0 w-full h-full object-cover"
+                                    fill
+                                    className="object-cover"
                                 />
                             ) : (
                                 <div className="absolute inset-0 flex items-center justify-center text-gray-400">
@@ -493,10 +495,11 @@ export default function MediaCard({ item, onUpdate, onDelete, disabled }) {
                                 allowFullScreen
                             ></iframe>
                         ) : localData.mediaType === 'image' && displayImageUrl ? (
-                            <img
+                            <Image
                                 src={displayImageUrl}
                                 alt={localData.title || 'Media'}
-                                className="absolute inset-0 w-full h-full object-cover"
+                                fill
+                                className="object-cover"
                             />
                         ) : (
                             <div className="absolute inset-0 flex items-center justify-center text-gray-400">

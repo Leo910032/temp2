@@ -149,12 +149,12 @@ function AppearanceContent() {
     const canUseCustomBackground = permissions[APPEARANCE_FEATURES.CUSTOM_BACKGROUND];
     const canUseCustomBanner = permissions[APPEARANCE_FEATURES.CUSTOM_BACKGROUND]; // 🆕 Reuse background permission for banners
     const canUseCarousel = permissions[APPEARANCE_FEATURES.CUSTOM_CAROUSEL]; // 🆕 Carousel permission (Pro & Premium)
-    const canUseVideoEmbed = permissions[APPEARANCE_FEATURES.CUSTOM_VIDEO_EMBED]; // 🆕 Video Embed permission (Pro & Premium)
+    const canUseVideoEmbed = permissions[APPEARANCE_FEATURES.CUSTOM_MEDIA_EMBED]; // 🆕 Media Embed permission (Pro & Premium)
 
     // 🔍 DEBUG: Log permission checks
     console.log('🎨 [AppearancePage] Permissions Debug:', {
         carouselFeature: APPEARANCE_FEATURES.CUSTOM_CAROUSEL,
-        videoEmbedFeature: APPEARANCE_FEATURES.CUSTOM_VIDEO_EMBED,
+        mediaEmbedFeature: APPEARANCE_FEATURES.CUSTOM_MEDIA_EMBED,
         canUseCarousel,
         canUseVideoEmbed,
         allPermissions: permissions,

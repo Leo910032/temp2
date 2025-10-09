@@ -124,7 +124,7 @@ export function AppearanceProvider({ children }) {
         console.log('🔄 [AppearanceContext] Permissions/Subscription updated:', {
             subscriptionLevel,
             carouselPermission: permissions[APPEARANCE_FEATURES.CUSTOM_CAROUSEL],
-            videoEmbedPermission: permissions[APPEARANCE_FEATURES.CUSTOM_VIDEO_EMBED],
+            mediaEmbedPermission: permissions[APPEARANCE_FEATURES.CUSTOM_MEDIA_EMBED],
             allPermissions: permissions,
             timestamp: new Date().toISOString()
         });

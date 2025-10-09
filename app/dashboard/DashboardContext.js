@@ -48,11 +48,11 @@
         setSubscriptionData(data);
         console.log('✅ DashboardProvider: Data loaded successfully');
 
-        // 🔍 DEBUG: Log permissions for carousel and video embed features
+        // 🔍 DEBUG: Log permissions for carousel and media embed features
         console.log('🔍 [DashboardContext] Permissions Debug:', {
           subscriptionLevel: data?.subscriptionLevel,
           hasCarouselPermission: data?.permissions?.['custom_carousel'],
-          hasVideoEmbedPermission: data?.permissions?.['custom_video_embed'],
+          hasMediaEmbedPermission: data?.permissions?.['custom_media_embed'],
           allPermissions: data?.permissions,
           permissionKeys: Object.keys(data?.permissions || {})
         });

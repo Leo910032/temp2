@@ -72,21 +72,21 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
         const loadInitialState = async () => {
             try {
                 const appearance = await AppearanceService.getAppearanceData();
-                setVideoEmbedEnabled(appearance.videoEmbedEnabled || false);
+                setVideoEmbedEnabled(appearance.mediaEnabled || false);
 
-                // Find the linked video item by ID
-                if (item.videoEmbedItemId) {
-                    const videoEmbedItems = appearance.videoEmbedItems || [];
-                    const linkedVideo = videoEmbedItems.find(v => v.id === item.videoEmbedItemId);
-                    // Only show linked video name if video has been configured (has URL)
-                    if (linkedVideo && linkedVideo.title && linkedVideo.url?.trim()) {
-                        setLinkedVideoName(linkedVideo.title);
+                // Find the linked media item by ID
+                if (item.mediaItemId) {
+                    const mediaItems = appearance.mediaItems || [];
+                    const linkedMedia = mediaItems.find(m => m.id === item.mediaItemId);
+                    // Only show linked media name if media has been configured (has URL)
+                    if (linkedMedia && linkedMedia.title && linkedMedia.url?.trim()) {
+                        setLinkedVideoName(linkedMedia.title);
                     } else {
                         setLinkedVideoName(null);
                     }
                 }
             } catch (error) {
-                console.error('Error loading video embed state:', error);
+                console.error('Error loading media state:', error);
             } finally {
                 setIsLoadingToggle(false);
             }
@@ -94,20 +94,20 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
 
         loadInitialState();
 
-        // Set up real-time listener for video embed changes
+        // Set up real-time listener for media changes
         const unsubscribe = AppearanceService.listenToAppearanceData(
             currentUser.uid,
             (appearance) => {
-                const newVideoEmbedEnabled = appearance.videoEmbedEnabled || false;
-                setVideoEmbedEnabled(newVideoEmbedEnabled);
+                const newMediaEnabled = appearance.mediaEnabled || false;
+                setVideoEmbedEnabled(newMediaEnabled);
 
-                // Update linked video name in real-time
-                if (item.videoEmbedItemId) {
-                    const videoEmbedItems = appearance.videoEmbedItems || [];
-                    const linkedVideo = videoEmbedItems.find(v => v.id === item.videoEmbedItemId);
-                    // Only show linked video name if video has been configured (has URL)
-                    if (linkedVideo && linkedVideo.title && linkedVideo.url?.trim()) {
-                        setLinkedVideoName(linkedVideo.title);
+                // Update linked media name in real-time
+                if (item.mediaItemId) {
+                    const mediaItems = appearance.mediaItems || [];
+                    const linkedMedia = mediaItems.find(m => m.id === item.mediaItemId);
+                    // Only show linked media name if media has been configured (has URL)
+                    if (linkedMedia && linkedMedia.title && linkedMedia.url?.trim()) {
+                        setLinkedVideoName(linkedMedia.title);
                     } else {
                         setLinkedVideoName(null);
                     }
@@ -119,7 +119,7 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
         return () => {
             unsubscribe();
         };
-    }, [currentUser?.uid, item.videoEmbedItemId]);
+    }, [currentUser?.uid, item.mediaItemId]);
 
     // Check for highlight parameter in URL hash
     useEffect(() => {
@@ -142,11 +142,11 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
         const saveVideoEmbedState = async () => {
             try {
                 await AppearanceService.updateAppearanceData({
-                    videoEmbedEnabled: videoEmbedEnabled
+                    mediaEnabled: videoEmbedEnabled
                 }, { origin: 'manage-links', userId: currentUser?.uid });
                 setUserToggledVideoEmbed(false);
             } catch (error) {
-                console.error('Error saving video embed state:', error);
+                console.error('Error saving media state:', error);
             }
         };
 
@@ -190,28 +190,28 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
             return;
         }
 
-        // Navigate to appearance page with specific item hash or general video-embed section
-        const specificItemHash = item.videoEmbedItemId ? `#video-item-${item.videoEmbedItemId}` : '#video-embed';
+        // Navigate to appearance page with specific item hash or general media section
+        const specificItemHash = item.mediaItemId ? `#media-item-${item.mediaItemId}` : '#video-embed';
         router.push(`/dashboard/appearance${specificItemHash}`);
 
-        // After navigation, scroll to the video embed section or specific item
+        // After navigation, scroll to the media section or specific item
         // Use a longer timeout and retry mechanism to ensure the page has loaded
         const scrollToTarget = (attempts = 0) => {
             if (attempts > 10) return; // Give up after 10 attempts
 
-            // Try to scroll to specific video item first
-            if (item.videoEmbedItemId) {
-                const specificElement = document.getElementById(`video-item-${item.videoEmbedItemId}`);
+            // Try to scroll to specific media item first
+            if (item.mediaItemId) {
+                const specificElement = document.getElementById(`media-item-${item.mediaItemId}`);
                 if (specificElement) {
                     specificElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     return;
                 }
             }
 
-            // Fallback: scroll to the video-embed section
-            const videoEmbedSection = document.getElementById('video-embed');
-            if (videoEmbedSection) {
-                videoEmbedSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Fallback: scroll to the media section
+            const mediaSection = document.getElementById('video-embed');
+            if (mediaSection) {
+                mediaSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
             } else {
                 // Element not found, try again after a short delay
                 setTimeout(() => scrollToTarget(attempts + 1), 200);

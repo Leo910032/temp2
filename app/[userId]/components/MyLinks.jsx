@@ -6,7 +6,7 @@ import Socials from "../elements/Socials";
 import { filterProperly } from "@/lib/utilities";
 import CVButton from '../elements/CVButton';
 import ProfileCarousel from './ProfileCarousel';
-import VideoEmbed from './VideoEmbed';
+import MediaDisplay from './MediaDisplay';
 import { hasAppearanceFeature, APPEARANCE_FEATURES } from "@/lib/services/constants";
 
 export default function MyLinks() {
@@ -23,14 +23,14 @@ export default function MyLinks() {
         cvEnabled = false,
         cvItems = [],
         cvDocument = null,
-        videoEmbedEnabled = false,
-        videoEmbedItems = [],
+        mediaEnabled = false,
+        mediaItems = [],
         subscriptionLevel = 'base'
     } = userData;
 
-    // Check if user has permission for carousel and video embed features
+    // Check if user has permission for carousel and media embed features
     const canUseCarousel = hasAppearanceFeature(subscriptionLevel, APPEARANCE_FEATURES.CUSTOM_CAROUSEL);
-    const canUseVideoEmbed = hasAppearanceFeature(subscriptionLevel, APPEARANCE_FEATURES.CUSTOM_VIDEO_EMBED);
+    const canUseMedia = hasAppearanceFeature(subscriptionLevel, APPEARANCE_FEATURES.CUSTOM_MEDIA_EMBED);
 
     // ✅ IMPROVED: Better memoization of filtered links
     const displayLinks = useMemo(() => {
@@ -119,21 +119,21 @@ export default function MyLinks() {
                     }
                     // If CV not configured or document not uploaded, don't render anything
                     return null;
-                } else if (link.type === 4) { // Video Embed type
-                    // Find the specific video item linked to this link
-                    const linkedVideoItem = videoEmbedItems?.find(
-                        item => item.id === link.videoEmbedItemId
+                } else if (link.type === 4) { // Media type (images or videos)
+                    // Find the specific media item linked to this link
+                    const linkedMediaItem = mediaItems?.find(
+                        item => item.id === link.mediaItemId
                     );
 
-                    // Only render if user has permission, video embed is enabled, and the linked video exists with a URL
-                    if (canUseVideoEmbed && videoEmbedEnabled && linkedVideoItem && linkedVideoItem.url) {
+                    // Only render if user has permission, media is enabled, and the linked media exists with a URL
+                    if (canUseMedia && mediaEnabled && linkedMediaItem && linkedMediaItem.url) {
                         return (
-                            <div key={`video-embed-${link.id}`} className="w-full">
-                                <VideoEmbed items={[linkedVideoItem]} />
+                            <div key={`media-${link.id}`} className="w-full">
+                                <MediaDisplay items={[linkedMediaItem]} />
                             </div>
                         );
                     }
-                    // If video embed not configured or no permission, don't render anything
+                    // If media not configured or no permission, don't render anything
                     return null;
                 } else { // Button type
                     return (

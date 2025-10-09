@@ -32,7 +32,9 @@ const DEFAULT_APPEARANCE_VALUES = {
     btnBorderColor: '#000000',
     btnOpacity: 100,
     btnLuminanceLevel: 50,
-    btnLuminanceRange: 20
+    btnLuminanceRange: 20,
+    isOpacityEnabled: false,
+    isLuminanceEnabled: false
 };
 
 function applyAppearanceDefaults(data) {
@@ -47,6 +49,32 @@ function applyAppearanceDefaults(data) {
             hasChanges = true;
         }
     });
+
+    // Ensure boolean defaults are correctly typed
+    ['isOpacityEnabled', 'isLuminanceEnabled'].forEach((booleanKey) => {
+        if (patched[booleanKey] !== undefined && typeof patched[booleanKey] !== 'boolean') {
+            patched[booleanKey] = Boolean(patched[booleanKey]);
+            hasChanges = true;
+        }
+    });
+
+    // Seamlessly migrate legacy opacity/luminance button types (18 & 19)
+    if (patched.btnType === 18 || patched.btnType === 19) {
+        const migrated = { ...patched };
+        const fallbackType = 3; // Outline style offers closest visual match
+
+        if (patched.btnType === 18 && migrated.isOpacityEnabled !== true) {
+            migrated.isOpacityEnabled = true;
+        }
+
+        if (patched.btnType === 19 && migrated.isLuminanceEnabled !== true) {
+            migrated.isLuminanceEnabled = true;
+        }
+
+        migrated.btnType = fallbackType;
+        hasChanges = true;
+        return migrated;
+    }
 
     return hasChanges ? patched : data;
 }

@@ -287,7 +287,7 @@ export default function ProfileCarousel({
                         <div className="absolute inset-0 bg-black/25" />
                     ) : null}
                 </div>
-                <div className={`relative z-10 rounded-3xl px-4 py-6 sm:px-6 md:p-8 ${backgroundType === 'Transparent' ? 'border border-transparent shadow-none' : 'border-2 border-white/40 shadow-lg'} ${validItems.length === 1 ? 'flex justify-center' : ''} ${useLightText ? 'text-white' : 'text-gray-900'}`}>
+                <div className={`relative z-10 rounded-3xl px-4 py-6 sm:px-6 md:p-8 ${backgroundType === 'Transparent' ? 'border border-transparent shadow-none bg-transparent' : 'border-2 border-white/40 shadow-lg'} ${validItems.length === 1 ? 'flex justify-center' : ''} ${useLightText ? 'text-white' : 'text-gray-900'}`}>
                     {/* Navigation Arrows - Only show on desktop for multi-item carousels */}
                     {validItems.length > 1 && (
                         <>

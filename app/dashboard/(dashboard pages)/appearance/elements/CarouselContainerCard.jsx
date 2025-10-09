@@ -1,7 +1,7 @@
 // app/dashboard/(dashboard pages)/appearance/elements/CarouselContainerCard.jsx
 "use client"
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { FaPlus, FaToggleOn, FaToggleOff, FaEdit, FaSave, FaTimes, FaExternalLinkAlt, FaImages, FaVideo } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
@@ -28,23 +28,36 @@ export default function CarouselContainerCard({ carousel, onUpdate, onDelete, di
     const [isUploadingBackgroundImage, setIsUploadingBackgroundImage] = useState(false);
     const [isUploadingBackgroundVideo, setIsUploadingBackgroundVideo] = useState(false);
 
-    useEffect(() => {
-        setLocalData(carousel);
-    }, [carousel]);
-
     const hasItems = Array.isArray(localData.items) && localData.items.length > 0;
     const backgroundType = localData.backgroundType || 'Color';
     const isTitleVisible = localData.showTitle !== false;
     const isDescriptionVisible = localData.showDescription !== false;
     const enableBlocked = !localData.enabled && !hasItems;
 
+    // Syncs local state when the parent prop changes
+    useEffect(() => {
+        setLocalData(carousel);
+    }, [carousel]);
+
+    // Debounced effect to save changes back to the parent
+    useEffect(() => {
+        // Prevents a save loop by not saving if the data is the same as the parent's
+        if (JSON.stringify(localData) === JSON.stringify(carousel)) {
+            return;
+        }
+
+        const timerId = setTimeout(() => {
+            onUpdate(localData);
+        }, 500); // Wait 500ms after the last change before saving
+
+        return () => clearTimeout(timerId); // Clean up the timer
+
+    }, [localData, carousel, onUpdate]);
+
+
     const commitUpdate = useCallback((updates) => {
-        setLocalData((prev) => {
-            const updated = { ...prev, ...updates };
-            onUpdate(updated);
-            return updated;
-        });
-    }, [onUpdate]);
+        setLocalData((prev) => ({ ...prev, ...updates }));
+    }, []);
 
     const syncLinkActiveState = useCallback(async (enabled) => {
         try {

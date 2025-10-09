@@ -11,6 +11,7 @@ import { useTranslation } from "@/lib/translation/useTranslation";
 import { AppearanceContext } from "../AppearanceContext";
 import Button from "../elements/Button";
 import ColorPickerFlat from "../elements/ColorPickerFlat.jsx";
+import { FaToggleOn, FaToggleOff } from "react-icons/fa6";
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -127,10 +128,16 @@ export default function Buttons() {
             buttonFontColour: t('dashboard.appearance.buttons.button_font_colour') || 'Button Font Colour',
             shadowColour: t('dashboard.appearance.buttons.shadow_colour') || 'Shadow Colour',
             borderColour: t('dashboard.appearance.buttons.border_colour') || 'Border Colour',
-            advanced: t('dashboard.appearance.buttons.advanced_styles') || 'Advanced Styles',
             opacityLabel: t('dashboard.appearance.buttons.opacity') || 'Opacity',
             luminanceLevel: t('dashboard.appearance.buttons.luminance_level') || 'Luminance Level',
             luminanceRange: t('dashboard.appearance.buttons.luminance_range') || 'Luminance Range',
+            opacityEffectTitle: t('dashboard.appearance.buttons.opacity_effect_title') || 'Opacity Effect',
+            opacityEffectDescription: t('dashboard.appearance.buttons.opacity_effect_description') || 'Make any button style semi-transparent.',
+            luminanceEffectTitle: t('dashboard.appearance.buttons.luminance_effect_title') || 'Luminance Glow Effect',
+            luminanceEffectDescription: t('dashboard.appearance.buttons.luminance_effect_description') || 'Add a glowing border to your button.',
+            effectPreview: t('dashboard.appearance.buttons.effect_preview') || 'Preview',
+            enableLabel: t('common.enable') || 'Enable',
+            disableLabel: t('common.disable') || 'Disable',
             altDecorativeElement: t('dashboard.appearance.buttons.alt_decorative_element') || 'Decorative Element',
         };
     }, [t, isInitialized]);
@@ -191,6 +198,8 @@ export default function Buttons() {
         btnOpacity: appearance?.btnOpacity,
         btnLuminanceLevel: appearance?.btnLuminanceLevel,
         btnLuminanceRange: appearance?.btnLuminanceRange,
+        isOpacityEnabled: appearance?.isOpacityEnabled,
+        isLuminanceEnabled: appearance?.isLuminanceEnabled,
         themeFontColor: appearance?.themeFontColor,
         btnType: appearance?.btnType
     });
@@ -202,6 +211,8 @@ export default function Buttons() {
     const btnLuminanceLevel = toNumber(appearance?.btnLuminanceLevel, 50, 0, 100);
     const btnLuminanceRange = toNumber(appearance?.btnLuminanceRange, 20, 0, 50);
     const baseButtonColor = appearance?.btnColor || '#000000';
+    const isOpacityEnabled = Boolean(appearance?.isOpacityEnabled);
+    const isLuminanceEnabled = Boolean(appearance?.isLuminanceEnabled);
 
     const opacityPreviewColor = useMemo(
         () => getOpacityPreviewColor(baseButtonColor, btnOpacityValue),
@@ -219,8 +230,8 @@ export default function Buttons() {
     }, [btnBorderColor, btnLuminanceLevel]);
 
     const createSliderHandler = useCallback(
-        (field, min, max) => (event) => {
-            if (isSaving) return;
+        (field, min, max, isEnabled = true) => (event) => {
+            if (isSaving || !isEnabled) return;
             const rawValue = Number(
                 event?.target?.value ?? (typeof event?.detail?.value !== 'undefined' ? event.detail.value : NaN)
             );
@@ -232,19 +243,29 @@ export default function Buttons() {
     );
 
     const handleOpacityChange = useMemo(
-        () => createSliderHandler('btnOpacity', 0, 100),
-        [createSliderHandler]
+        () => createSliderHandler('btnOpacity', 0, 100, isOpacityEnabled),
+        [createSliderHandler, isOpacityEnabled]
     );
 
     const handleLuminanceLevelChange = useMemo(
-        () => createSliderHandler('btnLuminanceLevel', 0, 100),
-        [createSliderHandler]
+        () => createSliderHandler('btnLuminanceLevel', 0, 100, isLuminanceEnabled),
+        [createSliderHandler, isLuminanceEnabled]
     );
 
     const handleLuminanceRangeChange = useMemo(
-        () => createSliderHandler('btnLuminanceRange', 0, 50),
-        [createSliderHandler]
+        () => createSliderHandler('btnLuminanceRange', 0, 50, isLuminanceEnabled),
+        [createSliderHandler, isLuminanceEnabled]
     );
+
+    const toggleOpacityEffect = useCallback(() => {
+        if (isSaving) return;
+        updateAppearance('isOpacityEnabled', !isOpacityEnabled);
+    }, [isSaving, isOpacityEnabled, updateAppearance]);
+
+    const toggleLuminanceEffect = useCallback(() => {
+        if (isSaving) return;
+        updateAppearance('isLuminanceEnabled', !isLuminanceEnabled);
+    }, [isSaving, isLuminanceEnabled, updateAppearance]);
 
     if (!appearance) {
         return (
@@ -361,34 +382,179 @@ export default function Buttons() {
                 </div>
             </section>
 
-            <section className="flex gap-5 text-sm flex-col mb-10">
-                <span className="font-semibold">{translations.advanced}</span>
-                <div className="items-center flex flex-wrap gap-5">
-                    <Button
-                        type={18}
-                        modifierClass={"rounded-3xl border"}
-                        modifierStyles={{
-                            backgroundColor: opacityPreviewColor,
-                            borderColor: btnBorderColor,
-                            borderWidth: '2px',
-                            transition: 'background-color 150ms ease, border-color 150ms ease'
-                        }}
-                        onUpdate={handleUpdateTheme}
+            <section className="flex flex-col text-sm mb-10 gap-4">
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <span className="font-semibold">{translations.opacityEffectTitle}</span>
+                        <p className="text-xs text-gray-500">{translations.opacityEffectDescription}</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={toggleOpacityEffect}
                         disabled={isSaving}
+                        aria-pressed={isOpacityEnabled}
+                        className={`text-2xl transition-transform ${isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110 active:scale-95'}`}
+                        title={isOpacityEnabled ? translations.disableLabel : translations.enableLabel}
+                    >
+                        <span className="sr-only">
+                            {isOpacityEnabled ? translations.disableLabel : translations.enableLabel} {translations.opacityEffectTitle}
+                        </span>
+                        {isOpacityEnabled ? (
+                            <FaToggleOn className="text-blue-600" />
+                        ) : (
+                            <FaToggleOff className="text-gray-400" />
+                        )}
+                    </button>
+                </div>
+                <div className={`space-y-4 transition-opacity ${isOpacityEnabled ? '' : 'opacity-60'}`}>
+                    <div className="flex items-center justify-between">
+                        <span className="font-semibold">{translations.opacityLabel}</span>
+                        <span className="text-xs text-gray-500">{btnOpacityValue}%</span>
+                    </div>
+                    <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        step={1}
+                        value={btnOpacityValue}
+                        aria-label={translations.opacityLabel}
+                        onChange={handleOpacityChange}
+                        onInput={handleOpacityChange}
+                        className="w-full accent-blue-600"
+                        disabled={!isOpacityEnabled || isSaving}
                     />
-                    <Button
-                        type={19}
-                        modifierClass={"rounded-3xl border"}
-                        modifierStyles={{
+                    <div className="flex justify-between text-xs text-gray-400 mt-2">
+                        <span>0%</span>
+                        <span>100%</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <span className="text-xs uppercase tracking-wide text-gray-500">{translations.effectPreview}</span>
+                        <div
+                            className="w-16 h-8 rounded-lg border transition-all"
+                            style={{
+                                backgroundColor: opacityPreviewColor,
+                                borderColor: btnBorderColor,
+                                opacity: isOpacityEnabled ? 1 : 0.8
+                            }}
+                        ></div>
+                    </div>
+                </div>
+            </section>
+
+            <section className="flex flex-col text-sm mb-10 gap-6">
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <span className="font-semibold">{translations.luminanceEffectTitle}</span>
+                        <p className="text-xs text-gray-500">{translations.luminanceEffectDescription}</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={toggleLuminanceEffect}
+                        disabled={isSaving}
+                        aria-pressed={isLuminanceEnabled}
+                        className={`text-2xl transition-transform ${isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110 active:scale-95'}`}
+                        title={isLuminanceEnabled ? translations.disableLabel : translations.enableLabel}
+                    >
+                        <span className="sr-only">
+                            {isLuminanceEnabled ? translations.disableLabel : translations.enableLabel} {translations.luminanceEffectTitle}
+                        </span>
+                        {isLuminanceEnabled ? (
+                            <FaToggleOn className="text-blue-600" />
+                        ) : (
+                            <FaToggleOff className="text-gray-400" />
+                        )}
+                    </button>
+                </div>
+
+                <div>
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="font-semibold">{translations.borderColour}</span>
+                        <div className="flex items-center gap-3">
+                            <div
+                                className="w-8 h-8 rounded border-2 cursor-pointer"
+                                style={{ backgroundColor: appearance.btnBorderColor || '#000000' }}
+                                title={appearance.btnBorderColor || '#000000'}
+                            ></div>
+                            <button
+                                className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                                onClick={() => toggleColorPicker('border')}
+                                type="button"
+                            >
+                                {showColorPickers.border ? 'Hide' : 'Customize'}
+                            </button>
+                        </div>
+                    </div>
+                    {showColorPickers.border && (
+                        <div className="mt-2">
+                            <ColorPickerFlat
+                                currentColor={appearance.btnBorderColor || '#000000'}
+                                onColorChange={(color) => {
+                                    console.log('🎨 Border color picker callback:', color);
+                                    handleColorUpdate('border', color);
+                                }}
+                                disabled={isSaving}
+                                fieldName="Border Color"
+                            />
+                        </div>
+                    )}
+                </div>
+
+                <div className={`space-y-4 transition-opacity ${isLuminanceEnabled ? '' : 'opacity-60'}`}>
+                    <div className="flex items-center justify-between">
+                        <span className="font-semibold">{translations.luminanceLevel}</span>
+                        <span className="text-xs text-gray-500">{btnLuminanceLevel}</span>
+                    </div>
+                    <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        step={1}
+                        value={btnLuminanceLevel}
+                        aria-label={translations.luminanceLevel}
+                        onChange={handleLuminanceLevelChange}
+                        onInput={handleLuminanceLevelChange}
+                        className="w-full accent-blue-600"
+                        disabled={!isLuminanceEnabled || isSaving}
+                    />
+                    <div className="flex justify-between text-xs text-gray-400 mt-2">
+                        <span>0</span>
+                        <span>100</span>
+                    </div>
+                </div>
+
+                <div className={`space-y-4 transition-opacity ${isLuminanceEnabled ? '' : 'opacity-60'}`}>
+                    <div className="flex items-center justify-between">
+                        <span className="font-semibold">{translations.luminanceRange}</span>
+                        <span className="text-xs text-gray-500">{btnLuminanceRange}px</span>
+                    </div>
+                    <input
+                        type="range"
+                        min={0}
+                        max={50}
+                        step={1}
+                        value={btnLuminanceRange}
+                        aria-label={translations.luminanceRange}
+                        onChange={handleLuminanceRangeChange}
+                        onInput={handleLuminanceRangeChange}
+                        className="w-full accent-blue-600"
+                        disabled={!isLuminanceEnabled || isSaving}
+                    />
+                    <div className="flex justify-between text-xs text-gray-400 mt-2">
+                        <span>0px</span>
+                        <span>50px</span>
+                    </div>
+                </div>
+
+                <div className={`flex items-center gap-3 ${isLuminanceEnabled ? '' : 'opacity-60'}`}>
+                    <span className="text-xs uppercase tracking-wide text-gray-500">{translations.effectPreview}</span>
+                    <div
+                        className="w-20 h-9 rounded-lg border transition-all"
+                        style={{
                             backgroundColor: luminancePreviewBackground,
                             borderColor: btnBorderColor,
-                            borderWidth: '2px',
-                            boxShadow: luminanceDerivedStyles.boxShadow,
-                            transition: 'box-shadow 150ms ease, border-color 150ms ease, background-color 150ms ease'
+                            boxShadow: isLuminanceEnabled ? luminanceDerivedStyles.boxShadow : 'none'
                         }}
-                        onUpdate={handleUpdateTheme}
-                        disabled={isSaving}
-                    />
+                    ></div>
                 </div>
             </section>
 
@@ -420,38 +586,6 @@ export default function Buttons() {
                             }}
                             disabled={isSaving}
                             fieldName="Theme Font Color"
-                        />
-                    </div>
-                )}
-            </section>
-
-            <section className="flex text-sm flex-col mb-10">
-                <div className="flex items-center justify-between mb-3">
-                    <span className="font-semibold">{translations.borderColour}</span>
-                    <div className="flex items-center gap-3">
-                        <div 
-                            className="w-8 h-8 rounded border-2 cursor-pointer"
-                            style={{ backgroundColor: appearance.btnBorderColor || '#000000' }}
-                            title={appearance.btnBorderColor || '#000000'}
-                        ></div>
-                        <button
-                            className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                            onClick={() => toggleColorPicker('border')}
-                        >
-                            {showColorPickers.border ? 'Hide' : 'Customize'}
-                        </button>
-                    </div>
-                </div>
-                {showColorPickers.border && (
-                    <div className="mt-2">
-                        <ColorPickerFlat 
-                            currentColor={appearance.btnBorderColor || '#000000'}
-                            onColorChange={(color) => {
-                                console.log('🎨 Border color picker callback:', color);
-                                handleColorUpdate('border', color);
-                            }}
-                            disabled={isSaving}
-                            fieldName="Border Color"
                         />
                     </div>
                 )}
@@ -553,76 +687,6 @@ export default function Buttons() {
                 )}
             </section>
 
-            {btnType === 18 && (
-                <section className="flex text-sm flex-col mt-10 mb-10">
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="font-semibold">{translations.opacityLabel}</span>
-                        <span className="text-xs text-gray-500">{btnOpacityValue}%</span>
-                    </div>
-                    <input
-                        type="range"
-                        min={0}
-                        max={100}
-                        step={1}
-                        value={btnOpacityValue}
-                        aria-label={translations.opacityLabel}
-                        onChange={handleOpacityChange}
-                        onInput={handleOpacityChange}
-                        className="w-full accent-blue-600"
-                    />
-                    <div className="flex justify-between text-xs text-gray-400 mt-2">
-                        <span>0%</span>
-                        <span>100%</span>
-                    </div>
-                </section>
-            )}
-
-            {btnType === 19 && (
-                <section className="flex text-sm flex-col mt-2 gap-8">
-                    <div>
-                        <div className="flex items-center justify-between mb-3">
-                            <span className="font-semibold">{translations.luminanceLevel}</span>
-                            <span className="text-xs text-gray-500">{btnLuminanceLevel}</span>
-                        </div>
-                        <input
-                            type="range"
-                            min={0}
-                            max={100}
-                            step={1}
-                            value={btnLuminanceLevel}
-                            aria-label={translations.luminanceLevel}
-                            onChange={handleLuminanceLevelChange}
-                            onInput={handleLuminanceLevelChange}
-                            className="w-full accent-blue-600"
-                        />
-                        <div className="flex justify-between text-xs text-gray-400 mt-2">
-                            <span>0</span>
-                            <span>100</span>
-                        </div>
-                    </div>
-                    <div>
-                        <div className="flex items-center justify-between mb-3">
-                            <span className="font-semibold">{translations.luminanceRange}</span>
-                            <span className="text-xs text-gray-500">{btnLuminanceRange}px</span>
-                        </div>
-                        <input
-                            type="range"
-                            min={0}
-                            max={50}
-                            step={1}
-                            value={btnLuminanceRange}
-                            aria-label={translations.luminanceRange}
-                            onChange={handleLuminanceRangeChange}
-                            onInput={handleLuminanceRangeChange}
-                            className="w-full accent-blue-600"
-                        />
-                        <div className="flex justify-between text-xs text-gray-400 mt-2">
-                            <span>0px</span>
-                            <span>50px</span>
-                        </div>
-                    </div>
-                </section>
-            )}
         </div>
     );
 }

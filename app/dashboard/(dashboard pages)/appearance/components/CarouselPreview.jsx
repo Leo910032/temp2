@@ -234,7 +234,7 @@ export default function CarouselPreview({
                     <div className="absolute inset-0 bg-black/20" />
                 ) : null}
             </div>
-            <div className="relative z-10">
+            <div className="relative z-10 bg-transparent">
                 <div className="text-center mb-4">
                     <h4 className={`text-sm font-semibold ${headingTextClass}`}>Carousel Preview</h4>
                     <p className={`text-xs ${subTextClass}`}>This is how your carousel will appear on your profile</p>

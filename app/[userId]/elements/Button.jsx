@@ -118,6 +118,8 @@ export default function Button({ linkData, content }) {
         btnOpacity = 100,
         btnLuminanceLevel = 50,
         btnLuminanceRange = 20,
+        isOpacityEnabled = false,
+        isLuminanceEnabled = false,
         selectedTheme = 'Lake White',
         fontType = 0,
         themeTextColour = ''
@@ -130,26 +132,19 @@ export default function Button({ linkData, content }) {
     const [specialElements, setSpecialElements] = useState(null);
     const [btnFontStyle, setBtnFontStyle] = useState({ color: btnFontColor });
     
-    const lastStandardType = useRef(btnType < 18 ? btnType : 0);
-    if (btnType < 18) {
-        lastStandardType.current = btnType;
-    }
-
     useEffect(() => {
         let newClasses = "";
         let newStyles = {};
         let newElements = null;
         let newFontStyle = { color: btnFontColor };
 
-        const getShapeClass = () => {
-            const typeForShape = (btnType >= 18) ? lastStandardType.current : btnType;
-            if ([2, 5, 8, 11, 15].includes(typeForShape)) return 'rounded-3xl';
-            if ([1, 4, 7, 10].includes(typeForShape)) return 'rounded-lg';
-            if (typeForShape === 17) return 'rounded-l-3xl';
+        const shapeClass = (() => {
+            if ([2, 5, 8, 11, 15].includes(btnType)) return 'rounded-3xl';
+            if ([1, 4, 7, 10].includes(btnType)) return 'rounded-lg';
+            if (btnType === 17) return 'rounded-l-3xl';
             return '';
-        };
-        const shapeClass = getShapeClass();
-        
+        })();
+
         switch (btnType) {
             case 0:
                 newClasses = `bg-black ${shapeClass}`;
@@ -177,29 +172,55 @@ export default function Button({ linkData, content }) {
                 break;
             case 6:
                 newClasses = `bg-white border border-black ${shapeClass}`;
-                newStyles = { backgroundColor: btnColor, color: btnFontColor, filter: `drop-shadow(4px 4px 0px ${btnShadowColor})` };
+                newStyles = {
+                    backgroundColor: btnColor,
+                    color: btnFontColor,
+                    filter: `drop-shadow(4px 4px 0px ${btnShadowColor})`
+                };
                 break;
             case 7:
                 newClasses = `bg-white border border-black rounded-lg`;
-                newStyles = { backgroundColor: btnColor, color: btnFontColor, filter: `drop-shadow(4px 4px 0px ${btnShadowColor})` };
+                newStyles = {
+                    backgroundColor: btnColor,
+                    color: btnFontColor,
+                    filter: `drop-shadow(4px 4px 0px ${btnShadowColor})`
+                };
                 break;
             case 8:
                 newClasses = `bg-white border border-black rounded-3xl`;
-                newStyles = { backgroundColor: btnColor, color: btnFontColor, filter: `drop-shadow(4px 4px 0px ${btnShadowColor})` };
+                newStyles = {
+                    backgroundColor: btnColor,
+                    color: btnFontColor,
+                    filter: `drop-shadow(4px 4px 0px ${btnShadowColor})`
+                };
                 break;
             case 9:
-                newClasses = `bg-white shadow-[0_15px_30px_5px_rgb(0,0,0,0.5)] ${shapeClass}`;
-                newStyles = { backgroundColor: btnColor, color: btnFontColor };
+                newClasses = `bg-white ${shapeClass}`;
+                newStyles = {
+                    backgroundColor: btnColor,
+                    color: btnFontColor,
+                    boxShadow: '0 15px 30px 5px rgba(0, 0, 0, 0.5)'
+                };
                 break;
             case 10:
-                newClasses = `bg-white rounded-lg shadow-[0_15px_30px_5px_rgb(0,0,0,0.5)]`;
-                newStyles = { backgroundColor: btnColor, color: btnFontColor };
+                newClasses = `bg-white rounded-lg`;
+                newStyles = {
+                    backgroundColor: btnColor,
+                    color: btnFontColor,
+                    boxShadow: '0 15px 30px 5px rgba(0, 0, 0, 0.5)'
+                };
                 break;
             case 11:
-                newClasses = `bg-white rounded-3xl shadow-[0_15px_30px_5px_rgb(0,0,0,0.5)]`;
-                newStyles = { backgroundColor: btnColor, color: btnFontColor };
+                newClasses = `bg-white rounded-3xl`;
+                newStyles = {
+                    backgroundColor: btnColor,
+                    color: btnFontColor,
+                    boxShadow: '0 15px 30px 5px rgba(0, 0, 0, 0.5)'
+                };
                 break;
-            case 12: case 13: case 16:
+            case 12:
+            case 13:
+            case 16:
                 newClasses = `relative border border-black ${shapeClass}`;
                 newStyles = { backgroundColor: btnColor };
                 newFontStyle = { color: btnType === 12 || btnType === 13 ? '#ffffff' : btnFontColor };
@@ -214,26 +235,8 @@ export default function Button({ linkData, content }) {
                 newStyles = { backgroundColor: btnColor, color: btnFontColor };
                 break;
             case 17:
-                 newClasses = `border border-black bg-black rounded-l-3xl`;
-                 newStyles = { backgroundColor: btnColor, color: btnFontColor };
-                 break;
-            case 18:
-                newClasses = `border-2 ${shapeClass}`;
-                newStyles = {
-                    backgroundColor: toRgba(btnColor, btnOpacity / 100),
-                    borderColor: btnBorderColor,
-                    color: btnFontColor,
-                };
-                break;
-            case 19:
-                newClasses = `border-2 ${shapeClass}`;
-                const shadow = buildLuminanceBoxShadow(btnBorderColor, btnLuminanceLevel, btnLuminanceRange);
-                newStyles = {
-                    backgroundColor: shadow.backgroundOverlay,
-                    boxShadow: shadow.boxShadow,
-                    borderColor: btnBorderColor,
-                    color: btnFontColor,
-                };
+                newClasses = `border border-black bg-black rounded-l-3xl`;
+                newStyles = { backgroundColor: btnColor, color: btnFontColor };
                 break;
             default:
                 newClasses = `bg-black ${shapeClass}`;
@@ -241,12 +244,50 @@ export default function Button({ linkData, content }) {
                 break;
         }
 
+        if (isOpacityEnabled) {
+            const opacityAlpha = clamp(btnOpacity / 100, 0, 1);
+            const baseBackground = newStyles.backgroundColor;
+            let targetColor = baseBackground && baseBackground !== 'transparent' ? baseBackground : btnColor;
+            if (!targetColor || targetColor === 'transparent') {
+                targetColor = btnColor;
+            }
+            if (targetColor) {
+                newStyles.backgroundColor = toRgba(targetColor, opacityAlpha);
+            }
+        }
+
+        if (isLuminanceEnabled) {
+            const { backgroundOverlay, boxShadow } = buildLuminanceBoxShadow(
+                btnBorderColor,
+                btnLuminanceLevel,
+                btnLuminanceRange
+            );
+            newStyles.borderColor = btnBorderColor;
+            const existingShadow = newStyles.boxShadow ? `${newStyles.boxShadow}, ${boxShadow}` : boxShadow;
+            newStyles.boxShadow = existingShadow;
+
+            if (!newStyles.backgroundColor || newStyles.backgroundColor === 'transparent') {
+                newStyles.backgroundColor = backgroundOverlay;
+            }
+        }
+
         setModifierClass(newClasses);
         setModifierStyles(newStyles);
         setSpecialElements(newElements);
         setBtnFontStyle(newFontStyle);
 
-    }, [btnType, btnColor, btnFontColor, btnShadowColor, btnBorderColor, btnOpacity, btnLuminanceLevel, btnLuminanceRange, selectedTheme, themeTextColour]);
+    }, [
+        btnType,
+        btnColor,
+        btnFontColor,
+        btnShadowColor,
+        btnBorderColor,
+        btnOpacity,
+        btnLuminanceLevel,
+        btnLuminanceRange,
+        isOpacityEnabled,
+        isLuminanceEnabled
+    ]);
     
     // --- Render Logic ---
     const urlRef = useRef(null);

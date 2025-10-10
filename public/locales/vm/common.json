@@ -453,14 +453,38 @@
     "settings": "Cài đặt"
   },
   "dashboard": {
-    "links": "Liên kết",
-    "appearance": "Giao diện",
-    "analytics": "Phân tích",
-    "settings": "Cài đặt",
+    "navigation": {
+      "links": "Liên kết",
+      "appearance": "Giao diện",
+      "analytics": "Phân tích",
+      "settings": "Cài đặt",
+      "contacts": "Danh bạ"
+    },
+    "links": {
+      "add_header": "Thêm tiêu đề",
+      "add_carousel": "Thêm băng chuyền",
+      "add_cv": "Thêm CV / Tài liệu",
+      "add_media": "Thêm phương tiện",
+      "saved_success": "Liên kết đã được lưu!",
+      "saved_error": "Không thể lưu liên kết.",
+      "loading_error": "Không tải được liên kết.",
+      "empty_state": {
+        "title": "Cho thế giới thấy bạn là ai.",
+        "subtitle": "Thêm một liên kết để bắt đầu."
+      },
+      "item": {
+        "headline_title_default": "Tiêu đề",
+        "carousel_title_default": "Băng chuyền nội dung",
+        "customize_carousel": "Tùy chỉnh",
+        "customize_cv": "Tùy chỉnh CV",
+        "customize_video_embed": "Tùy chỉnh phương tiện",
+        "setup_link_prompt": "Nhập URL {{kind}} của bạn, sau đó thiết lập liên kết",
+        "custom_kind": "Tùy chỉnh"
+      }
+    },
     "your_linktree": "Linktree của bạn đang hoạt động:",
     "copy_url": "Sao chép URL",
-    "copied": "Đã sao chép!",
-    "contacts": "Danh bạ"
+    "copied": "Đã sao chép!"
   },
   "login": {
     "title": "Đăng nhập vào Linktree của bạn",

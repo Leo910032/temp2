@@ -422,14 +422,38 @@
     "settings": "设置"
   },
   "dashboard": {
-    "links": "链接",
-    "appearance": "外观",
-    "analytics": "分析",
-    "settings": "设置",
+    "navigation": {
+      "links": "链接",
+      "appearance": "外观",
+      "analytics": "分析",
+      "settings": "设置",
+      "contacts": "联系人"
+    },
+    "links": {
+      "add_header": "添加标题",
+      "add_carousel": "添加轮播",
+      "add_cv": "添加简历/文档",
+      "add_media": "添加媒体",
+      "saved_success": "链接已保存！",
+      "saved_error": "无法保存链接。",
+      "loading_error": "加载链接失败。",
+      "empty_state": {
+        "title": "向世界展示你是谁。",
+        "subtitle": "添加一个链接开始吧。"
+      },
+      "item": {
+        "headline_title_default": "标题",
+        "carousel_title_default": "内容轮播",
+        "customize_carousel": "自定义",
+        "customize_cv": "自定义简历",
+        "customize_video_embed": "自定义媒体",
+        "setup_link_prompt": "输入您的{{kind}} URL，然后设置您的链接",
+        "custom_kind": "自定义"
+      }
+    },
     "your_linktree": "您的 Linktree 已上线：",
     "copy_url": "复制 URL",
-    "copied": "已复制！",
-    "contacts": "联系人"
+    "copied": "已复制！"
   },
   "login": {
     "title": "登录到您的 Linktree",

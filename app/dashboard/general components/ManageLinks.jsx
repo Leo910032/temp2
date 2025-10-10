@@ -407,30 +407,33 @@ useEffect(() => {
             <div className="h-full flex-col gap-4 py-1 flex sm:px-2 px-1">
                 <AddBtn onAddItem={addLinkItem} />
 
-                <div className="flex items-center gap-3 justify-center rounded-3xl cursor-pointer active:scale-95 hover:scale-[1.005] border hover:bg-black/5 w-fit text-sm p-3 mt-3" onClick={addHeaderItem}>
-                    <Image src={"https://linktree.sirv.com/Images/icons/add.svg"} alt="add header" height={15} width={15} />
-                    <span>{translations.addHeader}</span>
-                </div>
+                {/* Grid 2x2 pour mobile, ligne flexible pour desktop */}
+                <div className="grid grid-cols-2 gap-3 md:flex md:flex-wrap mt-3">
+                    <div className="flex items-center gap-2 justify-center rounded-3xl cursor-pointer active:scale-95 hover:scale-[1.005] border border-gray-300 bg-gray-50 hover:bg-gray-100 w-full text-sm p-3" onClick={addHeaderItem}>
+                        <Image src={"https://linktree.sirv.com/Images/icons/add.svg"} alt="add header" height={15} width={15} />
+                        <span className="text-gray-700 font-medium">{translations.addHeader}</span>
+                    </div>
 
-                <div className="flex items-center gap-3 justify-center rounded-3xl cursor-pointer active:scale-95 hover:scale-[1.005] border border-purple-300 bg-purple-50 hover:bg-purple-100 w-fit text-sm p-3" onClick={addCarouselItem}>
-                    <svg className="w-4 h-4 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
-                    </svg>
-                    <span className="text-purple-700 font-medium">{translations.addCarousel}</span>
-                </div>
+                    <div className="flex items-center gap-2 justify-center rounded-3xl cursor-pointer active:scale-95 hover:scale-[1.005] border border-purple-300 bg-purple-50 hover:bg-purple-100 w-full text-sm p-3" onClick={addCarouselItem}>
+                        <svg className="w-4 h-4 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
+                        </svg>
+                        <span className="text-purple-700 font-medium">{translations.addCarousel}</span>
+                    </div>
 
-                <div className="flex items-center gap-3 justify-center rounded-3xl cursor-pointer active:scale-95 hover:scale-[1.005] border border-indigo-300 bg-indigo-50 hover:bg-indigo-100 w-fit text-sm p-3" onClick={addCVItem}>
-                    <svg className="w-4 h-4 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-indigo-700 font-medium">{translations.addCV}</span>
-                </div>
+                    <div className="flex items-center gap-2 justify-center rounded-3xl cursor-pointer active:scale-95 hover:scale-[1.005] border border-indigo-300 bg-indigo-50 hover:bg-indigo-100 w-full text-sm p-3" onClick={addCVItem}>
+                        <svg className="w-4 h-4 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-indigo-700 font-medium">{translations.addCV}</span>
+                    </div>
 
-                <div className="flex items-center gap-3 justify-center rounded-3xl cursor-pointer active:scale-95 hover:scale-[1.005] border border-red-300 bg-red-50 hover:bg-red-100 w-fit text-sm p-3" onClick={addMediaItem}>
-                    <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
-                    </svg>
-                    <span className="text-red-700 font-medium">{translations.addMedia}</span>
+                    <div className="flex items-center gap-2 justify-center rounded-3xl cursor-pointer active:scale-95 hover:scale-[1.005] border border-red-300 bg-red-50 hover:bg-red-100 w-full text-sm p-3" onClick={addMediaItem}>
+                        <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
+                        </svg>
+                        <span className="text-red-700 font-medium">{translations.addMedia}</span>
+                    </div>
                 </div>
                 
                 {/* Improved saving indicator */}

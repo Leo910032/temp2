@@ -525,14 +525,38 @@
     "settings": "Paramètres"
   },
   "dashboard": {
-    "links": "Liens",
-    "appearance": "Apparence",
-    "analytics": "Statistiques",
-    "settings": "Paramètres",
+    "navigation": {
+      "links": "Liens",
+      "appearance": "Apparence",
+      "analytics": "Statistiques",
+      "settings": "Paramètres",
+      "contacts": "Contacts"
+    },
+    "links": {
+      "add_header": "Ajouter un en-tête",
+      "add_carousel": "Ajouter un carrousel",
+      "add_cv": "Ajouter un CV / Document",
+      "add_media": "Ajouter un média",
+      "saved_success": "Liens sauvegardés !",
+      "saved_error": "Impossible de sauvegarder les liens.",
+      "loading_error": "Échec du chargement des liens.",
+      "empty_state": {
+        "title": "Montrez au monde qui vous êtes.",
+        "subtitle": "Ajoutez un lien pour commencer."
+      },
+      "item": {
+        "headline_title_default": "Titre de l'en-tête",
+        "carousel_title_default": "Carrousel de contenu",
+        "customize_carousel": "Personnaliser",
+        "customize_cv": "Personnaliser le CV",
+        "customize_video_embed": "Personnaliser le média",
+        "setup_link_prompt": "Entrez votre URL {{kind}}, puis configurez votre lien",
+        "custom_kind": "Personnalisé"
+      }
+    },
     "your_linktree": "Votre profil est en ligne :",
     "copy_url": "Copier l'URL",
-    "copied": "Copié !",
-    "contacts": "Contacts"
+    "copied": "Copié !"
   },
   "login": {
     "title": "Connectez-vous à votre compte",

@@ -273,8 +273,17 @@
     "links": {
       "add_header": "Add Header",
       "add_carousel": "Add Carousel",
+      "add_cv": "Add CV / Document",
+      "add_media": "Add Media",
       "add_link": "Add Link",
       "enter_url": "Enter Url",
+      "saved_success": "Links saved!",
+      "saved_error": "Could not save links.",
+      "loading_error": "Failed to load links.",
+      "empty_state": {
+        "title": "Show the world who you are.",
+        "subtitle": "Add a link to get started."
+      },
       "url_placeholder": "URL",
       "add": "Add",
       "inspired_by_interest": "Inspired by your interest",
@@ -292,6 +301,8 @@
         "carousel_title_default": "Content Carousel",
         "carousel_description": "Drag to position where your carousel will appear",
         "customize_carousel": "Customize",
+        "customize_cv": "Customize CV",
+        "customize_video_embed": "Customize Media",
         "delete_tooltip": "Delete",
         "delete_header": "Delete",
         "delete_confirmation_question": "Delete this forever?",
@@ -303,10 +314,6 @@
         "custom_kind": "Custom",
         "toggle_disabled_tooltip": "Please enter a valid URL to activate this link"
       }
-    },
-    "empty_state": {
-        "title": "Show the world who you are.",
-        "subtitle": "Add a link to get started."
     }
   },
   "public": {

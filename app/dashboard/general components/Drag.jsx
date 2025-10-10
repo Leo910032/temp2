@@ -109,7 +109,7 @@ const DraggableList = ({ array }) => {
                 items={items.map(item => item.id)} // It needs an array of unique IDs
                 strategy={verticalListSortingStrategy}
             >
-                <div className='flex flex-col gap-8'>
+                <div className='flex flex-col gap-8 pb-24 md:pb-0'>
                     {items.map((item) => (
                         // 3. Render a SortableItem for each element
                         <SortableItem key={item.id} id={item.id}>

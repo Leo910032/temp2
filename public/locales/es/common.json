@@ -453,14 +453,38 @@
     "settings": "Ajustes"
   },
   "dashboard": {
-    "links": "Enlaces",
-    "appearance": "Apariencia",
-    "analytics": "Analíticas",
-    "settings": "Ajustes",
+    "navigation": {
+      "links": "Enlaces",
+      "appearance": "Apariencia",
+      "analytics": "Analíticas",
+      "settings": "Ajustes",
+      "contacts": "Contactos"
+    },
+    "links": {
+      "add_header": "Agregar encabezado",
+      "add_carousel": "Agregar carrusel",
+      "add_cv": "Agregar CV / Documento",
+      "add_media": "Agregar media",
+      "saved_success": "¡Enlaces guardados!",
+      "saved_error": "No se pudieron guardar los enlaces.",
+      "loading_error": "Error al cargar los enlaces.",
+      "empty_state": {
+        "title": "Muestra al mundo quién eres.",
+        "subtitle": "Agrega un enlace para comenzar."
+      },
+      "item": {
+        "headline_title_default": "Título del encabezado",
+        "carousel_title_default": "Carrusel de contenido",
+        "customize_carousel": "Personalizar",
+        "customize_cv": "Personalizar CV",
+        "customize_video_embed": "Personalizar media",
+        "setup_link_prompt": "Ingresa tu URL de {{kind}}, luego configura tu enlace",
+        "custom_kind": "Personalizado"
+      }
+    },
     "your_linktree": "Tu Linktree está en vivo:",
     "copy_url": "Copiar URL",
-    "copied": "¡Copiado!",
-    "contacts": "Contactos"
+    "copied": "¡Copiado!"
   },
   "login": {
     "title": "Inicia sesión en tu Linktree",

@@ -4,8 +4,9 @@
 import { useTranslation } from "@/lib/translation/useTranslation";
 import ContactCard from './ContactCard';
 
-export default function ContactsList({ 
+export default function ContactsList({
     contacts,
+    isPremium,
     selectionMode,
     selectedContacts,
     onToggleSelection,
@@ -113,8 +114,9 @@ export default function ContactsList({
                         )}
                         
                         {/* Contact Card */}
-                        <ContactCard 
-                            contact={contact} 
+                        <ContactCard
+                            contact={contact}
+                            isPremium={isPremium}
                             onEdit={onEdit}
                             onContactAction={onAction}
                             onMapView={onMapView}

@@ -236,12 +236,8 @@ export default function House({ initialUserData, scanToken = null, scanAvailable
                             {shouldShowContactExchange && (
                                 <div className="w-full max-w-lg px-4 mt-6 space-y-3">
                                     <div className="text-center mb-4">
-                                        <h3 className="text-lg font-semibold text-gray-800 mb-1">
-                                            🤝 Connect with Me
-                                        </h3>
-                                        <p className="text-sm text-gray-600">
-                                            Exchange contact information quickly and easily
-                                        </p>
+                                        
+                                       
                                         
                                         {scanAvailable && (
                                             <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full">

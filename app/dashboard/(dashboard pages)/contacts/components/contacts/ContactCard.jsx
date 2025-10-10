@@ -1,9 +1,49 @@
+//app/dashboard/(dashboard pages)/contacts/components/contacts/ContactCard.jsx
 "use client";
 
 import { useState } from 'react';
 import { useTranslation } from "@/lib/translation/useTranslation";
 
-export default function ContactCard({ contact, onEdit, onStatusUpdate, onDelete, onContactAction, onMapView, groups = [] }) {
+// Country flag emoji mapping
+const countryFlags = {
+    'US': '🇺🇸', 'CA': '🇨🇦', 'GB': '🇬🇧', 'FR': '🇫🇷', 'DE': '🇩🇪',
+    'IT': '🇮🇹', 'ES': '🇪🇸', 'NL': '🇳🇱', 'BE': '🇧🇪', 'CH': '🇨🇭',
+    'AT': '🇦🇹', 'PL': '🇵🇱', 'SE': '🇸🇪', 'NO': '🇳🇴', 'DK': '🇩🇰',
+    'FI': '🇫🇮', 'IE': '🇮🇪', 'PT': '🇵🇹', 'GR': '🇬🇷', 'CZ': '🇨🇿',
+    'AU': '🇦🇺', 'NZ': '🇳🇿', 'JP': '🇯🇵', 'CN': '🇨🇳', 'KR': '🇰🇷',
+    'IN': '🇮🇳', 'BR': '🇧🇷', 'MX': '🇲🇽', 'AR': '🇦🇷', 'CL': '🇨🇱'
+};
+
+// Country code to country mapping
+const countryCodeMap = {
+    '1': 'US', '33': 'FR', '44': 'GB', '49': 'DE', '39': 'IT',
+    '34': 'ES', '31': 'NL', '32': 'BE', '41': 'CH', '43': 'AT',
+    '48': 'PL', '46': 'SE', '47': 'NO', '45': 'DK', '358': 'FI',
+    '353': 'IE', '351': 'PT', '30': 'GR', '420': 'CZ', '61': 'AU',
+    '64': 'NZ', '81': 'JP', '86': 'CN', '82': 'KR', '91': 'IN',
+    '55': 'BR', '52': 'MX', '54': 'AR', '56': 'CL'
+};
+
+function getCountryFromPhone(phoneNumber) {
+    const cleaned = phoneNumber.replace(/[^\d+]/g, '');
+    if (cleaned.startsWith('+')) {
+        // Try 3-digit codes first
+        const code3 = cleaned.substring(1, 4);
+        if (countryCodeMap[code3]) return countryCodeMap[code3];
+
+        // Try 2-digit codes
+        const code2 = cleaned.substring(1, 3);
+        if (countryCodeMap[code2]) return countryCodeMap[code2];
+
+        // Try 1-digit codes
+        const code1 = cleaned.substring(1, 2);
+        if (countryCodeMap[code1]) return countryCodeMap[code1];
+    }
+
+    return null;
+}
+
+export default function ContactCard({ contact, onEdit, onStatusUpdate, onDelete, onContactAction, onMapView, groups = [], isPremium = false }) {
     const { t } = useTranslation();
     const [expanded, setExpanded] = useState(false);
     const contactGroups = groups.filter(group => group.contactIds && group.contactIds.includes(contact.id));
@@ -113,12 +153,6 @@ export default function ContactCard({ contact, onEdit, onStatusUpdate, onDelete,
                                     <a href={`mailto:${contact.email}`} className="text-blue-600 hover:underline break-all">{contact.email}</a>
                                 </div>
                             )}
-                            {contact.phone && (
-                                <div className="flex items-center gap-2">
-                                    <span className="text-gray-400 w-4 h-4 flex-shrink-0">📞</span>
-                                    <a href={`tel:${contact.phone}`} className="text-blue-600 hover:underline">{contact.phone}</a>
-                                </div>
-                            )}
                             {contact.website && (
                                 <div className="flex items-center gap-2">
                                     <span className="text-gray-400 w-4 h-4 flex-shrink-0">🌐</span>
@@ -132,6 +166,67 @@ export default function ContactCard({ contact, onEdit, onStatusUpdate, onDelete,
                                 </div>
                             )}
                         </div>
+
+                        {/* Phone Numbers Section */}
+                        {((contact.phoneNumbers && contact.phoneNumbers.length > 0) || contact.phone) && (
+                            <div className="pt-3 border-t border-gray-100">
+                                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-2">
+                                    📞 Phone Numbers
+                                    {isPremium && (
+                                        <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-800 rounded-full normal-case">
+                                            Premium: Country Detection
+                                        </span>
+                                    )}
+                                </h4>
+                                <div className="space-y-2">
+                                    {contact.phoneNumbers && contact.phoneNumbers.length > 0 ? (
+                                        contact.phoneNumbers.map((phoneObj, index) => {
+                                            const phoneNumber = phoneObj.number;
+                                            const country = isPremium ? getCountryFromPhone(phoneNumber) : null;
+                                            const flag = country ? countryFlags[country] : '📞';
+
+                                            return (
+                                                <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                                                    {isPremium && (
+                                                        <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white rounded border border-gray-200">
+                                                            <span className="text-xl" title={country || 'Unknown'}>
+                                                                {flag}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    {!isPremium && (
+                                                        <span className="text-gray-400 w-4 h-4 flex-shrink-0">📞</span>
+                                                    )}
+                                                    <a href={`tel:${phoneNumber}`} className="text-blue-600 hover:underline">
+                                                        {phoneNumber}
+                                                    </a>
+                                                </div>
+                                            );
+                                        })
+                                    ) : contact.phone ? (
+                                        <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                                            {isPremium && (() => {
+                                                const country = getCountryFromPhone(contact.phone);
+                                                const flag = country ? countryFlags[country] : '📞';
+                                                return (
+                                                    <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white rounded border border-gray-200">
+                                                        <span className="text-xl" title={country || 'Unknown'}>
+                                                            {flag}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })()}
+                                            {!isPremium && (
+                                                <span className="text-gray-400 w-4 h-4 flex-shrink-0">📞</span>
+                                            )}
+                                            <a href={`tel:${contact.phone}`} className="text-blue-600 hover:underline">
+                                                {contact.phone}
+                                            </a>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            </div>
+                        )}
 
                         {/* AI-Detected Dynamic Fields Section (includes taglines and others) */}
                         {allDynamicFields.length > 0 && (
@@ -260,19 +355,21 @@ export default function ContactCard({ contact, onEdit, onStatusUpdate, onDelete,
                             )}
                         </div>
                         <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-                            <button 
-                                onClick={() => onContactAction?.('email', contact)} 
-                                className="flex items-center justify-center gap-1 px-2 py-2 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
-                            >
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                </svg>
-                                <span className="hidden sm:inline">{t('contacts.email') || 'Email'}</span>
-                                <span className="sm:hidden">✉️</span>
-                            </button>
-                            {contact.phone && (
-                                <button 
-                                    onClick={() => onContactAction?.('phone', contact)} 
+                            {contact.email && (
+                                <button
+                                    onClick={() => onContactAction?.('email', contact)}
+                                    className="flex items-center justify-center gap-1 px-2 py-2 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                                >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                    </svg>
+                                    <span className="hidden sm:inline">{t('contacts.email') || 'Email'}</span>
+                                    <span className="sm:hidden">✉️</span>
+                                </button>
+                            )}
+                            {((contact.phoneNumbers && contact.phoneNumbers.length > 0) || contact.phone) && (
+                                <button
+                                    onClick={() => onContactAction?.('phone', contact)}
                                     className="flex items-center justify-center gap-1 px-2 py-2 text-xs text-green-600 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
                                 >
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

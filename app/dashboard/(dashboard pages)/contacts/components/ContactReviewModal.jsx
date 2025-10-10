@@ -204,59 +204,20 @@ export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSa
     };
 
     const handleSave = async () => {
-        // Enhanced validation
-        const hasNameOrEmail = fields.some(f => 
-            (f.label.toLowerCase().includes('name') || f.label.toLowerCase().includes('email')) && 
-            f.value.trim() !== ''
-        );
-
-        if (!hasNameOrEmail) {
-            toast.error('Please ensure the contact has at least a Name or Email.');
-            return;
-        }
-
-        // Remove empty fields before saving
-        const fieldsToSave = fields.filter(f => f.value && f.value.trim().length > 0);
-
-        // Add phone numbers back as a field
-        const validPhones = phoneNumbers.filter(p => p && p.trim());
-        if (validPhones.length > 0) {
-            fieldsToSave.push({
-                label: 'Phone',
-                value: validPhones.join('; '),
-                type: 'standard',
-                confidence: 0.9,
-                isDynamic: false,
-                source: 'phone_field',
-                category: 'contact'
-            });
-        }
-
-        if (fieldsToSave.length === 0) {
-            toast.error('Please add at least one field with a value.');
-            return;
-        }
-
         setIsSaving(true);
         try {
-            // Structure the data properly for the contact service
-            const structuredContactData = {
-                // Separate standard and dynamic fields
-                standardFields: fieldsToSave.filter(f => !f.isDynamic),
-                dynamicFields: fieldsToSave.filter(f => f.isDynamic),
-                metadata: {
-                    totalFields: fieldsToSave.length,
-                    source: 'business_card_scan_review',
-                    processedAt: new Date().toISOString()
-                }
-            };
-
-            await onSave(structuredContactData);
-            toast.success(`Contact saved with ${fieldsToSave.length} fields!`);
+            // Pass the raw, user-edited fields and phone numbers back to the parent
+            await onSave({
+                standardFields: fields.filter(f => !f.isDynamic),
+                dynamicFields: fields.filter(f => f.isDynamic),
+                phoneNumbers: phoneNumbers.filter(p => p && p.trim()),
+                metadata: parsedFields.metadata
+            });
+            toast.success(`Contact saved!`);
             onClose();
         } catch (error) {
             console.error('Error saving enhanced contact:', error);
-            toast.error('Failed to save contact.');
+            toast.error(error.message || 'Failed to save contact.');
         } finally {
             setIsSaving(false);
         }

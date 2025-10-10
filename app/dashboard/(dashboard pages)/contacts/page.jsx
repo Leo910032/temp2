@@ -27,7 +27,8 @@ export default function ContactsPageWrapper() {
 
 function ContactsPage() {
     const { t, isInitialized } = useTranslation();
-    const { isLoading: isSessionLoading } = useDashboard();
+    const { isLoading: isSessionLoading, subscriptionLevel } = useDashboard();
+    const isPremium = subscriptionLevel === 'premium' || subscriptionLevel === 'business' || subscriptionLevel === 'enterprise';
     
     // Get everything from context
     const {
@@ -291,9 +292,10 @@ function ContactsPage() {
                 {/* Contacts List */}
                 <ContactsList
                     contacts={aiSearchResults || contacts}
+                    isPremium={isPremium}
                     selectionMode={selectionMode}
                     selectedContacts={selectedContacts}
-                    onToggleSelection={(id) => setSelectedContacts(prev => 
+                    onToggleSelection={(id) => setSelectedContacts(prev =>
                         prev.includes(id) ? prev.filter(cid => cid !== id) : [...prev, id]
                     )}
                     onEdit={(contact) => {
@@ -361,10 +363,59 @@ function ContactsPage() {
                     setScannedFields(null);
                 }}
                 scannedFields={scannedFields}
-                onSaveScanned={async (fields) => {
-                    await createContact(fields);
-                    setShowReviewModal(false);
-                    setScannedFields(null);
+                onSaveScanned={async (editedData) => {
+                    try {
+                        const contactData = {};
+
+                        // 1. Process standard fields
+                        if (editedData.standardFields) {
+                            editedData.standardFields.forEach(field => {
+                                const label = field.label.toLowerCase().trim();
+                                const value = field.value?.trim();
+
+                                if (value) {
+                                    if (label === 'name' || label === 'full name') contactData.name = value;
+                                    else if (label.includes('email')) contactData.email = value;
+                                    else if (label.includes('company')) contactData.company = value;
+                                    else if (label.includes('job title') || label === 'title') contactData.jobTitle = value;
+                                    else if (label.includes('website')) contactData.website = value;
+                                    // Note: Phone is handled separately below
+                                }
+                            });
+                        }
+
+                        // 2. Process dynamic fields
+                        contactData.dynamicFields = editedData.dynamicFields?.filter(f => f.value?.trim()) || [];
+
+                        // 3. Process phone numbers
+                        if (editedData.phoneNumbers && editedData.phoneNumbers.length > 0) {
+                            contactData.phoneNumbers = editedData.phoneNumbers.map(phone => ({ number: phone, type: 'Mobile' }));
+                        }
+
+                        // 4. Final Validation: Ensure a name was found
+                        if (!contactData.name) {
+                            toast.error('Contact must have a name.');
+                            return; // Stop the save process
+                        }
+
+                        // 5. Add default metadata
+                        contactData.source = 'business_card_scan';
+                        contactData.status = 'new';
+                        if (editedData.metadata) {
+                            contactData.scanMetadata = editedData.metadata;
+                        }
+
+                        // 6. Call the createContact function from context
+                        await createContact(contactData);
+
+                        // Close the modal
+                        setShowReviewModal(false);
+                        setScannedFields(null);
+
+                    } catch (error) {
+                        console.error('onSaveScanned failed:', error);
+                        // Toast is already handled by createContact
+                    }
                 }}
                 
                 // Group manager props

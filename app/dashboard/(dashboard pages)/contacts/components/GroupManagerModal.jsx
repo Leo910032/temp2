@@ -8,7 +8,7 @@ import { CONTACT_FEATURES } from '@/lib/services/constants';
 
 // Import tab components
 import OverviewTab from './GroupModalComponents/OverviewTab.jsx';
-// import GroupsTab from './GroupModalComponents/GroupsTab';
+import GroupsTab from './GroupModalComponents/GroupsTab';
 // import CreateGroupTab from './GroupModalComponents/CreateGroupTab';
 // import AIGenerateTab from './GroupModalComponents/AIGenerateTab';
 // import RulesGenerateTab from './GroupModalComponents/RulesGenerateTab';
@@ -68,6 +68,25 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
         }
     }));
 
+    // Handler functions for group actions
+    const handleDeleteGroup = async (groupId) => {
+        try {
+            // TODO: Implement delete group API call
+            console.log('Delete group:', groupId);
+            // After successful deletion, refresh data
+            if (onRefreshData) {
+                await onRefreshData();
+            }
+        } catch (error) {
+            console.error('Error deleting group:', error);
+        }
+    };
+
+    const handleEditGroup = (group) => {
+        // TODO: Implement edit group functionality
+        console.log('Edit group:', group);
+    };
+
     // Feature flags based on permissions
     const hasBasicGroups = hasFeature(CONTACT_FEATURES.BASIC_GROUPS);
     const hasAdvancedGroups = hasFeature(CONTACT_FEATURES.ADVANCED_GROUPS);
@@ -126,14 +145,13 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
                         setActiveTab={setActiveTab}
                     />
 
-                    {/* Commented out for now - will add back progressively */}
-                    {/* <TabButton
+                    <TabButton
                         id="groups"
                         label="Groups"
                         badge={groups.length}
                         activeTab={activeTab}
                         setActiveTab={setActiveTab}
-                    /> */}
+                    />
 
                     {/* {hasBasicGroups && (
                         <TabButton
@@ -187,8 +205,7 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
                         />
                     )}
 
-                    {/* Commented out other tabs for now */}
-                    {/* {activeTab === 'groups' && (
+                    {activeTab === 'groups' && (
                         <GroupsTab
                             groups={groups}
                             contacts={contacts}
@@ -196,7 +213,7 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
                             onEditGroup={handleEditGroup}
                             onTabChange={setActiveTab}
                         />
-                    )} */}
+                    )}
 
                     {/* Add other tabs back progressively */}
                 </div>

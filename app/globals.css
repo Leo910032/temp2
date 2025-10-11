@@ -384,8 +384,3 @@ body.preview-modal-open [class*="NavBar"] {
     display: none !important;
   }
 }
-
-/* ===== RÈGLE DE DÉBOGAGE TEMPORAIRE ===== */
-* {
-  border: 1px solid red !important;
-}

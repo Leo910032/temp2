@@ -1307,6 +1307,33 @@
     }
   },
   "contacts": {
+    "title": "联系人",
+    "subtitle": "管理您的联系人和专业人脉",
+    "loading": "加载联系人中...",
+    "feature_not_available": "联系人功能不可用",
+    "requires_upgrade": "您当前的订阅计划不包括联系人管理功能。",
+    "stats": {
+      "total": "总联系人数",
+      "new": "新增",
+      "viewed": "已查看",
+      "with_location": "有位置"
+    },
+    "filters": {
+      "all_status": "所有状态",
+      "new": "新增",
+      "viewed": "已查看",
+      "archived": "已归档"
+    },
+    "buttons": {
+      "map_view": "地图视图",
+      "import_export": "导入/导出",
+      "scan_card": "扫描名片",
+      "manage_groups": "管理群组 ({{count}})"
+    },
+    "groups": {
+      "title": "联系人群组",
+      "more": "+{{count}} 更多"
+    },
     "modals": {
       "review": {
         "title": "审查和完善联系人",

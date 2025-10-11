@@ -1760,6 +1760,33 @@
     }
   },
   "contacts": {
+    "title": "Contactos",
+    "subtitle": "Gestiona tus contactos y conexiones profesionales",
+    "loading": "Cargando contactos...",
+    "feature_not_available": "Función de Contactos No Disponible",
+    "requires_upgrade": "Tu plan de suscripción actual no incluye funciones de gestión de contactos.",
+    "stats": {
+      "total": "Total de Contactos",
+      "new": "Nuevos",
+      "viewed": "Vistos",
+      "with_location": "Con Ubicación"
+    },
+    "filters": {
+      "all_status": "Todos los Estados",
+      "new": "Nuevos",
+      "viewed": "Vistos",
+      "archived": "Archivados"
+    },
+    "buttons": {
+      "map_view": "Vista de Mapa",
+      "import_export": "Importar / Exportar",
+      "scan_card": "Escanear Tarjeta",
+      "manage_groups": "Gestionar Grupos ({{count}})"
+    },
+    "groups": {
+      "title": "Grupos de Contactos",
+      "more": "+{{count}} más"
+    },
     "modals": {
       "review": {
         "title": "Revisar y Refinar Contacto",

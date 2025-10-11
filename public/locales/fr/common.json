@@ -1998,6 +1998,33 @@
     }
   },
   "contacts": {
+    "title": "Contacts",
+    "subtitle": "Gérez vos contacts et connexions professionnelles",
+    "loading": "Chargement des contacts...",
+    "feature_not_available": "Fonctionnalité Contacts Non Disponible",
+    "requires_upgrade": "Votre plan d'abonnement actuel n'inclut pas les fonctionnalités de gestion des contacts.",
+    "stats": {
+      "total": "Total des Contacts",
+      "new": "Nouveaux",
+      "viewed": "Vus",
+      "with_location": "Avec Localisation"
+    },
+    "filters": {
+      "all_status": "Tous les Statuts",
+      "new": "Nouveaux",
+      "viewed": "Vus",
+      "archived": "Archivés"
+    },
+    "buttons": {
+      "map_view": "Vue Carte",
+      "import_export": "Importer / Exporter",
+      "scan_card": "Scanner Carte",
+      "manage_groups": "Gérer les Groupes ({{count}})"
+    },
+    "groups": {
+      "title": "Groupes de Contacts",
+      "more": "+{{count}} de plus"
+    },
     "modals": {
       "review": {
         "title": "Réviser et Affiner le Contact",

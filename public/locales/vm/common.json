@@ -1760,6 +1760,33 @@
     }
   },
   "contacts": {
+    "title": "Danh bạ",
+    "subtitle": "Quản lý danh bạ và kết nối chuyên nghiệp của bạn",
+    "loading": "Đang tải danh bạ...",
+    "feature_not_available": "Tính năng Danh bạ Không Khả dụng",
+    "requires_upgrade": "Gói đăng ký hiện tại của bạn không bao gồm tính năng quản lý danh bạ.",
+    "stats": {
+      "total": "Tổng số Liên hệ",
+      "new": "Mới",
+      "viewed": "Đã xem",
+      "with_location": "Có Vị trí"
+    },
+    "filters": {
+      "all_status": "Tất cả Trạng thái",
+      "new": "Mới",
+      "viewed": "Đã xem",
+      "archived": "Đã lưu trữ"
+    },
+    "buttons": {
+      "map_view": "Xem Bản đồ",
+      "import_export": "Nhập / Xuất",
+      "scan_card": "Quét Thẻ",
+      "manage_groups": "Quản lý Nhóm ({{count}})"
+    },
+    "groups": {
+      "title": "Nhóm Liên hệ",
+      "more": "+{{count}} thêm"
+    },
     "modals": {
       "review": {
         "title": "Xem xét và Tinh chỉnh Liên hệ",

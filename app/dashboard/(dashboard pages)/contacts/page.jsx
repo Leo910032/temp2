@@ -243,10 +243,10 @@ function ContactsPage() {
                             onChange={(e) => setFilter(e.target.value)}
                             className="px-3 py-2 border border-gray-300 bg-gray-50 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
-                            <option value="all">All Status</option>
-                            <option value="new">New</option>
-                            <option value="viewed">Viewed</option>
-                            <option value="archived">Archived</option>
+                            <option value="all">{t('contacts.filters.all_status') || 'All Status'}</option>
+                            <option value="new">{t('contacts.filters.new') || 'New'}</option>
+                            <option value="viewed">{t('contacts.filters.viewed') || 'Viewed'}</option>
+                            <option value="archived">{t('contacts.filters.archived') || 'Archived'}</option>
                         </select>
 
                         {hasFeature(CONTACT_FEATURES.MAP_VISUALIZATION) && (
@@ -255,7 +255,7 @@ function ContactsPage() {
                                 className="px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600"
                                 disabled={contacts.filter(c => c.location?.latitude).length === 0}
                             >
-                                Map View
+                                {t('contacts.buttons.map_view') || 'Map View'}
                             </button>
                         )}
 
@@ -264,7 +264,7 @@ function ContactsPage() {
                                 onClick={() => setShowImportExportModal(true)}
                                 className="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-800"
                             >
-                                Import / Export
+                                {t('contacts.buttons.import_export') || 'Import / Export'}
                             </button>
                         )}
 
@@ -277,14 +277,14 @@ function ContactsPage() {
         }}
         className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
     >
-        Scan Card
+        {t('contacts.buttons.scan_card') || 'Scan Card'}
     </button>
 ) : null}
                         <button
                             onClick={() => setShowGroupManager(true)}
                             className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
                         >
-                            Manage Groups ({groups.length})
+                            {t('contacts.buttons.manage_groups', { count: groups.length }) || `Manage Groups (${groups.length})`}
                         </button>
                     </div>
                 </div>
@@ -316,7 +316,7 @@ function ContactsPage() {
                 {/* Groups Preview */}
                 {groups.length > 0 && (
                     <div className="mt-6 bg-white p-4 rounded-lg shadow">
-                        <h3 className="text-lg font-medium text-gray-900 mb-3">Contact Groups</h3>
+                        <h3 className="text-lg font-medium text-gray-900 mb-3">{t('contacts.groups.title') || 'Contact Groups'}</h3>
                         <div className="flex flex-wrap gap-2">
                             {groups.slice(0, 5).map((group) => (
                                 <div key={group.id} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
@@ -328,7 +328,7 @@ function ContactsPage() {
                                     onClick={() => setShowGroupManager(true)}
                                     className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm hover:bg-gray-200"
                                 >
-                                    +{groups.length - 5} more
+                                    {t('contacts.groups.more', { count: groups.length - 5 }) || `+${groups.length - 5} more`}
                                 </button>
                             )}
                         </div>

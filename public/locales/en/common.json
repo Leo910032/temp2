@@ -693,6 +693,33 @@
     }
   },
   "contacts": {
+    "title": "Contacts",
+    "subtitle": "Manage your contacts and networking connections",
+    "loading": "Loading contacts...",
+    "feature_not_available": "Contacts Feature Not Available",
+    "requires_upgrade": "Your current subscription plan doesn't include contact management features.",
+    "stats": {
+      "total": "Total Contacts",
+      "new": "New",
+      "viewed": "Viewed",
+      "with_location": "With Location"
+    },
+    "filters": {
+      "all_status": "All Status",
+      "new": "New",
+      "viewed": "Viewed",
+      "archived": "Archived"
+    },
+    "buttons": {
+      "map_view": "Map View",
+      "import_export": "Import / Export",
+      "scan_card": "Scan Card",
+      "manage_groups": "Manage Groups ({{count}})"
+    },
+    "groups": {
+      "title": "Contact Groups",
+      "more": "+{{count}} more"
+    },
     "modals": {
       "review": {
         "title": "Review & Refine Contact",

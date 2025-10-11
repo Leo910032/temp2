@@ -1,12 +1,13 @@
 // app/dashboard/(dashboard pages)/contacts/page.jsx
 "use client";
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useTranslation } from "@/lib/translation/useTranslation";
 import { toast } from 'react-hot-toast';
 import { useDashboard } from '@/app/dashboard/DashboardContext';
 import { ContactsProvider, useContacts } from './ContactsContext';
 import { CONTACT_FEATURES } from '@/lib/services/constants';
+import { useMapVisibility } from '../../MapVisibilityContext';
 
 // Import child components
 import ContactsList from './components/contacts/ContactsList';
@@ -29,7 +30,8 @@ function ContactsPage() {
     const { t, isInitialized } = useTranslation();
     const { isLoading: isSessionLoading, subscriptionLevel } = useDashboard();
     const isPremium = subscriptionLevel === 'premium' || subscriptionLevel === 'business' || subscriptionLevel === 'enterprise';
-    
+    const { setIsMapOpen } = useMapVisibility();
+
     // Get everything from context
     const {
         contacts,
@@ -73,6 +75,11 @@ function ContactsPage() {
     const [showImportExportModal, setShowImportExportModal] = useState(false);
     const [showMap, setShowMap] = useState(false);
     const [selectedContactForMap, setSelectedContactForMap] = useState(null);
+
+    // Update map visibility in context
+    useEffect(() => {
+        setIsMapOpen(showMap);
+    }, [showMap, setIsMapOpen]);
 
     // Translations
     const translations = useMemo(() => {

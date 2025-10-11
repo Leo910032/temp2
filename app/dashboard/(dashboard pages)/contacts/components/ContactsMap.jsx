@@ -460,8 +460,8 @@ export default function ContacctsMap({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4 pt-20 pb-4">
-            <div className="bg-white w-full h-full rounded-2xl shadow-2xl flex flex-col overflow-hidden relative border border-gray-200">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 md:px-4 md:pt-20 md:pb-4">
+            <div className="bg-white w-full h-full md:rounded-2xl md:shadow-2xl flex flex-col overflow-hidden relative md:border md:border-gray-200">
                 {/* Minimal Top Bar */}
                 <div className="absolute top-0 left-0 right-0 z-30 pointer-events-none">
                     <div className="flex items-center justify-between p-3 md:p-4">

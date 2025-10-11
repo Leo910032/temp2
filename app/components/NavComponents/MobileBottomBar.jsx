@@ -2,10 +2,13 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
+import { useMapVisibility } from '@/app/dashboard/MapVisibilityContext';
 
 export default function MobileBottomBar({ activePage, translations }) {
+    const { isMapOpen } = useMapVisibility();
+
     return (
-        <div className="fixed bottom-0 left-0 right-0 z-[9999999] md:hidden">
+        <div className={`fixed bottom-0 left-0 right-0 z-[9999999] md:hidden transition-transform duration-300 ${isMapOpen ? 'translate-y-full' : 'translate-y-0'}`}>
             <div className="flex justify-around items-center py-3 px-2 m-2 rounded-2xl bg-white border shadow-lg backdrop-blur-lg">
                 {/* Links */}
                 <Link

@@ -23,9 +23,9 @@ export default function RootLayout({ children }) {
             <DashboardProvider>
                 <div>
                     <Toaster position="bottom-right" />
-                    <div className='w-screen h-screen max-w-screen max-h-screen overflow-y-auto relative bg-black bg-opacity-[.05] p-2 flex flex-col'>
+                    <div className='w-full min-h-screen overflow-x-hidden overflow-y-auto relative bg-black bg-opacity-[.05] p-2 flex flex-col'>
                         <NavBar />
-                        <div className="flex sm:px-3 px-2 h-full overflow-y-hidden">
+                        <div className="flex sm:px-3 px-2 w-full flex-1">
                             {children}
                             {/* Only show Preview component if NOT on enterprise page */}
                             {/* The enterprise page will handle its own TeamPreview component */}

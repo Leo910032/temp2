@@ -272,7 +272,7 @@ function AppearanceContent() {
                     </span>
                 </h2>
                 <p className="py-3 sm:text-base text-sm text-gray-600">
-                    Add a professional banner to the top of your contact card. Choose from colors, gradients, images, or videos.
+    {t('dashboard.appearance.banners.description') || "Add a professional banner to the top of your contact card. Choose from colors, gradients, images, or videos."}
                 </p>
                 {canUseCustomBanner ? <Banners /> : <UpgradePrompt feature="Custom Banners" requiredTier="Premium" />}
             </div>

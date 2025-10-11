@@ -37,28 +37,47 @@ export default function MediaManager() {
     });
 
     const translations = useMemo(() => {
-        if (!isInitialized) return {};
+        if (!isInitialized) return null;
+
         return {
-            title: t('dashboard.appearance.media.title') || 'Media',
-            description: t('dashboard.appearance.media.description') || 'Embed videos and images directly on your profile.',
-            enabled: t('dashboard.appearance.media.enabled') || 'Enabled',
-            disabled: t('dashboard.appearance.media.disabled') || 'Disabled',
-            addItem: t('dashboard.appearance.media.add_item') || 'Add Media',
-            maxReached: t('dashboard.appearance.media.max_reached') || 'Maximum media items reached',
-            noItems: t('dashboard.appearance.media.no_items') || 'No media yet. Add your first media item to get started!',
+            title: t('dashboard.appearance.media.title'),
+            description: t('dashboard.appearance.media.description'),
+            enabled: t('dashboard.appearance.media.enabled'),
+            disabled: t('dashboard.appearance.media.disabled'),
+            addItem: t('dashboard.appearance.media.add_item'),
+            itemsLabel: t('dashboard.appearance.media.items_label', {
+                current: mediaItems.length,
+                max: maxItems,
+            }),
+            noItems: t('dashboard.appearance.media.no_items'),
+            disabledMessage: t('dashboard.appearance.media.disabled_message'),
+            linkTitle: t('dashboard.appearance.media.link_title'),
+            defaultItemTitle: t('dashboard.appearance.media.default_item_title'),
+            errors: {
+                maxItems: t('dashboard.appearance.media.errors.max_items', { max: maxItems }),
+            },
+            toast: {
+                enabled: t('dashboard.appearance.media.toast.enabled'),
+                disabled: t('dashboard.appearance.media.toast.disabled'),
+                added: t('dashboard.appearance.media.toast.added'),
+                addedLinksError: t('dashboard.appearance.media.toast.added_links_error'),
+                deleted: t('dashboard.appearance.media.toast.deleted'),
+                deletedWithLink: t('dashboard.appearance.media.toast.deleted_with_link'),
+                deletedAppearance: t('dashboard.appearance.media.toast.deleted_appearance'),
+            },
         };
-    }, [t, isInitialized]);
+    }, [t, isInitialized, mediaItems.length, maxItems]);
 
     // Toggle media enabled/disabled
     const handleToggleMedia = () => {
         updateAppearance('mediaEnabled', !mediaEnabled);
-        toast.success(mediaEnabled ? 'Media disabled' : 'Media enabled');
+        toast.success(mediaEnabled ? translations.toast.disabled : translations.toast.enabled);
     };
 
     // Add new media item
     const handleAddItem = async () => {
         if (mediaItems.length >= maxItems) {
-            toast.error(`Maximum ${maxItems} media item${maxItems > 1 ? 's' : ''} allowed for your plan`);
+            toast.error(translations.errors.maxItems);
             return;
         }
 
@@ -67,7 +86,7 @@ export default function MediaManager() {
         const newItem = {
             id: mediaItemId,
             mediaType: 'video', // Default to video
-            title: 'New Media Item',
+            title: t('dashboard.appearance.media.new_item_default'),
             url: '',
             platform: 'youtube',
             description: '',
@@ -84,7 +103,7 @@ export default function MediaManager() {
 
             const newLinkItem = {
                 id: generateRandomId(),
-                title: "Media",
+                title: t('dashboard.links.add_media'),
                 isActive: true,
                 type: 4,
                 mediaItemId: mediaItemId // Link to the media item
@@ -94,10 +113,10 @@ export default function MediaManager() {
             const updatedLinks = [newLinkItem, ...existingLinks];
             await LinksService.saveLinks(updatedLinks);
 
-            toast.success('Media added to both appearance and links');
+            toast.success(t('dashboard.toasts.media_added_both'));
         } catch (error) {
             console.error('Error creating link item:', error);
-            toast.error('Media added to appearance but failed to create link item');
+            toast.error(t('dashboard.toasts.media_added_appearance_only'));
         }
     };
 
@@ -129,17 +148,17 @@ export default function MediaManager() {
             if (updatedLinks.length !== existingLinks.length) {
                 // A link was removed, save the updated links
                 await LinksService.saveLinks(updatedLinks);
-                toast.success('Media deleted from both appearance and links');
+                toast.success(t('dashboard.toasts.media_deleted_both'));
             } else {
-                toast.success('Media deleted');
+                toast.success(t('dashboard.toasts.media_deleted_both'));
             }
         } catch (error) {
             console.error('Error deleting link item:', error);
-            toast.success('Media deleted from appearance');
+            toast.success(t('dashboard.toasts.media_deleted_appearance_only'));
         }
     };
 
-    if (!isInitialized) {
+    if (!isInitialized || !translations) {
         return (
             <div className="w-full bg-white rounded-3xl my-3 flex flex-col p-6 animate-pulse">
                 <div className="h-6 w-48 bg-gray-200 rounded mb-4"></div>
@@ -182,7 +201,7 @@ export default function MediaManager() {
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
                         <h4 className="text-sm font-semibold text-gray-700">
-                            Media Items ({mediaItems.length}/{maxItems})
+                            {translations.itemsLabel}
                         </h4>
                         <button
                             onClick={handleAddItem}
@@ -225,7 +244,7 @@ export default function MediaManager() {
             {!mediaEnabled && (
                 <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                     <p className="text-gray-500">
-                        Enable media to start adding videos and images to your profile.
+                        {t('dashboard.appearance.media.enable_message')}
                     </p>
                 </div>
             )}

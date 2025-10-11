@@ -51,7 +51,9 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
         if (!isInitialized) return {};
         return {
             videoEmbedTitle: t('dashboard.links.item.video_embed_title_default') || 'Video Embed',
-            videoEmbedDescription: t('dashboard.links.item.video_embed_description') || 'Display an embedded video on your profile',
+            videoEmbedDescription: t('dashboard.links.item.video_embed_description') || 'Drag to position where your video will appear',
+            videoEmbedUpgradeMessage: t('dashboard.links.item.video_embed_upgrade_message') || 'Upgrade to Pro or Premium to use this feature',
+            linkedBadge: t('dashboard.links.item.linked_badge') || 'Linked',
             customizeButton: t('dashboard.links.item.customize_video_embed') || 'Customize',
             deleteTooltip: t('dashboard.links.item.delete_tooltip') || 'Delete',
             deleteHeader: t('dashboard.links.item.delete_header') || 'Delete this item?',
@@ -301,7 +303,7 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
                         {/* Show link indicator if video is linked */}
                         {linkedVideoName && canUseVideoEmbed && (
                             <span className='text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-semibold border border-green-300'>
-                                Linked
+                                {translations.linkedBadge}
                             </span>
                         )}
                     </div>
@@ -311,8 +313,8 @@ export default function VideoEmbedItem({ item, itemRef, style, listeners, attrib
                         !canUseVideoEmbed ? 'text-gray-500' : 'text-red-600'
                     }`}>
                         {!canUseVideoEmbed
-                            ? 'Upgrade to Pro or Premium to use this feature'
-                            : 'Drag to position where your video will appear'
+                            ? translations.videoEmbedUpgradeMessage
+                            : translations.videoEmbedDescription
                         }
                     </div>
 

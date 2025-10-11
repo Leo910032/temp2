@@ -34,7 +34,7 @@ export default function CVItem({ item, itemRef, style, listeners, attributes, is
         if (!isInitialized) return {};
         return {
             cvTitleDefault: t('dashboard.links.item.cv_title_default') || 'CV / Document',
-            cvDescription: t('dashboard.links.item.cv_description') || 'Display your CV or resume here',
+            cvDescription: t('dashboard.links.item.cv_description') || 'Drag to position where your CV will appear',
             customizeButton: t('dashboard.links.item.customize_cv') || 'Manage Document',
             deleteTooltip: t('dashboard.links.item.delete_tooltip') || 'Delete',
             deleteHeader: t('dashboard.links.item.delete_header') || 'Delete this item?',
@@ -180,7 +180,7 @@ export default function CVItem({ item, itemRef, style, listeners, attributes, is
 
                     {/* CV Description */}
                     <div className='text-sm text-indigo-600 opacity-80'>
-                        Drag to position where your CV will appear
+                        {translations.cvDescription}
                     </div>
 
                     {/* Manage Button */}

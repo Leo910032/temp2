@@ -12,6 +12,7 @@ import { generateRandomId } from "@/lib/utilities";
 import { toast } from "react-hot-toast";
 import AddBtn from "../general elements/addBtn";
 import DraggableList from "./Drag";
+import PreviewModal from "./PreviewModal";
 
 // ✅ IMPORT THE NEW SERVICES AND CONTEXT
 import { useDashboard } from '@/app/dashboard/DashboardContext.js';
@@ -30,6 +31,7 @@ export default function ManageLinks() {
     const [isSaving, setIsSaving] = useState(false);
     const [isLoadingLinks, setIsLoadingLinks] = useState(true);
     const [syncState, setSyncState] = useState('idle'); // 'idle', 'loading_cache', 'syncing_server'
+    const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
     const hasInitiallyLoaded = useRef(false);
     const lastSavedData = useRef(null);
@@ -44,11 +46,16 @@ export default function ManageLinks() {
             addCarousel: t('dashboard.links.add_carousel') || "Add Carousel",
             addCV: t('dashboard.links.add_cv') || "Add CV / Document",
             addMedia: t('dashboard.links.add_media') || "Add Media",
+            preview: t('dashboard.links.preview') || "Preview",
             emptyStateTitle: t('dashboard.links.empty_state.title'),
             emptyStateSubtitle: t('dashboard.links.empty_state.subtitle'),
             linksSaved: t('dashboard.links.saved_success') || "Links saved!",
             savingError: t('dashboard.links.saved_error') || "Could not save links.",
-            loadingError: t('dashboard.links.loading_error') || "Failed to load links."
+            loadingError: t('dashboard.links.loading_error') || "Failed to load links.",
+            statusLoading: t('dashboard.links.status.loading') || "Loading your links...",
+            statusSaving: t('dashboard.links.status.saving') || "Saving links...",
+            statusSyncing: t('dashboard.links.status.syncing') || "Syncing with server...",
+            updateError: t('dashboard.links.errors.update_failed') || "Failed to update link."
         };
     }, [t, isInitialized]);
 
@@ -81,7 +88,7 @@ export default function ManageLinks() {
         if (!canUseCarousel) {
             // Show upgrade prompt for users without permission
             const requiredTier = subscriptionLevel === 'base' ? 'Pro' : 'Pro';
-            toast.error(`Upgrade to ${requiredTier} to use Content Carousel feature`, {
+            toast.error(t('dashboard.links.errors.carousel_permission', { tier: requiredTier }) || `Upgrade to ${requiredTier} to use Content Carousel feature`, {
                 duration: 4000,
                 style: {
                     background: '#FEF3C7',
@@ -99,7 +106,7 @@ export default function ManageLinks() {
         const existingCarousels = data.filter(item => item.type === 2);
 
         if (existingCarousels.length >= maxCarousels) {
-            toast.error(`Maximum ${maxCarousels} carousel link${maxCarousels > 1 ? 's' : ''} reached for ${subscriptionLevel} plan`, {
+            toast.error(t('dashboard.links.errors.carousel_limit', { count: maxCarousels, plan: subscriptionLevel }) || `Maximum ${maxCarousels} carousel link${maxCarousels > 1 ? 's' : ''} reached for ${subscriptionLevel} plan`, {
                 duration: 4000,
                 style: {
                     background: '#FEF3C7',
@@ -116,7 +123,7 @@ export default function ManageLinks() {
         // Create the link item
         const newCarousel = {
             id: generateRandomId(),
-            title: "Content Carousel",
+            title: t('dashboard.links.item.carousel_title_default'),
             isActive: true,
             type: 2,
             carouselId: carouselId // Link to the carousel container in appearance
@@ -132,7 +139,7 @@ export default function ManageLinks() {
 
             const newCarouselContainer = {
                 id: carouselId,
-                title: 'New Carousel',
+                title: t('dashboard.appearance.carousel.new_carousel_default'),
                 enabled: true,
                 style: 'modern',
                 showTitle: true,
@@ -149,12 +156,12 @@ export default function ManageLinks() {
                 carousels: [...carousels, newCarouselContainer]
             }, { origin: 'manage-links', userId: currentUser?.uid });
 
-            toast.success("Carousel link added - go to Appearance to add items");
+            toast.success(t('dashboard.links.toasts.carousel_added'));
         } catch (error) {
             console.error("Error creating carousel container:", error);
-            toast.error("Carousel link added but failed to create carousel container");
+            toast.error(t('dashboard.links.toasts.carousel_creation_failed'));
         }
-    }, [currentUser?.uid, data, permissions, subscriptionLevel]);
+    }, [currentUser?.uid, data, permissions, subscriptionLevel, t]);
 
     const addCVItem = useCallback(async () => {
         // Create a unique ID for the CV item that will be created in appearance
@@ -163,7 +170,7 @@ export default function ManageLinks() {
         // Create the link item
         const newCV = {
             id: generateRandomId(),
-            title: "CV / Document",
+            title: t('dashboard.links.add_cv'),
             isActive: true,
             type: 3,
             cvItemId: cvItemId // Link to the CV item in appearance
@@ -181,7 +188,7 @@ export default function ManageLinks() {
                 id: cvItemId,
                 url: '',
                 fileName: '',
-                displayTitle: 'New CV Document',
+                displayTitle: t('dashboard.appearance.cv.new_cv_document'),
                 uploadDate: null,
                 fileSize: 0,
                 fileType: '',
@@ -192,12 +199,12 @@ export default function ManageLinks() {
                 cvItems: [...cvItems, newCvItem]
             }, { origin: 'manage-links', userId: currentUser?.uid });
 
-            toast.success("CV item added - go to Appearance to upload document");
+            toast.success(t('dashboard.links.toasts.cv_added'));
         } catch (error) {
             console.error("Error creating CV item:", error);
-            toast.error("CV link added but failed to create document slot");
+            toast.error(t('dashboard.links.toasts.cv_creation_failed'));
         }
-}, [currentUser?.uid]); // <-- Dependency array updated to include user
+}, [currentUser?.uid, t]); // <-- Dependency array updated to include user and t
 
     const addMediaItem = useCallback(async () => {
         // Check subscription permission
@@ -206,7 +213,7 @@ export default function ManageLinks() {
         if (!canUseMedia) {
             // Show upgrade prompt for users without permission
             const requiredTier = subscriptionLevel === 'base' ? 'Pro' : 'Pro';
-            toast.error(`Upgrade to ${requiredTier} to use Media feature`, {
+            toast.error(t('dashboard.links.errors.media_permission', { tier: requiredTier }) || `Upgrade to ${requiredTier} to use Media feature`, {
                 duration: 4000,
                 style: {
                     background: '#FEF3C7',
@@ -224,7 +231,7 @@ export default function ManageLinks() {
         const existingMediaItems = data.filter(item => item.type === 4);
 
         if (existingMediaItems.length >= maxMediaItems) {
-            toast.error(`Maximum ${maxMediaItems} media link${maxMediaItems > 1 ? 's' : ''} reached for ${subscriptionLevel} plan`, {
+            toast.error(t('dashboard.links.errors.media_limit', { count: maxMediaItems, plan: subscriptionLevel }) || `Maximum ${maxMediaItems} media link${maxMediaItems > 1 ? 's' : ''} reached for ${subscriptionLevel} plan`, {
                 duration: 4000,
                 style: {
                     background: '#FEF3C7',
@@ -241,7 +248,7 @@ export default function ManageLinks() {
         // Create the link item
         const newMediaLink = {
             id: generateRandomId(),
-            title: "Media",
+            title: t('dashboard.links.add_media'),
             isActive: true,
             type: 4,
             mediaItemId: mediaItemId // Link to the media item in appearance
@@ -258,7 +265,7 @@ export default function ManageLinks() {
             const newMediaItemData = {
                 id: mediaItemId,
                 mediaType: 'video', // Default to video
-                title: 'New Media Item',
+                title: t('dashboard.appearance.media.new_item_default'),
                 url: '',
                 platform: 'youtube',
                 description: '',
@@ -270,12 +277,12 @@ export default function ManageLinks() {
                 mediaEnabled: true // Auto-enable when adding first media
             }, { origin: 'manage-links', userId: currentUser?.uid });
 
-            toast.success("Media link added - go to Appearance to configure media");
+            toast.success(t('dashboard.links.toasts.media_added'));
         } catch (error) {
             console.error("Error creating media item:", error);
-            toast.error("Media link added but failed to create media item slot");
+            toast.error(t('dashboard.links.toasts.media_creation_failed'));
         }
-    }, [currentUser?.uid, data, permissions, subscriptionLevel]);
+    }, [currentUser?.uid, data, permissions, subscriptionLevel, t]);
 
     // ✅ ENHANCED API CALLS with caching and sync
    
@@ -370,7 +377,7 @@ useEffect(() => {
                 await LinksService.updateLink(linkId, updates);
             } catch (error) {
                 console.error("Error updating single link:", error);
-                toast.error("Failed to update link");
+                toast.error(translations.updateError || "Failed to update link");
             }
         },
         // Add force refresh helper for debugging
@@ -379,7 +386,7 @@ useEffect(() => {
             LinksService.invalidateCache();
             await fetchLinksFromServer();
         }
-    }), [data, fetchLinksFromServer, isSaving]);
+    }), [data, fetchLinksFromServer, isSaving, translations]);
 
     // ✅ ENHANCED DEBOUNCED SAVE with better sync
     useEffect(() => {
@@ -397,7 +404,7 @@ useEffect(() => {
         return (
             <div className="flex-1 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                <span className="ml-3 text-gray-600">Loading your links...</span>
+                <span className="ml-3 text-gray-600">{translations.statusLoading || "Loading your links..."}</span>
             </div>
         );
     }
@@ -405,6 +412,18 @@ useEffect(() => {
     return (
         <ManageLinksContent.Provider value={contextValue}>
             <div className="h-full flex-col gap-4 py-1 flex sm:px-2 px-1">
+                {/* Preview Button - Only visible on mobile */}
+                <button
+                    onClick={() => setIsPreviewModalOpen(true)}
+                    className="md:hidden flex items-center gap-2 justify-center rounded-3xl cursor-pointer active:scale-95 hover:scale-[1.005] border border-blue-300 bg-blue-50 hover:bg-blue-100 w-full text-sm p-3 font-medium text-blue-700"
+                >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                        <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                    </svg>
+                    {translations.preview}
+                </button>
+
                 <AddBtn onAddItem={addLinkItem} />
 
                 {/* Grid 2x2 pour mobile, ligne flexible pour desktop */}
@@ -440,14 +459,14 @@ useEffect(() => {
                 {isSaving && (
                     <div className="text-center text-sm text-blue-600 animate-pulse flex items-center justify-center gap-2">
                         <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
-                        Saving links...
+                        {translations.statusSaving || "Saving links..."}
                     </div>
                 )}
 
                 {/* ✅ Add sync indicator for when data is being updated from server */}
                 {isServerUpdate.current && (
                     <div className="text-center text-xs text-green-600 opacity-70">
-                        Syncing with server...
+                        {translations.statusSyncing || "Syncing with server..."}
                     </div>
                 )}
 
@@ -466,6 +485,12 @@ useEffect(() => {
                     </div>
                 )}
             </div>
+
+            {/* Preview Modal */}
+            <PreviewModal
+                isOpen={isPreviewModalOpen}
+                onClose={() => setIsPreviewModalOpen(false)}
+            />
         </ManageLinksContent.Provider>
     );
 }

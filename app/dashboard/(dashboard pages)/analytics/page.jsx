@@ -1,3 +1,4 @@
+//app/dashboard/(dashboard pages)/analytics/page.jsx
 // Enhanced AnalyticsContent component with cache status display
 
 "use client";

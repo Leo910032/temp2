@@ -213,11 +213,11 @@ export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSa
                 phoneNumbers: phoneNumbers.filter(p => p && p.trim()),
                 metadata: parsedFields.metadata
             });
-            toast.success(`Contact saved!`);
+            toast.success(t('contacts.modals.review.save_success'));
             onClose();
         } catch (error) {
             console.error('Error saving enhanced contact:', error);
-            toast.error(error.message || 'Failed to save contact.');
+            toast.error(error.message || t('contacts.modals.review.save_error'));
         } finally {
             setIsSaving(false);
         }
@@ -236,9 +236,12 @@ export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSa
                 {/* Enhanced Header */}
                 <div className="flex items-center justify-between p-6 border-b">
                     <div>
-                        <h3 className="text-lg font-semibold text-gray-900">Review & Refine Contact</h3>
+                        <h3 className="text-lg font-semibold text-gray-900">{t('contacts.modals.review.title')}</h3>
                         <p className="text-sm text-gray-500 mt-1">
-                            {getTotalFields() + (phoneNumbers.filter(p => p.trim()).length > 0 ? 1 : 0)} fields detected • {Object.keys(fieldCategories).length} categories
+                            {t('contacts.modals.review.subtitle', {
+                                fields: getTotalFields() + (phoneNumbers.filter(p => p.trim()).length > 0 ? 1 : 0),
+                                categories: Object.keys(fieldCategories).length
+                            })}
                         </p>
                     </div>
                     <button onClick={onClose} className="p-2 text-gray-400 rounded-lg hover:bg-gray-100">
@@ -259,7 +262,7 @@ export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSa
                                     : 'bg-white text-gray-600 hover:bg-gray-100'
                             }`}
                         >
-                            All ({getTotalFields()})
+                            {t('common.all')} ({getTotalFields()})
                         </button>
                         
                         {Object.entries(fieldCategories).map(([category, count]) => (
@@ -272,7 +275,7 @@ export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSa
                                         : 'bg-white text-gray-600 hover:bg-gray-100'
                                 }`}
                             >
-                                {category.charAt(0).toUpperCase() + category.slice(1)} ({count})
+                                {t(`common.categories.${category}`)} ({count})
                             </button>
                         ))}
                     </div>
@@ -285,7 +288,7 @@ export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSa
                         <div className="flex items-center justify-between">
                             <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                 <span className="text-green-500">📞</span>
-                                Phone Numbers
+                                {t('contacts.modals.review.phone_numbers')}
                                 {isPremium && (
                                     <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
                                         Premium: Country Detection
@@ -299,7 +302,7 @@ export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSa
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                 </svg>
-                                Add Phone
+                                {t('contacts.modals.review.add_phone')}
                             </button>
                         </div>
                         
@@ -319,7 +322,7 @@ export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSa
                         {isPremium && (
                             <p className="text-xs text-gray-500 italic flex items-start gap-1">
                                 <span>💡</span>
-                                <span>Tip: Include country code (e.g., +33 for France, +1 for US/Canada) for automatic flag detection</span>
+                                <span>{t('contacts.modals.review.phone_tip')}</span>
                             </p>
                         )}
                     </div>
@@ -327,9 +330,9 @@ export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSa
                     {/* Other Fields */}
                     {filteredFields.length === 0 ? (
                         <div className="text-center py-8 text-gray-500">
-                            {activeCategory === 'all' 
-                                ? 'No other fields detected. Click "Add Custom Field" to add more.'
-                                : `No ${activeCategory} fields found.`
+                            {activeCategory === 'all'
+                                ? t('contacts.modals.review.no_fields_detected')
+                                : t('contacts.modals.review.no_fields_in_category', { category: activeCategory })
                             }
                         </div>
                     ) : (
@@ -378,7 +381,7 @@ export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSa
                                             {/* Dynamic Field Badge */}
                                             {field.isDynamic && (
                                                 <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
-                                                    AI Detected
+                                                    {t('contacts.modals.review.ai_detected')}
                                                 </span>
                                             )}
                                         </div>
@@ -415,7 +418,7 @@ export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSa
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
-                        Add Custom Field
+                        {t('contacts.modals.review.add_custom_field')}
                     </button>
                 </div>
 
@@ -425,34 +428,34 @@ export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSa
                     <div className="mb-4 flex flex-wrap gap-4 text-sm text-gray-600">
                         <div className="flex items-center gap-1">
                             <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                            <span>Standard: {fields.filter(f => !f.isDynamic).length + (phoneNumbers.filter(p => p.trim()).length > 0 ? 1 : 0)}</span>
+                            <span>{t('contacts.modals.review.standard')}: {fields.filter(f => !f.isDynamic).length + (phoneNumbers.filter(p => p.trim()).length > 0 ? 1 : 0)}</span>
                         </div>
                         <div className="flex items-center gap-1">
                             <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                            <span>AI Detected: {fields.filter(f => f.isDynamic).length}</span>
+                            <span>{t('contacts.modals.review.ai_detected')}: {fields.filter(f => f.isDynamic).length}</span>
                         </div>
                         <div className="flex items-center gap-1">
                             <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                            <span>With Values: {fields.filter(f => f.value && f.value.trim()).length + phoneNumbers.filter(p => p.trim()).length}</span>
+                            <span>{t('contacts.modals.review.with_values')}: {fields.filter(f => f.value && f.value.trim()).length + phoneNumbers.filter(p => p.trim()).length}</span>
                         </div>
                     </div>
                     
                     {/* Action Buttons */}
                     <div className="flex gap-3">
-                        <button 
-                            type="button" 
-                            onClick={onClose} 
+                        <button
+                            type="button"
+                            onClick={onClose}
                             className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                         >
-                            Cancel
+                            {t('common.cancel')}
                         </button>
-                        <button 
-                            onClick={handleSave} 
-                            disabled={isSaving} 
+                        <button
+                            onClick={handleSave}
+                            disabled={isSaving}
                             className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
                         >
                             {isSaving && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
-                            {isSaving ? 'Saving...' : `Save Contact (${fields.filter(f => f.value && f.value.trim()).length + phoneNumbers.filter(p => p.trim()).length} fields)`}
+                            {isSaving ? t('common.saving') : t('contacts.modals.review.save_contact_button', { count: fields.filter(f => f.value && f.value.trim()).length + phoneNumbers.filter(p => p.trim()).length })}
                         </button>
                     </div>
                 </div>

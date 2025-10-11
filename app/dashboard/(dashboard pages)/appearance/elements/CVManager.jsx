@@ -40,7 +40,7 @@ const cvItems = useMemo(() => appearance?.cvItems || [], [appearance]);
 
                     const newLinks = orphanedCvItems.map(cv => ({
                         id: generateRandomId(),
-                        title: cv.displayTitle || "CV / Document",
+                        title: cv.displayTitle || t('dashboard.appearance.cv.default_cv_title') || "CV / Document",
                         isActive: true,
                         type: 3,
                         cvItemId: cv.id
@@ -49,7 +49,7 @@ const cvItems = useMemo(() => appearance?.cvItems || [], [appearance]);
                     const updatedLinks = [...newLinks, ...currentLinks];
                     await LinksService.saveLinks(updatedLinks);
                     console.log('📄 [CVManager] Created', newLinks.length, 'missing links');
-                    toast.success(`Created ${newLinks.length} missing link(s) for existing CV items`);
+                    toast.success(translations.missingLinksCreated.replace('{{count}}', newLinks.length));
                 }
 
                 setHasMigrated(true);
@@ -72,13 +72,23 @@ const cvItems = useMemo(() => appearance?.cvItems || [], [appearance]);
             description: t('dashboard.appearance.cv.description') || 'Manage multiple CV documents and resumes.',
             addItem: t('dashboard.appearance.cv.add_item') || 'Add CV Item',
             noItems: t('dashboard.appearance.cv.no_items') || 'No CV items yet. Add your first document to get started!',
+            cvItems: t('dashboard.appearance.cv.cv_items') || 'CV Items',
+            enabledToast: t('dashboard.appearance.cv.enabled_toast') || 'CV enabled',
+            disabledToast: t('dashboard.appearance.cv.disabled_toast') || 'CV disabled',
+            missingLinksCreated: t('dashboard.appearance.cv.missing_links_created') || 'Created {{count}} missing link(s) for existing CV items',
+            itemAndLinkAdded: t('dashboard.appearance.cv.item_and_link_added') || 'CV item and link added successfully',
+            itemAddedLinkFailed: t('dashboard.appearance.cv.item_added_link_failed') || 'CV item added but failed to create link',
+            itemAndLinkDeleted: t('dashboard.appearance.cv.item_and_link_deleted') || 'CV item and link deleted',
+            itemDeleted: t('dashboard.appearance.cv.item_deleted') || 'CV item deleted',
+            itemDeletedLinkMayExist: t('dashboard.appearance.cv.item_deleted_link_may_exist') || 'CV item deleted (link may still exist)',
+            enableFeatureMessage: t('dashboard.appearance.cv.enable_feature_message') || 'Enable the CV feature to start managing your documents.',
         };
     }, [t, isInitialized]);
 
     // Toggle CV enabled/disabled
     const handleToggleCV = () => {
         updateAppearance('cvEnabled', !cvEnabled);
-        toast.success(cvEnabled ? 'CV disabled' : 'CV enabled');
+        toast.success(cvEnabled ? translations.disabledToast : translations.enabledToast);
     };
 
     // Add new CV item
@@ -90,7 +100,7 @@ const cvItems = useMemo(() => appearance?.cvItems || [], [appearance]);
             id: cvItemId,
             url: '',
             fileName: '',
-            displayTitle: 'New CV Document',
+            displayTitle: t('dashboard.appearance.cv.new_cv_document') || 'New CV Document',
             uploadDate: null,
             fileSize: 0,
             fileType: '',
@@ -110,7 +120,7 @@ const cvItems = useMemo(() => appearance?.cvItems || [], [appearance]);
 
             const newLink = {
                 id: generateRandomId(),
-                title: "CV / Document",
+                title: t('dashboard.appearance.cv.default_cv_title') || "CV / Document",
                 isActive: true,
                 type: 3,
                 cvItemId: cvItemId // Link to the CV item we just created
@@ -121,10 +131,10 @@ const cvItems = useMemo(() => appearance?.cvItems || [], [appearance]);
             await LinksService.saveLinks(updatedLinks);
             console.log('📄 [CVManager] Link created successfully');
 
-            toast.success('CV item and link added successfully');
+            toast.success(translations.itemAndLinkAdded);
         } catch (error) {
             console.error('📄 [CVManager] Error creating link:', error);
-            toast.error('CV item added but failed to create link: ' + error.message);
+            toast.error(translations.itemAddedLinkFailed + ': ' + error.message);
         }
     };
 
@@ -152,13 +162,13 @@ const cvItems = useMemo(() => appearance?.cvItems || [], [appearance]);
 
             if (updatedLinks.length !== currentLinks.length) {
                 await LinksService.saveLinks(updatedLinks);
-                toast.success('CV item and link deleted');
+                toast.success(translations.itemAndLinkDeleted);
             } else {
-                toast.success('CV item deleted');
+                toast.success(translations.itemDeleted);
             }
         } catch (error) {
             console.error('Error deleting link:', error);
-            toast.success('CV item deleted (link may still exist)');
+            toast.success(translations.itemDeletedLinkMayExist);
         }
     };
 
@@ -202,7 +212,7 @@ const cvItems = useMemo(() => appearance?.cvItems || [], [appearance]);
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
                         <h4 className="text-sm font-semibold text-gray-700">
-                            CV Items ({cvItems.length})
+                            {translations.cvItems} ({cvItems.length})
                         </h4>
                         <button
                             onClick={handleAddItem}
@@ -240,7 +250,7 @@ const cvItems = useMemo(() => appearance?.cvItems || [], [appearance]);
             {!cvEnabled && (
                 <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                     <p className="text-gray-500">
-                        Enable the CV feature to start managing your documents.
+                        {translations.enableFeatureMessage}
                     </p>
                 </div>
             )}

@@ -1,17 +1,39 @@
 // app/dashboard/(dashboard pages)/appearance/elements/CVItemCard.jsx
 "use client"
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo } from "react";
 import { FaTrash, FaDownload, FaFileAlt, FaUpload } from "react-icons/fa";
 import { FaPencil } from "react-icons/fa6";
 import { toast } from "react-hot-toast";
 import { AppearanceService } from "@/lib/services/serviceAppearance/client/appearanceService";
+import { useTranslation } from '@/lib/translation/useTranslation';
 
 export default function CVItemCard({ item, onUpdate, onDelete, disabled }) {
+    const { t, isInitialized } = useTranslation();
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [tempTitle, setTempTitle] = useState(item.displayTitle || '');
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef(null);
+
+    // Pre-compute translations
+    const translations = useMemo(() => {
+        if (!isInitialized) return {};
+        return {
+            invalidFileType: t('dashboard.appearance.cv_item.error_invalid_file_type') || 'Invalid file type. Please upload a PDF or Word document.',
+            fileTooLarge: t('dashboard.appearance.cv_item.error_file_too_large') || 'File is too large. Maximum size is 10MB.',
+            uploadSuccess: t('dashboard.appearance.cv_item.upload_success') || 'Document uploaded successfully',
+            uploadFailed: t('dashboard.appearance.cv_item.upload_failed') || 'Failed to upload document',
+            deleteConfirm: t('dashboard.appearance.cv_item.delete_confirm') || 'Are you sure you want to delete this CV item?',
+            editTitle: t('dashboard.appearance.cv_item.edit_title') || 'Edit title',
+            download: t('dashboard.appearance.cv_item.download') || 'Download',
+            replaceDocument: t('dashboard.appearance.cv_item.replace_document') || 'Replace document',
+            delete: t('dashboard.appearance.cv_item.delete') || 'Delete',
+            noDocument: t('dashboard.appearance.cv_item.no_document') || 'No document uploaded',
+            uploading: t('dashboard.appearance.cv_item.uploading') || 'Uploading...',
+            uploadDocument: t('dashboard.appearance.cv_item.upload_document') || 'Upload Document',
+            document: t('dashboard.appearance.cv_item.document') || 'Document',
+        };
+    }, [t, isInitialized]);
 
     // Handle file upload
     const handleFileUpload = async (e) => {
@@ -27,11 +49,11 @@ export default function CVItemCard({ item, onUpdate, onDelete, disabled }) {
         const maxSize = 10 * 1024 * 1024; // 10MB
 
         if (!allowedTypes.includes(file.type)) {
-            toast.error('Invalid file type. Please upload a PDF or Word document.');
+            toast.error(translations.invalidFileType);
             return;
         }
         if (file.size > maxSize) {
-            toast.error('File is too large. Maximum size is 10MB.');
+            toast.error(translations.fileTooLarge);
             return;
         }
 
@@ -52,10 +74,10 @@ export default function CVItemCard({ item, onUpdate, onDelete, disabled }) {
                 fileType: result.fileInfo.type
             });
 
-            toast.success('Document uploaded successfully');
+            toast.success(translations.uploadSuccess);
         } catch (error) {
             console.error('Upload error:', error);
-            toast.error(error.message || 'Failed to upload document');
+            toast.error(error.message || translations.uploadFailed);
         } finally {
             setIsUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
@@ -72,7 +94,7 @@ export default function CVItemCard({ item, onUpdate, onDelete, disabled }) {
 
     // Delete item
     const handleDelete = () => {
-        if (confirm('Are you sure you want to delete this CV item?')) {
+        if (confirm(translations.deleteConfirm)) {
             onDelete();
         }
     };
@@ -116,7 +138,7 @@ export default function CVItemCard({ item, onUpdate, onDelete, disabled }) {
                                 />
                             ) : (
                                 <h4 className="text-md font-medium text-gray-800">
-                                    {item.displayTitle || item.fileName?.replace(/\.[^/.]+$/, "") || "Document"}
+                                    {item.displayTitle || item.fileName?.replace(/\.[^/.]+$/, "") || translations.document}
                                 </h4>
                             )}
                             <p className="text-xs text-gray-500">
@@ -130,7 +152,7 @@ export default function CVItemCard({ item, onUpdate, onDelete, disabled }) {
                             onClick={() => setIsEditingTitle(true)}
                             disabled={disabled}
                             className="p-2 rounded-full hover:bg-gray-100 text-gray-600"
-                            title="Edit title"
+                            title={translations.editTitle}
                         >
                             <FaPencil />
                         </button>
@@ -139,7 +161,7 @@ export default function CVItemCard({ item, onUpdate, onDelete, disabled }) {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-2 rounded-full hover:bg-gray-100 text-gray-600"
-                            title="Download"
+                            title={translations.download}
                         >
                             <FaDownload />
                         </a>
@@ -147,7 +169,7 @@ export default function CVItemCard({ item, onUpdate, onDelete, disabled }) {
                             onClick={() => fileInputRef.current?.click()}
                             disabled={disabled || isUploading}
                             className="p-2 rounded-full hover:bg-blue-100 text-blue-600"
-                            title="Replace document"
+                            title={translations.replaceDocument}
                         >
                             <FaUpload />
                         </button>
@@ -155,7 +177,7 @@ export default function CVItemCard({ item, onUpdate, onDelete, disabled }) {
                             onClick={handleDelete}
                             disabled={disabled}
                             className="p-2 rounded-full hover:bg-red-100 text-red-600"
-                            title="Delete"
+                            title={translations.delete}
                         >
                             <FaTrash />
                         </button>
@@ -164,20 +186,20 @@ export default function CVItemCard({ item, onUpdate, onDelete, disabled }) {
             ) : (
                 <div className="flex items-center justify-between">
                     <div className="flex-1 text-center py-4">
-                        <p className="text-sm text-gray-500 mb-3">No document uploaded</p>
+                        <p className="text-sm text-gray-500 mb-3">{translations.noDocument}</p>
                         <button
                             onClick={() => fileInputRef.current?.click()}
                             disabled={disabled || isUploading}
                             className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm"
                         >
-                            {isUploading ? 'Uploading...' : 'Upload Document'}
+                            {isUploading ? translations.uploading : translations.uploadDocument}
                         </button>
                     </div>
                     <button
                         onClick={handleDelete}
                         disabled={disabled}
                         className="p-2 rounded-full hover:bg-red-100 text-red-600"
-                        title="Delete"
+                        title={translations.delete}
                     >
                         <FaTrash />
                     </button>

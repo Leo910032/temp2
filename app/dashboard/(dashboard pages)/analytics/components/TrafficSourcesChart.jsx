@@ -30,7 +30,7 @@ export default function TrafficSourcesChart({ analytics }) {
                     </div>
                 </div>
                 <div className="h-48 flex items-center justify-center text-gray-500 text-sm">
-                    Loading traffic sources...
+                    {t('analytics.traffic.loading', 'Loading traffic sources...')}
                 </div>
                 {showInfoModal && (
                     <InfoModal onClose={() => setShowInfoModal(false)} />
@@ -67,7 +67,7 @@ export default function TrafficSourcesChart({ analytics }) {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                         </svg>
                         <p className="text-sm">{t('analytics.no_traffic_data') || 'No traffic source data available yet.'}</p>
-                        <p className="text-xs mt-1">Share your profile link to start tracking traffic sources!</p>
+                        <p className="text-xs mt-1">{t('analytics.traffic.share_prompt', 'Share your profile link to start tracking traffic sources!')}</p>
                     </div>
                 </div>
                 {showInfoModal && (
@@ -114,8 +114,8 @@ export default function TrafficSourcesChart({ analytics }) {
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mb-2 opacity-50 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                         </svg>
-                        <p className="text-sm">Traffic sources found but no activity recorded yet.</p>
-                        <p className="text-xs mt-1">Keep sharing your profile to generate traffic data!</p>
+                        <p className="text-sm">{t('analytics.traffic.no_activity', 'Traffic sources found but no activity recorded yet.')}</p>
+                        <p className="text-xs mt-1">{t('analytics.traffic.keep_sharing', 'Keep sharing your profile to generate traffic data!')}</p>
                     </div>
                 </div>
                 {showInfoModal && (
@@ -172,7 +172,7 @@ export default function TrafficSourcesChart({ analytics }) {
                     <InfoIcon onClick={() => setShowInfoModal(true)} />
                 </div>
                 <div className="text-sm text-gray-500">
-                    {trafficData.length} source{trafficData.length !== 1 ? 's' : ''}
+                    {t('analytics.traffic.source_count', '{{count}} source', { count: trafficData.length })}
                 </div>
             </div>
             
@@ -199,7 +199,7 @@ export default function TrafficSourcesChart({ analytics }) {
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>
-                                <Tooltip formatter={(value, name) => [value, name === 'clicks' ? 'Clicks' : 'Views']} />
+                                <Tooltip formatter={(value, name) => [value, name === 'clicks' ? t('analytics.clicks', 'Clicks') : t('analytics.views', 'Views')]} />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
@@ -223,8 +223,8 @@ export default function TrafficSourcesChart({ analytics }) {
                                 />
                                 <YAxis tick={{ fontSize: 12 }} />
                                 <Tooltip />
-                                <Bar dataKey="views" fill="#3B82F6" name="Views" />
-                                <Bar dataKey="clicks" fill="#8B5CF6" name="Clicks" />
+                                <Bar dataKey="views" fill="#3B82F6" name={t('analytics.views', 'Views')} />
+                                <Bar dataKey="clicks" fill="#8B5CF6" name={t('analytics.clicks', 'Clicks')} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
@@ -289,7 +289,7 @@ export default function TrafficSourcesChart({ analytics }) {
                                         {source.views > 0 ? ((source.clicks / source.views) * 100).toFixed(1) : 0}%
                                     </td>
                                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {source.lastView ? formatDate(source.lastView) : 'N/A'}
+                                        {source.lastView ? formatDate(source.lastView) : t('common.na', 'N/A')}
                                     </td>
                                 </tr>
                             ))}
@@ -359,7 +359,7 @@ const InfoModal = ({ onClose }) => {
                 {/* Content */}
                 <div className="p-6">
                     <p className="text-gray-600 text-sm leading-relaxed">
-                        Traffic sources help you understand where your visitors come from. This data shows you which platforms drive the most engagement to your profile.
+                        {t('analytics.info.traffic_description', 'Traffic sources help you understand where your visitors come from. This data shows you which platforms drive the most engagement to your profile.')}
                     </p>
                 </div>
 
@@ -377,7 +377,7 @@ const InfoModal = ({ onClose }) => {
     );
 };
 
-// Helper function to safely format dates
+// Helper function to safely format dates (t parameter can be passed if needed)
 function formatDate(dateValue) {
     try {
         if (!dateValue) return 'N/A';

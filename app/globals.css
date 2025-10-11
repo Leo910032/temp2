@@ -366,3 +366,21 @@ div[style*="position: absolute"][style*="left"][style*="top"] {
   transition: none !important;
   animation: none !important;
 }
+
+/* Hide navigation bars when preview modal is open */
+body.preview-modal-open nav,
+body.preview-modal-open header,
+body.preview-modal-open [class*="nav"],
+body.preview-modal-open [class*="Nav"],
+body.preview-modal-open [class*="navbar"],
+body.preview-modal-open [class*="NavBar"] {
+  display: none !important;
+}
+
+/* Specifically hide mobile top and bottom navigation bars when preview modal is open on mobile */
+@media (max-width: 768px) {
+  body.preview-modal-open nav,
+  body.preview-modal-open .md\:hidden {
+    display: none !important;
+  }
+}

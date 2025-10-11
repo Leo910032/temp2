@@ -1,17 +1,56 @@
 // app/dashboard/(dashboard pages)/appearance/elements/VideoEmbedCard.jsx
 "use client"
 
-import React, { useState, useEffect } from "react";
-import { FaTrash, FaEdit, FaSave, FaTimes, FaGripVertical, FaExternalLinkAlt } from "react-icons/fa";
+import React, { useState, useEffect, useRef } from "react";
+import { FaTrash, FaEdit, FaSave, FaTimes, FaGripVertical, FaExternalLinkAlt, FaEllipsisV } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import { useRouter } from 'next/navigation';
 import { LinksService } from '@/lib/services/serviceLinks/client/LinksService.js';
+import { useTranslation } from "@/lib/translation/useTranslation";
 
 export default function VideoEmbedCard({ item, onUpdate, onDelete, disabled }) {
+    const { t } = useTranslation();
+
+    // Translation keys
+    const translations = {
+        editingVideoEmbed: t('dashboard.appearance.video_embed_card.editing_video_embed'),
+        videoEmbed: t('dashboard.appearance.video_embed_card.video_embed'),
+        linkedToLinksPage: t('dashboard.appearance.video_embed_card.linked_to_links_page'),
+        goToLink: t('dashboard.appearance.video_embed_card.go_to_link'),
+        goToLinksPageTitle: t('dashboard.appearance.video_embed_card.go_to_links_page_title'),
+        edit: t('dashboard.appearance.video_embed_card.edit'),
+        delete: t('dashboard.appearance.video_embed_card.delete'),
+        save: t('dashboard.appearance.video_embed_card.save'),
+        cancel: t('dashboard.appearance.video_embed_card.cancel'),
+        preview: t('dashboard.appearance.video_embed_card.preview'),
+        noVideoPreview: t('dashboard.appearance.video_embed_card.no_video_preview'),
+        noVideo: t('dashboard.appearance.video_embed_card.no_video'),
+        titleOptional: t('dashboard.appearance.video_embed_card.title_optional'),
+        titlePlaceholder: t('dashboard.appearance.video_embed_card.title_placeholder'),
+        platformRequired: t('dashboard.appearance.video_embed_card.platform_required'),
+        selectPlatform: t('dashboard.appearance.video_embed_card.select_platform'),
+        youtube: t('dashboard.appearance.video_embed_card.youtube'),
+        vimeo: t('dashboard.appearance.video_embed_card.vimeo'),
+        videoUrlRequired: t('dashboard.appearance.video_embed_card.video_url_required'),
+        videoUrlPlaceholder: t('dashboard.appearance.video_embed_card.video_url_placeholder'),
+        descriptionOptional: t('dashboard.appearance.video_embed_card.description_optional'),
+        descriptionPlaceholder: t('dashboard.appearance.video_embed_card.description_placeholder'),
+        videoUrlRequiredError: t('dashboard.appearance.video_embed_card.video_url_required_error'),
+        platformRequiredError: t('dashboard.appearance.video_embed_card.platform_required_error'),
+        invalidUrlFormat: t('dashboard.appearance.video_embed_card.invalid_url_format'),
+        videoEmbedUpdated: t('dashboard.appearance.video_embed_card.video_embed_updated'),
+        deleteConfirm: t('dashboard.appearance.video_embed_card.delete_confirm'),
+        supportedYoutube: t('dashboard.appearance.video_embed_card.supported_youtube'),
+        supportedVimeo: t('dashboard.appearance.video_embed_card.supported_vimeo'),
+        selectPlatformFirst: t('dashboard.appearance.video_embed_card.select_platform_first'),
+    };
+
     const [isEditing, setIsEditing] = useState(false);
     const [localData, setLocalData] = useState(item);
     const [linkedLinkItem, setLinkedLinkItem] = useState(null);
     const [isHighlighted, setIsHighlighted] = useState(false);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const menuRef = useRef(null);
     const router = useRouter();
 
     // Find the link item that's linked to this video embed
@@ -61,6 +100,23 @@ export default function VideoEmbedCard({ item, onUpdate, onDelete, disabled }) {
             setLocalData(item);
         }
     }, [item, isEditing]);
+
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (menuRef.current && !menuRef.current.contains(event.target)) {
+                setIsMenuOpen(false);
+            }
+        };
+
+        if (isMenuOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isMenuOpen]);
 
     // Handle field changes
     const handleChange = (field, value) => {
@@ -114,25 +170,25 @@ export default function VideoEmbedCard({ item, onUpdate, onDelete, disabled }) {
     const handleSave = () => {
         // Validate required fields
         if (!localData.url?.trim()) {
-            toast.error('Video URL is required');
+            toast.error(translations.videoUrlRequiredError);
             return;
         }
 
         if (!localData.platform) {
-            toast.error('Please select a platform');
+            toast.error(translations.platformRequiredError);
             return;
         }
 
         // Validate that we can extract a video ID
         const videoId = extractVideoId(localData.url, localData.platform);
         if (!videoId) {
-            toast.error(`Invalid ${localData.platform} URL format`);
+            toast.error(`${translations.invalidUrlFormat} ${localData.platform}`);
             return;
         }
 
         onUpdate(localData);
         setIsEditing(false);
-        toast.success('Video embed updated');
+        toast.success(translations.videoEmbedUpdated);
     };
 
     // Cancel editing
@@ -143,7 +199,7 @@ export default function VideoEmbedCard({ item, onUpdate, onDelete, disabled }) {
 
     // Delete item
     const handleDelete = () => {
-        if (confirm('Are you sure you want to delete this video embed?')) {
+        if (confirm(translations.deleteConfirm)) {
             onDelete();
         }
     };
@@ -183,7 +239,7 @@ export default function VideoEmbedCard({ item, onUpdate, onDelete, disabled }) {
                 <div className="flex items-center gap-3">
                     <FaGripVertical className="text-gray-400 cursor-grab" />
                     <h5 className="font-semibold text-gray-800">
-                        {isEditing ? 'Editing Video Embed' : localData.title || 'Video Embed'}
+                        {isEditing ? translations.editingVideoEmbed : localData.title || translations.videoEmbed}
                     </h5>
                     {/* Show link indicator if linked to a link item */}
                     {linkedLinkItem && (
@@ -191,50 +247,130 @@ export default function VideoEmbedCard({ item, onUpdate, onDelete, disabled }) {
                             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clipRule="evenodd" />
                             </svg>
-                            Linked to Links Page
+                            {translations.linkedToLinksPage}
                         </span>
                     )}
                 </div>
 
                 <div className="flex items-center gap-2">
-                    {/* Button to go to linked item */}
-                    {linkedLinkItem && !isEditing && (
-                        <button
-                            onClick={handleGoToLinkedItem}
-                            disabled={disabled}
-                            className="px-3 py-2 bg-purple-100 text-purple-600 rounded hover:bg-purple-200 transition-colors flex items-center gap-2 text-sm font-medium"
-                            title="Go to Links Page"
-                        >
-                            <FaExternalLinkAlt className="text-xs" />
-                            Go to Link
-                        </button>
+                    {/* Mobile Menu - Visible only on small screens */}
+                    {!isEditing && (
+                        <div className="relative md:hidden" ref={menuRef}>
+                            <button
+                                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                                disabled={disabled}
+                                className="p-2 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition-colors"
+                                title="Menu"
+                            >
+                                <FaEllipsisV />
+                            </button>
+
+                            {/* Dropdown Menu */}
+                            {isMenuOpen && (
+                                <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10 py-1">
+                                    {linkedLinkItem && (
+                                        <button
+                                            onClick={() => {
+                                                handleGoToLinkedItem();
+                                                setIsMenuOpen(false);
+                                            }}
+                                            disabled={disabled}
+                                            className="w-full px-4 py-2 text-left text-sm text-purple-600 hover:bg-purple-50 transition-colors flex items-center gap-2"
+                                        >
+                                            <FaExternalLinkAlt className="text-xs" />
+                                            {translations.goToLink}
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => {
+                                            setIsEditing(true);
+                                            setIsMenuOpen(false);
+                                        }}
+                                        disabled={disabled}
+                                        className="w-full px-4 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-2"
+                                    >
+                                        <FaEdit />
+                                        {translations.edit}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            handleDelete();
+                                            setIsMenuOpen(false);
+                                        }}
+                                        disabled={disabled}
+                                        className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+                                    >
+                                        <FaTrash />
+                                        {translations.delete}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     )}
-                    {!isEditing ? (
-                        <>
+
+                    {/* Desktop Buttons - Hidden on small screens, visible on md and up */}
+                    <div className="hidden md:flex items-center gap-2">
+                        {/* Button to go to linked item */}
+                        {linkedLinkItem && !isEditing && (
                             <button
-                                onClick={() => setIsEditing(true)}
+                                onClick={handleGoToLinkedItem}
                                 disabled={disabled}
-                                className="p-2 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors"
-                                title="Edit"
+                                className="px-3 py-2 bg-purple-100 text-purple-600 rounded hover:bg-purple-200 transition-colors flex items-center gap-2 text-sm font-medium"
+                                title={translations.goToLinksPageTitle}
                             >
-                                <FaEdit />
+                                <FaExternalLinkAlt className="text-xs" />
+                                {translations.goToLink}
                             </button>
-                            <button
-                                onClick={handleDelete}
-                                disabled={disabled}
-                                className="p-2 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
-                                title="Delete"
-                            >
-                                <FaTrash />
-                            </button>
-                        </>
-                    ) : (
-                        <>
+                        )}
+                        {!isEditing ? (
+                            <>
+                                <button
+                                    onClick={() => setIsEditing(true)}
+                                    disabled={disabled}
+                                    className="p-2 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors"
+                                    title={translations.edit}
+                                >
+                                    <FaEdit />
+                                </button>
+                                <button
+                                    onClick={handleDelete}
+                                    disabled={disabled}
+                                    className="p-2 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
+                                    title={translations.delete}
+                                >
+                                    <FaTrash />
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <button
+                                    onClick={handleSave}
+                                    disabled={disabled}
+                                    className="p-2 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors"
+                                    title={translations.save}
+                                >
+                                    <FaSave />
+                                </button>
+                                <button
+                                    onClick={handleCancel}
+                                    disabled={disabled}
+                                    className="p-2 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition-colors"
+                                    title={translations.cancel}
+                                >
+                                    <FaTimes />
+                                </button>
+                            </>
+                        )}
+                    </div>
+
+                    {/* Save/Cancel buttons for edit mode - always visible on mobile */}
+                    {isEditing && (
+                        <div className="flex md:hidden items-center gap-2">
                             <button
                                 onClick={handleSave}
                                 disabled={disabled}
                                 className="p-2 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors"
-                                title="Save"
+                                title={translations.save}
                             >
                                 <FaSave />
                             </button>
@@ -242,11 +378,11 @@ export default function VideoEmbedCard({ item, onUpdate, onDelete, disabled }) {
                                 onClick={handleCancel}
                                 disabled={disabled}
                                 className="p-2 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition-colors"
-                                title="Cancel"
+                                title={translations.cancel}
                             >
                                 <FaTimes />
                             </button>
-                        </>
+                        </div>
                     )}
                 </div>
             </div>
@@ -257,7 +393,7 @@ export default function VideoEmbedCard({ item, onUpdate, onDelete, disabled }) {
                     {/* Left Column - Video Preview */}
                     <div className="space-y-3">
                         <label className="block text-sm font-medium text-gray-700">
-                            Preview
+                            {translations.preview}
                         </label>
                         <div className="relative w-full aspect-video border-2 border-dashed border-gray-300 rounded-lg overflow-hidden bg-gray-50">
                             {embedUrl ? (
@@ -274,7 +410,7 @@ export default function VideoEmbedCard({ item, onUpdate, onDelete, disabled }) {
                                         <svg className="w-12 h-12 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
                                             <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
                                         </svg>
-                                        <p className="text-sm">No video preview</p>
+                                        <p className="text-sm">{translations.noVideoPreview}</p>
                                     </div>
                                 </div>
                             )}
@@ -286,14 +422,14 @@ export default function VideoEmbedCard({ item, onUpdate, onDelete, disabled }) {
                         {/* Title */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Title (optional)
+                                {translations.titleOptional}
                             </label>
                             <input
                                 type="text"
                                 value={localData.title}
                                 onChange={(e) => handleChange('title', e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="My Video"
+                                placeholder={translations.titlePlaceholder}
                                 maxLength={100}
                             />
                         </div>
@@ -301,48 +437,48 @@ export default function VideoEmbedCard({ item, onUpdate, onDelete, disabled }) {
                         {/* Platform */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Platform *
+                                {translations.platformRequired} *
                             </label>
                             <select
                                 value={localData.platform}
                                 onChange={(e) => handleChange('platform', e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             >
-                                <option value="">Select platform</option>
-                                <option value="youtube">YouTube</option>
-                                <option value="vimeo">Vimeo</option>
+                                <option value="">{translations.selectPlatform}</option>
+                                <option value="youtube">{translations.youtube}</option>
+                                <option value="vimeo">{translations.vimeo}</option>
                             </select>
                         </div>
 
                         {/* Video URL */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Video URL *
+                                {translations.videoUrlRequired} *
                             </label>
                             <input
                                 type="url"
                                 value={localData.url}
                                 onChange={(e) => handleChange('url', e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="https://www.youtube.com/watch?v=..."
+                                placeholder={translations.videoUrlPlaceholder}
                             />
                             <p className="text-xs text-gray-500 mt-1">
-                                {localData.platform === 'youtube' && 'Supported: youtube.com/watch?v=..., youtu.be/...'}
-                                {localData.platform === 'vimeo' && 'Supported: vimeo.com/...'}
-                                {!localData.platform && 'Select a platform first'}
+                                {localData.platform === 'youtube' && translations.supportedYoutube}
+                                {localData.platform === 'vimeo' && translations.supportedVimeo}
+                                {!localData.platform && translations.selectPlatformFirst}
                             </p>
                         </div>
 
                         {/* Description */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Description (optional)
+                                {translations.descriptionOptional}
                             </label>
                             <textarea
                                 value={localData.description}
                                 onChange={(e) => handleChange('description', e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                                placeholder="Brief description of your video..."
+                                placeholder={translations.descriptionPlaceholder}
                                 rows={3}
                                 maxLength={200}
                             />
@@ -368,7 +504,7 @@ export default function VideoEmbedCard({ item, onUpdate, onDelete, disabled }) {
                                     <svg className="w-12 h-12 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
                                         <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
                                     </svg>
-                                    <p className="text-sm">No video</p>
+                                    <p className="text-sm">{translations.noVideo}</p>
                                 </div>
                             </div>
                         )}
@@ -381,7 +517,7 @@ export default function VideoEmbedCard({ item, onUpdate, onDelete, disabled }) {
                                 {localData.platform}
                             </span>
                         )}
-                        <h4 className="font-semibold text-gray-900">{localData.title || 'Video Embed'}</h4>
+                        <h4 className="font-semibold text-gray-900">{localData.title || translations.videoEmbed}</h4>
                         {localData.description && (
                             <p className="text-sm text-gray-600 line-clamp-2">{localData.description}</p>
                         )}

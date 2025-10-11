@@ -122,10 +122,10 @@ export default function PerformanceChart({ analytics, selectedPeriod = 'week' })
     // Get appropriate empty state message
     const getEmptyStateMessage = () => {
         const messages = {
-            today: 'No activity recorded in the last 7 days.',
-            week: 'No data to display for the last 7 days.',
-            month: 'No data to display for the last month.',
-            all: 'No historical data available yet.'
+            today: t('analytics.performance.empty.today', 'No activity recorded in the last 7 days.'),
+            week: t('analytics.performance.empty.week', 'No data to display for the last 7 days.'),
+            month: t('analytics.performance.empty.month', 'No data to display for the last month.'),
+            all: t('analytics.performance.empty.all', 'No historical data available yet.')
         };
         return messages[selectedPeriod] || messages.week;
     };
@@ -138,7 +138,7 @@ export default function PerformanceChart({ analytics, selectedPeriod = 'week' })
                 </h2>
                 {selectedPeriod === 'all' && chartData.length > 0 && (
                     <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                        📊 {chartData.length} months with data
+                        📊 {t('analytics.performance.months_data', '{{count}} months with data', { count: chartData.length })}
                     </span>
                 )}
             </div>
@@ -150,14 +150,14 @@ export default function PerformanceChart({ analytics, selectedPeriod = 'week' })
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                         <p className="text-sm">{getEmptyStateMessage()}</p>
-                        <p className="text-xs mt-1">Share your profile to get views and clicks!</p>
+                        <p className="text-xs mt-1">{t('analytics.performance.share_prompt', 'Share your profile to get views and clicks!')}</p>
                         {selectedPeriod === 'all' && (
                             <div className="mt-2 text-xs text-gray-400">
-                                <p>Debug info:</p>
-                                <p>Chart data length: {chartData.length}</p>
-                                <p>Analytics available: {analytics ? 'Yes' : 'No'}</p>
+                                <p>{t('analytics.performance.debug_info', 'Debug info:')}</p>
+                                <p>{t('analytics.performance.chart_data_length', 'Chart data length')}: {chartData.length}</p>
+                                <p>{t('analytics.performance.analytics_available', 'Analytics available')}: {analytics ? t('common.yes', 'Yes') : t('common.no', 'No')}</p>
                                 {analytics && (
-                                    <p>Daily views keys: {Object.keys(analytics.dailyViews || {}).length}</p>
+                                    <p>{t('analytics.performance.daily_views_keys', 'Daily views keys')}: {Object.keys(analytics.dailyViews || {}).length}</p>
                                 )}
                             </div>
                         )}
@@ -199,9 +199,9 @@ export default function PerformanceChart({ analytics, selectedPeriod = 'week' })
                                     name === 'views' ? (t('analytics.views') || 'Views') : (t('analytics.clicks') || 'Clicks')
                                 ]}
                                 labelFormatter={(label) => {
-                                    if (selectedPeriod === 'month') return `Week: ${label}`;
-                                    if (selectedPeriod === 'all') return `Month: ${label}`;
-                                    return `Date: ${label}`;
+                                    if (selectedPeriod === 'month') return `${t('analytics.performance.week', 'Week')}: ${label}`;
+                                    if (selectedPeriod === 'all') return `${t('analytics.performance.month', 'Month')}: ${label}`;
+                                    return `${t('analytics.performance.date', 'Date')}: ${label}`;
                                 }}
                             />
                             <Legend wrapperStyle={{ fontSize: '12px' }} iconType="circle" />
@@ -233,13 +233,13 @@ export default function PerformanceChart({ analytics, selectedPeriod = 'week' })
                 <div className="mt-4 pt-3 border-t border-gray-100">
                     <div className="grid grid-cols-2 gap-4 text-sm">
                         <div className="text-center">
-                            <span className="text-gray-500">Total Views</span>
+                            <span className="text-gray-500">{t('analytics.performance.total_views', 'Total Views')}</span>
                             <div className="font-semibold text-blue-600">
                                 {chartData.reduce((sum, item) => sum + item.views, 0).toLocaleString()}
                             </div>
                         </div>
                         <div className="text-center">
-                            <span className="text-gray-500">Total Clicks</span>
+                            <span className="text-gray-500">{t('analytics.performance.total_clicks', 'Total Clicks')}</span>
                             <div className="font-semibold text-purple-600">
                                 {chartData.reduce((sum, item) => sum + item.clicks, 0).toLocaleString()}
                             </div>

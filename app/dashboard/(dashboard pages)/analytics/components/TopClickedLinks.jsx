@@ -183,12 +183,12 @@ function getRootNameFromUrl(url) {
                                     </svg>
                                 </button>
                                 <button
-                                    onClick={() => {
+                                    onClick={(event) => {
                                         navigator.clipboard.writeText(link.url);
                                         // Optional: Show a brief success message
                                         const button = event.currentTarget;
                                         const originalTitle = button.title;
-                                        button.title = 'Copied!';
+                                        button.title = t('analytics.copied', 'Copied!');
                                         setTimeout(() => {
                                             button.title = originalTitle;
                                         }, 1000);

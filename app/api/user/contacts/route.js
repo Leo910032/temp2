@@ -3,6 +3,7 @@
 import { NextResponse } from 'next/server';
 import { createApiSession } from '@/lib/server/session';
 import { ContactCRUDService } from '@/lib/services/serviceContact/server/ContactCRUDService.js'; // ❌ WRONG PATH
+import { GroupCRUDService } from '@/lib/services/serviceContact/server/GroupCRUDService';
 import { CONTACT_FEATURES } from '@/lib/services/constants';
 
 /**
@@ -31,7 +32,7 @@ export async function GET(request) {
     console.log('📥 Fetching contacts for user:', session.userId);
     const contacts = await ContactCRUDService.getAllContacts({ session });
     console.log('✅ Contacts fetched. Count:', contacts?.length || 0);
-    
+
     if (contacts && contacts.length > 0) {
       console.log('📊 First contact sample:', {
         id: contacts[0].id,
@@ -41,6 +42,14 @@ export async function GET(request) {
       });
     } else {
       console.log('⚠️ No contacts found for user:', session.userId);
+    }
+
+    // 3b. Fetch groups from service (if user has permission)
+    let groups = [];
+    if (session.permissions[CONTACT_FEATURES.BASIC_GROUPS]) {
+      console.log('📥 Fetching groups for user:', session.userId);
+      groups = await GroupCRUDService.getAllGroups({ session });
+      console.log('✅ Groups fetched. Count:', groups?.length || 0);
     }
 
     // 4. Return response
@@ -53,7 +62,7 @@ export async function GET(request) {
         viewed: contacts?.filter(c => c.status === 'viewed').length || 0,
         withLocation: contacts?.filter(c => c.location?.latitude).length || 0
       },
-      groups: [], // Add empty groups array for now
+      groups: groups || [],
       pagination: {
         hasMore: false,
         lastDoc: null

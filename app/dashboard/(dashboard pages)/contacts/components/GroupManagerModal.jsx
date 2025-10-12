@@ -5,6 +5,7 @@ import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useTranslation } from "@/lib/translation/useTranslation";
 import { useContacts } from '../ContactsContext';
 import { CONTACT_FEATURES } from '@/lib/services/constants';
+import { GroupService } from '@/lib/services/serviceContact/client/services/GroupService';
 
 // Import tab components
 import OverviewTab from './GroupModalComponents/OverviewTab.jsx';
@@ -45,7 +46,8 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
     isOpen,
     onClose,
     onRefreshData,
-    onRefreshUsage
+    onRefreshUsage,
+    onShowLocation
 }, ref) {
     const { t } = useTranslation();
 
@@ -92,14 +94,20 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
     // Handler functions for group actions
     const handleDeleteGroup = async (groupId) => {
         try {
-            // TODO: Implement delete group API call
-            console.log('Delete group:', groupId);
+            console.log('Deleting group:', groupId);
+
+            // Call the GroupService to delete the group
+            await GroupService.deleteGroup(groupId);
+
+            console.log('✅ Group deleted successfully');
+
             // After successful deletion, refresh data
             if (onRefreshData) {
                 await onRefreshData();
             }
         } catch (error) {
             console.error('Error deleting group:', error);
+            alert(`Failed to delete group: ${error.message || 'Unknown error'}`);
         }
     };
 
@@ -113,8 +121,7 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
         setIsSubmitting(true);
 
         try {
-            // TODO: Implement create group API call
-            console.log('Creating group with data:', {
+            const groupData = {
                 name: formState.newGroupName,
                 type: formState.newGroupType,
                 description: formState.newGroupDescription,
@@ -123,7 +130,14 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
                 startDate: formState.startDate,
                 endDate: formState.endDate,
                 eventLocation: formState.eventLocation
-            });
+            };
+
+            console.log('Creating group with data:', groupData);
+
+            // Call the GroupService to create the group
+            await GroupService.createGroup({ groupData });
+
+            console.log('✅ Group created successfully');
 
             // Reset form after successful creation
             setFormState({
@@ -148,6 +162,8 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
             setActiveTab('groups');
         } catch (error) {
             console.error('Error creating group:', error);
+            // TODO: Show error toast/notification to user
+            alert(`Failed to create group: ${error.message || 'Unknown error'}`);
         } finally {
             setIsSubmitting(false);
         }
@@ -291,6 +307,7 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
                             onDeleteGroup={handleDeleteGroup}
                             onEditGroup={handleEditGroup}
                             onTabChange={setActiveTab}
+                            onShowLocation={onShowLocation}
                         />
                     )}
 

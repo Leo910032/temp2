@@ -75,6 +75,7 @@ function ContactsPage() {
     const [showImportExportModal, setShowImportExportModal] = useState(false);
     const [showMap, setShowMap] = useState(false);
     const [selectedContactForMap, setSelectedContactForMap] = useState(null);
+    const [focusLocation, setFocusLocation] = useState(null);
 
     // Update map visibility in context
     useEffect(() => {
@@ -492,7 +493,12 @@ function ContactsPage() {
                 onCloseGroupManager={() => setShowGroupManager(false)}
                 onRefreshData={refreshData}
                 onRefreshUsage={refreshUsageInfo}
-                
+                onShowLocationOnMap={(location) => {
+                    setFocusLocation(location);
+                    setShowMap(true);
+                    setShowGroupManager(false);
+                }}
+
                 // Import/Export props
                 showImportExportModal={showImportExportModal}
                 onCloseImportExport={() => setShowImportExportModal(false)}
@@ -502,8 +508,10 @@ function ContactsPage() {
                 onCloseMap={() => {
                     setShowMap(false);
                     setSelectedContactForMap(null);
+                    setFocusLocation(null);
                 }}
                 selectedContactForMap={selectedContactForMap}
+                focusLocation={focusLocation}
                 contacts={contacts}
                 groups={groups}
                 

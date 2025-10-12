@@ -2,12 +2,13 @@
 "use client"
 import GroupCard from './GroupCard';
 
-export default function GroupsTab({ 
-    groups, 
-    contacts, 
-    onDeleteGroup, 
-    onEditGroup, 
-    onTabChange 
+export default function GroupsTab({
+    groups,
+    contacts,
+    onDeleteGroup,
+    onEditGroup,
+    onTabChange,
+    onShowLocation
 }) {
     if (groups.length === 0) {
         return <EmptyGroupsState onTabChange={onTabChange} />;
@@ -24,6 +25,7 @@ export default function GroupsTab({
                         contacts={contacts}
                         onDelete={onDeleteGroup}
                         onEdit={onEditGroup}
+                        onShowLocation={onShowLocation}
                         compact={false}
                     />
                 ))}

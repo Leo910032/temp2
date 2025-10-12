@@ -45,15 +45,17 @@ export default function ContactModals({
     onCloseGroupManager,
     onRefreshData,
     onRefreshUsage,
-    
+    onShowLocationOnMap,
+
     // Import/Export
     showImportExportModal,
     onCloseImportExport,
-    
+
     // Map
     showMap,
     onCloseMap,
     selectedContactForMap,
+    focusLocation,
     contacts,
     groups,
 
@@ -99,6 +101,7 @@ export default function ContactModals({
                 onClose={onCloseGroupManager}
                 onRefreshData={onRefreshData}
                 onRefreshUsage={onRefreshUsage}
+                onShowLocation={onShowLocationOnMap}
             />
 
             {/* Import/Export Modal 
@@ -117,6 +120,7 @@ export default function ContactModals({
                 contacts={contacts}
                 groups={groups}
                 selectedContactId={selectedContactForMap?.id}
+                focusLocation={focusLocation}
                 onContactUpdate={onRefreshData}
             />
 

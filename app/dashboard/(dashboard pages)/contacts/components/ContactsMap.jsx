@@ -57,13 +57,14 @@ const darkMapStyles = [
  * Props are now minimal - relies on context for data management
  * State management follows the ContactsContext pattern
  */
-export default function ContacctsMap({ 
+export default function ContacctsMap({
     isOpen = false,
     onClose = null,
     contacts = [],
     groups = [],
     selectedContactId = null,
-    onContactUpdate = null
+    onContactUpdate = null,
+    focusLocation = null
 }) {
     // Map refs
     const mapRef = useRef(null);
@@ -465,6 +466,65 @@ export default function ContacctsMap({
         handleMarkerClick, 
         selectedGroupIds
     ]);
+
+    // Effect to focus on a specific location (e.g., group event location)
+    useEffect(() => {
+        if (!isMapReady || !mapInstanceRef.current || !focusLocation) return;
+
+        const map = mapInstanceRef.current;
+        const lat = focusLocation.latitude || focusLocation.lat;
+        const lng = focusLocation.longitude || focusLocation.lng;
+
+        if (lat && lng) {
+            console.log('🎯 Focusing on location:', focusLocation.name || 'Event Location');
+            map.panTo({ lat, lng });
+
+            // Zoom in to show the location clearly
+            if (map.getZoom() < 15) {
+                map.setZoom(15);
+            }
+
+            // Optionally add a marker for the focused location
+            if (window.google && window.google.maps) {
+                // Remove any existing focus marker
+                if (mapInstanceRef.current.focusMarker) {
+                    mapInstanceRef.current.focusMarker.setMap(null);
+                }
+
+                // Create a new marker for the focused location
+                const marker = new google.maps.Marker({
+                    position: { lat, lng },
+                    map: map,
+                    title: focusLocation.name || 'Event Location',
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        fillColor: '#10b981',
+                        fillOpacity: 1,
+                        strokeColor: '#ffffff',
+                        strokeWeight: 3,
+                        scale: 10
+                    },
+                    animation: google.maps.Animation.DROP
+                });
+
+                // Store reference to remove later
+                mapInstanceRef.current.focusMarker = marker;
+
+                // Add info window if location has a name
+                if (focusLocation.name) {
+                    const infoWindow = new google.maps.InfoWindow({
+                        content: `<div style="padding: 8px; font-weight: 500;">${focusLocation.name}</div>`
+                    });
+                    infoWindow.open(map, marker);
+
+                    // Auto-close after 5 seconds
+                    setTimeout(() => {
+                        infoWindow.close();
+                    }, 5000);
+                }
+            }
+        }
+    }, [isMapReady, focusLocation]);
 
     // Navigation functions
     const fitToAllContacts = useCallback(() => {

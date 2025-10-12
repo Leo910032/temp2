@@ -1,5 +1,5 @@
 // app/dashboard/(dashboard pages)/contacts/components/scanner/CameraView.jsx
-export function CameraView({ videoRef, scanMode, currentSide, cardData, capturePhoto, stopCamera, isProcessing }) {
+export function CameraView({ videoRef, guideRef, scanMode, currentSide, cardData, capturePhoto, stopCamera, isProcessing }) {
     return (
         <div className="fixed inset-0 sm:relative sm:inset-auto bg-black sm:bg-transparent flex flex-col sm:p-3 sm:items-center sm:min-h-full z-50 sm:z-auto">
             {/* Double scan mode indicator - repositioned for mobile */}
@@ -34,6 +34,7 @@ export function CameraView({ videoRef, scanMode, currentSide, cardData, captureP
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                         <div className="relative">
                             <div
+                                ref={guideRef}
                                 className="border-2 border-white border-dashed rounded-lg"
                                 style={{
                                     width: typeof window !== 'undefined' && window.innerWidth < 640 ? '240px' : '280px',

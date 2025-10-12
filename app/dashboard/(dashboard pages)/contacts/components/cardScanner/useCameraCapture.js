@@ -11,6 +11,7 @@ const formatMessage = (template, replacements = {}) => {
 export function useCameraCapture({
     videoRef,
     canvasRef,
+    guideRef,
     mediaStream,
     setMediaStream,
     setShowCamera,
@@ -79,33 +80,57 @@ export function useCameraCapture({
     };
 
     const capturePhoto = () => {
-        const canvas = canvasRef.current;
         const video = videoRef.current;
-        if (!canvas || !video || !video.videoWidth) return;
-        
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0);
-        
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        const canvas = canvasRef.current;
+        const guide = guideRef.current;
+
+        if (!video || !canvas || !guide) return;
+
+        const videoRect = video.getBoundingClientRect();
+        const guideRect = guide.getBoundingClientRect();
+
+        // Calcule les facteurs d'échelle entre la taille affichée de la vidéo et sa résolution native
+        const scaleX = video.videoWidth / videoRect.width;
+        const scaleY = video.videoHeight / videoRect.height;
+
+        // Calcule les coordonnées du cadre de guidage par rapport à la vidéo
+        const sx = (guideRect.left - videoRect.left) * scaleX;
+        const sy = (guideRect.top - videoRect.top) * scaleY;
+        const sWidth = guideRect.width * scaleX;
+        const sHeight = guideRect.height * scaleY;
+
+        // Définit la taille du canvas pour qu'elle corresponde à la zone découpée
+        canvas.width = sWidth;
+        canvas.height = sHeight;
+
+        const context = canvas.getContext('2d');
+
+        // Dessine uniquement la partie de la vidéo qui se trouve à l'intérieur du cadre de guidage
+        context.drawImage(
+            video,
+            sx,       // Coordonnée X de départ dans la vidéo source
+            sy,       // Coordonnée Y de départ dans la vidéo source
+            sWidth,   // Largeur de la source à découper
+            sHeight,  // Hauteur de la source à découper
+            0,        // Coordonnée X de destination sur le canvas (coin supérieur gauche)
+            0,        // Coordonnée Y de destination sur le canvas
+            sWidth,   // Largeur de l'image à dessiner sur le canvas
+            sHeight   // Hauteur de l'image à dessiner sur le canvas
+        );
 
         canvas.toBlob((blob) => {
-            const file = new File([blob], `business-card-${currentSide}.jpg`, { type: 'image/jpeg' });
-            
+            if (!blob) {
+                toast.error(translateWithFallback('business_card_scanner.capture_failed', 'Capture failed'));
+                return;
+            }
+            const newUrl = URL.createObjectURL(blob);
+
             setCardData(prev => {
-                if (prev[currentSide].previewUrl && prev[currentSide].previewUrl.startsWith('blob:')) {
+                if (prev[currentSide].previewUrl?.startsWith('blob:')) {
                     URL.revokeObjectURL(prev[currentSide].previewUrl);
                 }
-                
-                return {
-                    ...prev,
-                    [currentSide]: {
-                        image: file,
-                        previewUrl: dataUrl
-                    }
-                };
+                const updatedSide = { image: blob, previewUrl: newUrl };
+                return { ...prev, [currentSide]: updatedSide };
             });
 
             if (scanMode === 'double' && currentSide === 'front') {
@@ -134,7 +159,7 @@ export function useCameraCapture({
                           )
                 );
             }
-        }, 'image/jpeg', 0.9);
+        }, 'image/jpeg', 0.95);
     };
 
     return { startCamera, stopCamera, capturePhoto };

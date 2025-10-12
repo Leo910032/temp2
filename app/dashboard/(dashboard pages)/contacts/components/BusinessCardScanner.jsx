@@ -30,6 +30,7 @@ export default function BusinessCardScanner({ isOpen, onClose, onContactParsed }
     
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
+    const guideRef = useRef(null);
     const fileInputRef = useRef(null);
     const [mediaStream, setMediaStream] = useState(null);
 
@@ -37,6 +38,7 @@ export default function BusinessCardScanner({ isOpen, onClose, onContactParsed }
     const { startCamera, stopCamera, capturePhoto } = useCameraCapture({
         videoRef,
         canvasRef,
+        guideRef,
         mediaStream,
         setMediaStream,
         setShowCamera,
@@ -314,6 +316,7 @@ export default function BusinessCardScanner({ isOpen, onClose, onContactParsed }
                     {showCamera && (
                         <CameraView
                             videoRef={videoRef}
+                            guideRef={guideRef}
                             scanMode={scanMode}
                             currentSide={currentSide}
                             cardData={cardData}

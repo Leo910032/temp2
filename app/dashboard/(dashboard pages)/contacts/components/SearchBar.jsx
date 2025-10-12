@@ -55,19 +55,19 @@ export default function SearchBar({
     };
 
     return (
-        <div className="bg-white p-4 rounded-lg shadow mb-6 space-y-4">
+        <div className="bg-white p-3 sm:p-4 rounded-lg shadow mb-4 sm:mb-6 space-y-3 sm:space-y-4">
             {/* Search Header with Mode Toggle */}
-            <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium text-gray-900">{translations.title}</h3>
-                
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+                <h3 className="text-base sm:text-lg font-medium text-gray-900">{translations.title}</h3>
+
                 {canUseSemanticSearch && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
                         <button
                             onClick={() => {
                                 setSearchMode('standard');
                                 setAiSearchQuery('');
                             }}
-                            className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                            className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
                                 searchMode === 'standard'
                                     ? 'bg-blue-100 text-blue-700 font-medium'
                                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -77,14 +77,15 @@ export default function SearchBar({
                         </button>
                         <button
                             onClick={() => setSearchMode('semantic')}
-                            className={`px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1 ${
+                            className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors flex items-center justify-center gap-1 ${
                                 searchMode === 'semantic'
                                     ? 'bg-purple-100 text-purple-700 font-medium'
                                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             }`}
                         >
                             <span>🤖</span>
-                            {translations.aiMode}
+                            <span className="hidden sm:inline">{translations.aiMode}</span>
+                            <span className="sm:hidden">IA</span>
                         </button>
                     </div>
                 )}
@@ -106,16 +107,16 @@ export default function SearchBar({
                         }
                     }}
                     onKeyPress={handleKeyPress}
-                    className="w-full px-4 py-3 pl-12 pr-24 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 pl-10 sm:pl-12 pr-20 sm:pr-24 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow text-sm sm:text-base"
                     disabled={isAiSearching}
                 />
 
                 {/* Search Icon */}
-                <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
+                <div className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2">
                     {isAiSearching ? (
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                        <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-blue-600"></div>
                     ) : (
-                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                     )}
@@ -131,24 +132,29 @@ export default function SearchBar({
                         }
                     }}
                     disabled={isAiSearching}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 px-4 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 sm:px-4 py-1.5 bg-blue-600 text-white text-xs sm:text-sm rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 >
-                    {isAiSearching ? translations.searching : translations.searchButton}
+                    <span className="hidden sm:inline">
+                        {isAiSearching ? translations.searching : translations.searchButton}
+                    </span>
+                    <span className="sm:hidden">
+                        {isAiSearching ? '...' : '🔍'}
+                    </span>
                 </button>
             </div>
 
             {/* AI Search Feature Explanation */}
             {searchMode === 'semantic' && (
-                <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-4 rounded-lg border border-purple-200">
-                    <div className="space-y-3">
+                <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-3 sm:p-4 rounded-lg border border-purple-200">
+                    <div className="space-y-2 sm:space-y-3">
                         <div className="flex items-center gap-2">
-                            <span className="text-lg">🤖</span>
-                            <h4 className="font-semibold text-purple-800">
+                            <span className="text-base sm:text-lg">🤖</span>
+                            <h4 className="text-sm sm:text-base font-semibold text-purple-800">
                                 {canUseFullAiSearch ? translations.enhancedTitle : translations.semanticTitle}
                             </h4>
                         </div>
 
-                        <div className="text-sm text-purple-700">
+                        <div className="text-xs sm:text-sm text-purple-700">
                             {canUseFullAiSearch ? (
                                 <p>{translations.enhancedDescription}</p>
                             ) : (
@@ -159,8 +165,8 @@ export default function SearchBar({
                         {/* Quick Examples */}
                         {(!aiSearchQuery || aiSearchQuery.length === 0) && (
                             <div className="pt-2 border-t border-purple-200">
-                                <div className="text-xs text-purple-600 mb-2">{translations.tryExamples}</div>
-                                <div className="flex flex-wrap gap-1">
+                                <div className="text-xs text-purple-600 mb-1.5 sm:mb-2">{translations.tryExamples}</div>
+                                <div className="flex flex-wrap gap-1 sm:gap-1.5">
                                     {exampleSuggestions.map((example, index) => (
                                         <button
                                             key={index}

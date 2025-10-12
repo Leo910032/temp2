@@ -92,27 +92,27 @@ export default function ContactsList({
     };
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 pb-24 sm:pb-6">
             {renderSearchHeader()}
-            
+
             <div className="space-y-3">
                 {contacts.map((contact) => (
-                    <div 
-                        key={contact.id} 
+                    <div
+                        key={contact.id}
                         className={`relative ${selectionMode && !contact.isSharedContact ? 'pl-10 sm:pl-12' : ''}`}
                     >
                         {/* Selection checkbox */}
                         {selectionMode && !contact.isSharedContact && (
                             <div className="absolute left-2 sm:left-3 top-4 z-10">
-                                <input 
-                                    type="checkbox" 
-                                    checked={selectedContacts.includes(contact.id)} 
-                                    onChange={() => onToggleSelection(contact.id)} 
-                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                                <input
+                                    type="checkbox"
+                                    checked={selectedContacts.includes(contact.id)}
+                                    onChange={() => onToggleSelection(contact.id)}
+                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                 />
                             </div>
                         )}
-                        
+
                         {/* Contact Card */}
                         <ContactCard
                             contact={contact}
@@ -130,16 +130,16 @@ export default function ContactsList({
             {/* Load More Button */}
             {hasMore && (
                 <div className="flex justify-center py-4">
-                    <button 
-                        onClick={onLoadMore} 
-                        disabled={loading} 
+                    <button
+                        onClick={onLoadMore}
+                        disabled={loading}
                         className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
                     >
                         {loading && (
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                         )}
-                        {loading 
-                            ? (t('contacts.loading') || 'Loading...') 
+                        {loading
+                            ? (t('contacts.loading') || 'Loading...')
                             : (t('contacts.load_more') || 'Load More')
                         }
                     </button>

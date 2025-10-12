@@ -78,9 +78,9 @@ function ContactsPage() {
 
     // Update map visibility in context
     useEffect(() => {
-        // Set the context to true if either the map OR the scanner is open
-        setIsMapOpen(showMap || showScanner);
-    }, [showMap, showScanner, setIsMapOpen]);
+        // Set the context to true if either the map OR the scanner OR the review modal is open
+        setIsMapOpen(showMap || showScanner || showReviewModal);
+    }, [showMap, showScanner, showReviewModal, setIsMapOpen]);
 
     // Translations
     const translations = useMemo(() => {
@@ -211,14 +211,14 @@ function ContactsPage() {
 
     // Main render
     return (
-        <div className="flex-1 py-4 px-4 max-h-full overflow-y-auto">
+        <div className="flex-1 py-3 sm:py-4 px-3 sm:px-4 max-h-full overflow-y-auto">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
-                <div className="mb-6">
-                    <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                <div className="mb-4 sm:mb-6">
+                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">
                         {translations.title}
                     </h1>
-                    <p className="text-gray-600">{translations.subtitle}</p>
+                    <p className="text-sm sm:text-base text-gray-600">{translations.subtitle}</p>
                 </div>
 
                 {/* Stats Cards */}
@@ -244,8 +244,69 @@ function ContactsPage() {
                 />
 
                 {/* Action Buttons */}
-                <div className="bg-white p-4 rounded-lg shadow mb-6">
-                    <div className="flex flex-wrap items-center justify-end gap-2">
+                <div className="bg-white p-3 sm:p-4 rounded-lg shadow mb-4 sm:mb-6">
+                    {/* Mobile Layout: Grid + Select */}
+                    <div className="block sm:hidden space-y-3">
+                        {/* Filter Dropdown */}
+                        <select
+                            value={filter}
+                            onChange={(e) => setFilter(e.target.value)}
+                            className="w-full px-3 py-2.5 text-sm border border-gray-300 bg-gray-50 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="all">{t('contacts.filters.all_status') || 'All Status'}</option>
+                            <option value="new">{t('contacts.filters.new') || 'New'}</option>
+                            <option value="viewed">{t('contacts.filters.viewed') || 'Viewed'}</option>
+                            <option value="archived">{t('contacts.filters.archived') || 'Archived'}</option>
+                        </select>
+
+                        {/* Action Buttons Grid */}
+                        <div className="grid grid-cols-2 gap-2">
+                            {hasFeature(CONTACT_FEATURES.MAP_VISUALIZATION) && (
+                                <button
+                                    onClick={() => setShowMap(true)}
+                                    className="px-3 py-2.5 bg-purple-500 text-white rounded-md hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 text-sm"
+                                    disabled={contacts.filter(c => c.location?.latitude).length === 0}
+                                >
+                                    <span>🗺️</span>
+                                    <span>{t('contacts.buttons.map_view') || 'Map View'}</span>
+                                </button>
+                            )}
+
+                            {(hasFeature(CONTACT_FEATURES.BASIC_CARD_SCANNER) || hasFeature(CONTACT_FEATURES.AI_ENHANCED_CARD_SCANNER)) && (
+                                <button
+                                    onClick={() => {
+                                        console.log("ACCESS GRANTED: User opened the Business Card Scanner.");
+                                        setShowScanner(true);
+                                    }}
+                                    className="px-3 py-2.5 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center justify-center gap-1.5 text-sm"
+                                >
+                                    <span>📇</span>
+                                    <span>{t('contacts.buttons.scan_card') || 'Scan Card'}</span>
+                                </button>
+                            )}
+
+                            <button
+                                onClick={() => setShowGroupManager(true)}
+                                className="px-3 py-2.5 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center justify-center gap-1.5 text-sm col-span-2"
+                            >
+                                <span>👥</span>
+                                <span>{t('contacts.buttons.manage_groups', { count: groups.length }) || `Manage Groups (${groups.length})`}</span>
+                            </button>
+
+                            {hasFeature(CONTACT_FEATURES.EXPORT_DATA) && (
+                                <button
+                                    onClick={() => setShowImportExportModal(true)}
+                                    className="px-3 py-2.5 bg-gray-700 text-white rounded-md hover:bg-gray-800 flex items-center justify-center gap-1.5 text-sm col-span-2"
+                                >
+                                    <span>📥</span>
+                                    <span>{t('contacts.buttons.import_export') || 'Import / Export'}</span>
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Desktop Layout: Original Flex */}
+                    <div className="hidden sm:flex flex-wrap items-center justify-end gap-2">
                         <select
                             value={filter}
                             onChange={(e) => setFilter(e.target.value)}
@@ -276,18 +337,18 @@ function ContactsPage() {
                             </button>
                         )}
 
-                       {/* This check now correctly looks for either scanner feature */}
-{hasFeature(CONTACT_FEATURES.BASIC_CARD_SCANNER) || hasFeature(CONTACT_FEATURES.AI_ENHANCED_CARD_SCANNER) ? (
-    <button
-        onClick={() => {
-            console.log("ACCESS GRANTED: User opened the Business Card Scanner.");
-            setShowScanner(true);
-        }}
-        className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-    >
-        {t('contacts.buttons.scan_card') || 'Scan Card'}
-    </button>
-) : null}
+                        {(hasFeature(CONTACT_FEATURES.BASIC_CARD_SCANNER) || hasFeature(CONTACT_FEATURES.AI_ENHANCED_CARD_SCANNER)) && (
+                            <button
+                                onClick={() => {
+                                    console.log("ACCESS GRANTED: User opened the Business Card Scanner.");
+                                    setShowScanner(true);
+                                }}
+                                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                            >
+                                {t('contacts.buttons.scan_card') || 'Scan Card'}
+                            </button>
+                        )}
+
                         <button
                             onClick={() => setShowGroupManager(true)}
                             className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"

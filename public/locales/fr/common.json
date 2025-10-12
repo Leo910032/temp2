@@ -317,6 +317,7 @@
     "cancel": "Annuler",
     "search": "Rechercher",
     "save": "Enregistrer",
+    "saving": "Enregistrement...",
     "delete": "Supprimer",
     "edit": "Modifier",
     "add": "Ajouter",
@@ -326,7 +327,15 @@
     "yes": "Oui",
     "no": "Non",
     "na": "N/A",
-    "disable": "Désactiver"
+    "disable": "Désactiver",
+    "all": "Tout",
+    "categories": {
+      "personal": "Personnel",
+      "professional": "Professionnel",
+      "contact": "Contact",
+      "social": "Social",
+      "other": "Autre"
+    }
   },
   "controller": {
     "jump _to": "Aller à :"

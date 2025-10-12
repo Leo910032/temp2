@@ -1,5 +1,12 @@
-// app/dashboard/(dashboard pages)/contacts/components/scanner/useCameraCapture.js
+// app/dashboard/(dashboard pages)/contacts/components/cardScanner/useCameraCapture.js
 import { toast } from 'react-hot-toast';
+
+const formatMessage = (template, replacements = {}) => {
+    return Object.entries(replacements).reduce(
+        (acc, [key, value]) => acc.split(`{{${key}}}`).join(value ?? ''),
+        template
+    );
+};
 
 export function useCameraCapture({
     videoRef,
@@ -14,6 +21,18 @@ export function useCameraCapture({
     scanMode,
     t
 }) {
+    const translateWithFallback = (key, fallback, replacements = {}) => {
+        const template = t(key);
+        const resolved = template && template !== key ? template : fallback;
+        return formatMessage(resolved, replacements);
+    };
+
+    const getSideLabel = (side) =>
+        translateWithFallback(
+            `business_card_scanner.sides.${side}`,
+            side.charAt(0).toUpperCase() + side.slice(1)
+        );
+
     const startCamera = async () => {
         const idealConstraints = { 
             video: { 
@@ -42,7 +61,12 @@ export function useCameraCapture({
             setShowCamera(true);
         } catch (error) {
             console.error('Could not access any camera.', error);
-            toast.error(t('business_card_scanner.camera_access_error') || 'Camera access error');
+            toast.error(
+                translateWithFallback(
+                    'business_card_scanner.camera_access_error',
+                    'Camera access error'
+                )
+            );
         }
     };
 
@@ -86,12 +110,29 @@ export function useCameraCapture({
 
             if (scanMode === 'double' && currentSide === 'front') {
                 setCurrentSide('back');
-                toast.success('Front captured! Now capture the back side.');
+                toast.success(
+                    translateWithFallback(
+                        'business_card_scanner.capture_prompt_next_side',
+                        '{{current}} captured! Now capture the {{next}} side.',
+                        {
+                            current: getSideLabel('front'),
+                            next: getSideLabel('back')
+                        }
+                    )
+                );
             } else {
                 stopCamera();
-                toast.success(scanMode === 'double' 
-                    ? 'Both sides captured successfully!' 
-                    : 'Card captured successfully!');
+                toast.success(
+                    scanMode === 'double'
+                        ? translateWithFallback(
+                              'business_card_scanner.capture_success_double',
+                              'Both sides captured successfully!'
+                          )
+                        : translateWithFallback(
+                              'business_card_scanner.capture_success_single',
+                              'Card captured successfully!'
+                          )
+                );
             }
         }, 'image/jpeg', 0.9);
     };

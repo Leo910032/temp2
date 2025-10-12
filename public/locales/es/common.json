@@ -94,7 +94,69 @@
     "scan_failed": "Error al escanear la tarjeta de visita.",
     "processing_failed": "Error al procesar la tarjeta de visita.",
     "image_read_error": "Error al leer el archivo de imagen.",
-    "image_display_failed": "Error al mostrar la imagen."
+    "image_display_failed": "Error al mostrar la imagen.",
+    "login_required": "Inicia sesión para usar el escáner de tarjetas de presentación",
+    "upload_success_single": "¡Imagen de la tarjeta cargada con éxito!",
+    "side_upload_success": "¡Se cargó correctamente el lado {{side}}!",
+    "upload_success_double": "¡Se cargaron ambos lados de la tarjeta con éxito!",
+    "incorrect_image_count": "Selecciona el número correcto de imágenes para tu modo de escaneo.",
+    "capture_prompt_next_side": "Lado {{current}} capturado. Ahora captura el lado {{next}}.",
+    "capture_success_double": "¡Se capturaron correctamente ambos lados!",
+    "capture_success_single": "¡Tarjeta capturada correctamente!",
+    "sides": {
+      "front": "frontal",
+      "back": "posterior"
+    },
+    "header": {
+      "title": "Escáner de tarjetas de presentación",
+      "estimate_text": "Costo estimado: {{amount}}",
+      "amount_value": "${{amount}}",
+      "calculating": "Calculando..."
+    },
+    "initial_screen": {
+      "scan_mode": "Modo de escaneo",
+      "single_side": "Un solo lado",
+      "both_sides": "Ambos lados",
+      "single_mode_description": "Escanear solo un lado",
+      "double_mode_description": "Escanear el frente y el reverso para obtener información completa",
+      "title_single": "Escanear tarjeta de presentación",
+      "title_double": "Escanear ambos lados",
+      "subtitle_single": "Extrae información de contacto automáticamente de tarjetas de presentación usando IA",
+      "subtitle_double": "Captura el frente y el reverso para obtener información de contacto completa",
+      "take_photo": "Tomar foto",
+      "use_device_camera": "Usar cámara del dispositivo",
+      "upload_image": "Subir imagen",
+      "upload_image_plural": "es",
+      "from_device_gallery": "Desde la galería del dispositivo"
+    },
+    "preview_screen": {
+      "front": "Frontal",
+      "back": "Posterior",
+      "ready_to_scan": "Listo para escanear",
+      "add_images_to_continue": "Agregar imágenes para continuar",
+      "business_card_alt": "Tarjeta de presentación lado {{side}}",
+      "image_display_failed": "Error al mostrar la imagen del lado {{side}}",
+      "side_label": "lado {{side}}",
+      "side_image_needed": "Se necesita imagen del lado {{side}}",
+      "take_photo": "Tomar foto",
+      "upload": "Subir",
+      "processing_with_ai": "Procesando con IA...",
+      "extracting_text": "Extrayendo texto y códigos QR de tu tarjeta de presentación",
+      "retake_side": "Repetir {{side}}",
+      "retake_photo": "Repetir foto",
+      "retake": "Repetir",
+      "add_side": "Agregar {{side}}",
+      "processing": "Procesando...",
+      "scan_card": "Escanear tarjeta",
+      "scan_card_plural": "s",
+      "scan": "Escanear",
+      "pro_tip": "Consejo profesional",
+      "pro_tip_double": "¡Escanear ambos lados captura información de contacto más completa y enlaces a redes sociales!",
+      "pro_tip_single": "Para obtener mejores resultados, asegúrate de que la tarjeta esté bien iluminada y el texto sea claramente visible. ¡Nuestra IA también puede detectar códigos QR!",
+      "estimated_cost": "Costo estimado: ${{cost}}",
+      "processing_both_sides": "Procesando ambos lados",
+      "single_card_scan": "Escaneo de tarjeta única"
+    }
   },
   "contacts": {
     "welcome": "Bienvenido de nuevo,",
@@ -208,6 +270,7 @@
     "signup": "Registrarse",
     "submit": "Enviar",
     "cancel": "Cancelar",
+    "search": "Buscar",
     "save": "Guardar",
     "delete": "Eliminar",
     "edit": "Editar",
@@ -1783,6 +1846,57 @@
       "scan_card": "Escanear Tarjeta",
       "manage_groups": "Gestionar Grupos ({{count}})"
     },
+    "search": {
+      "title": "Buscar Contactos",
+      "placeholder": "Busca contactos por nombre, correo electrónico, empresa...",
+      "semantic_placeholder": "Pregunta sobre tu red: '¿quién sabe React?' o 'expertos en marketing'",
+      "standard_mode": "Búsqueda Estándar",
+      "ai_mode": "Búsqueda con IA",
+      "searching": "Buscando...",
+      "enhanced_title": "Búsqueda con IA Mejorada",
+      "semantic_title": "Búsqueda Semántica",
+      "enhanced_description": "La IA analiza tus contactos semánticamente y proporciona información inteligente sobre por qué cada contacto coincide con tu consulta.",
+      "semantic_description": "La búsqueda semántica encuentra contactos según el significado, no solo por palabras clave. Mejora a Business para obtener información impulsada por IA.",
+      "try_examples": "Prueba estos ejemplos:",
+      "examples": [
+        "Desarrolladores React",
+        "fundadores de startups",
+        "profesionales de marketing",
+        "residentes en California"
+      ]
+    },
+    "map": {
+      "title": "Mapa de contactos",
+      "search_placeholder": "Busca contactos...",
+      "search_unknown_location": "Ubicación desconocida",
+      "theme": {
+        "light": "Tema claro",
+        "dark": "Tema oscuro"
+      },
+      "map_type_toggle": "Cambiar tipo de mapa",
+      "map_type_satellite": "Satélite",
+      "map_type_roadmap": "Mapa de calles",
+      "close": "Cerrar mapa",
+      "loading": "Cargando mapa...",
+      "zoom_label": "Zoom",
+      "world_view": "🌍 Vista global",
+      "regional_view": "🗺️ Vista regional",
+      "street_view": "📍 Vista de calle",
+      "total_label": "Total",
+      "contacts_suffix": "contactos",
+      "with_location_label": "con datos de ubicación",
+      "controls": {
+        "fit_all": "Ajustar a todos los contactos",
+        "reset": "Restablecer vista global",
+        "zoom_in": "Acercar",
+        "zoom_out": "Alejar"
+      },
+      "error": {
+        "title": "Error del mapa",
+        "dismiss": "Cerrar"
+      },
+      "aria_label": "Mapa interactivo de contactos"
+    },
     "groups": {
       "title": "Grupos de Contactos",
       "more": "+{{count}} más"
@@ -1794,9 +1908,12 @@
         "phone_numbers": "Números de Teléfono",
         "add_phone": "Agregar Teléfono",
         "phone_tip": "Consejo: Incluye el código de país (ej: +33 para Francia, +1 para EE.UU./Canadá) para la detección automática de bandera",
+        "premium_country_detection": "Premium: Detección de País",
         "add_custom_field": "Agregar Campo Personalizado",
         "no_fields_in_category": "No se encontraron campos {{category}}.",
         "no_fields_detected": "No se detectaron otros campos. Haz clic en 'Agregar Campo Personalizado' para agregar más.",
+        "field_label_placeholder": "Etiqueta del Campo (ej: Perfil de LinkedIn)",
+        "field_value_placeholder": "Valor del Campo",
         "standard": "Estándar",
         "ai_detected": "Detectado por IA",
         "with_values": "Con Valores",

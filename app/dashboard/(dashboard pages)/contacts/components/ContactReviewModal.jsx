@@ -291,7 +291,7 @@ export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSa
                                 {t('contacts.modals.review.phone_numbers')}
                                 {isPremium && (
                                     <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
-                                        Premium: Country Detection
+                                        {t('contacts.modals.review.premium_country_detection')}
                                     </span>
                                 )}
                             </h4>
@@ -353,7 +353,7 @@ export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSa
                                                 type="text"
                                                 value={field.label}
                                                 onChange={(e) => handleFieldChange(originalIndex, 'label', e.target.value)}
-                                                placeholder="Field Label (e.g., LinkedIn Profile)"
+                                                placeholder={t('contacts.modals.review.field_label_placeholder')}
                                                 className="flex-1 px-3 py-1 border-b border-gray-300 focus:outline-none focus:border-blue-500 text-sm font-medium bg-transparent"
                                             />
                                             
@@ -363,11 +363,11 @@ export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSa
                                                 onChange={(e) => handleFieldChange(originalIndex, 'category', e.target.value)}
                                                 className="px-2 py-1 text-xs border border-gray-300 rounded bg-white focus:outline-none focus:border-blue-500"
                                             >
-                                                <option value="personal">Personal</option>
-                                                <option value="professional">Professional</option>
-                                                <option value="contact">Contact</option>
-                                                <option value="social">Social</option>
-                                                <option value="other">Other</option>
+                                                <option value="personal">{t('common.categories.personal')}</option>
+                                                <option value="professional">{t('common.categories.professional')}</option>
+                                                <option value="contact">{t('common.categories.contact')}</option>
+                                                <option value="social">{t('common.categories.social')}</option>
+                                                <option value="other">{t('common.categories.other')}</option>
                                             </select>
                                             
                                             {/* Confidence Indicator */}
@@ -391,7 +391,7 @@ export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSa
                                             type="text"
                                             value={field.value}
                                             onChange={(e) => handleFieldChange(originalIndex, 'value', e.target.value)}
-                                            placeholder="Field Value"
+                                            placeholder={t('contacts.modals.review.field_value_placeholder')}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                                         />
                                     </div>

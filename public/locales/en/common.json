@@ -24,6 +24,7 @@
     "all": "All",
     "cancel": "Cancel",
     "saving": "Saving...",
+    "search": "Search",
     "categories": {
       "personal": "Personal",
       "professional": "Professional",
@@ -716,6 +717,57 @@
       "scan_card": "Scan Card",
       "manage_groups": "Manage Groups ({{count}})"
     },
+    "search": {
+      "title": "Search Contacts",
+      "placeholder": "Search contacts by name, email, company...",
+      "semantic_placeholder": "Ask about your network: 'who knows React?' or 'marketing experts'",
+      "standard_mode": "Standard Search",
+      "ai_mode": "AI Search",
+      "searching": "Searching...",
+      "enhanced_title": "Enhanced AI Search",
+      "semantic_title": "Semantic Search",
+      "enhanced_description": "AI analyzes your contacts semantically and provides intelligent insights about why each contact matches your query.",
+      "semantic_description": "Semantic search finds contacts based on meaning, not just keywords. Upgrade to Business for AI-powered insights.",
+      "try_examples": "Try these examples:",
+      "examples": [
+        "React developers",
+        "startup founders",
+        "marketing professionals",
+        "based in California"
+      ]
+    },
+    "map": {
+      "title": "Contacts Map",
+      "search_placeholder": "Search contacts...",
+      "search_unknown_location": "Unknown location",
+      "theme": {
+        "light": "Light theme",
+        "dark": "Dark theme"
+      },
+      "map_type_toggle": "Toggle map type",
+      "map_type_satellite": "Satellite",
+      "map_type_roadmap": "Roadmap",
+      "close": "Close map",
+      "loading": "Loading map...",
+      "zoom_label": "Zoom",
+      "world_view": "🌍 World view",
+      "regional_view": "🗺️ Regional view",
+      "street_view": "📍 Street view",
+      "total_label": "Total",
+      "contacts_suffix": "contacts",
+      "with_location_label": "with location data",
+      "controls": {
+        "fit_all": "Fit to all contacts",
+        "reset": "Reset to world view",
+        "zoom_in": "Zoom in",
+        "zoom_out": "Zoom out"
+      },
+      "error": {
+        "title": "Map Error",
+        "dismiss": "Dismiss"
+      },
+      "aria_label": "Interactive contacts map"
+    },
     "groups": {
       "title": "Contact Groups",
       "more": "+{{count}} more"
@@ -727,9 +779,12 @@
         "phone_numbers": "Phone Numbers",
         "add_phone": "Add Phone",
         "phone_tip": "Tip: Include country code (e.g., +33 for France, +1 for US/Canada) for automatic flag detection",
+        "premium_country_detection": "Premium: Country Detection",
         "add_custom_field": "Add Custom Field",
         "no_fields_in_category": "No {{category}} fields found.",
         "no_fields_detected": "No other fields detected. Click 'Add Custom Field' to add more.",
+        "field_label_placeholder": "Field Label (e.g., LinkedIn Profile)",
+        "field_value_placeholder": "Field Value",
         "standard": "Standard",
         "ai_detected": "AI Detected",
         "with_values": "With Values",
@@ -738,6 +793,74 @@
         "save_success": "Contact saved!",
         "save_error": "Failed to save contact."
       }
+    }
+  },
+  "business_card_scanner": {
+    "login_required": "Please log in to use the business card scanner",
+    "camera_access_error": "Camera access error",
+    "invalid_file_type": "Invalid file type",
+    "file_too_large": "File too large",
+    "image_load_failed": "Image load failed",
+    "upload_success_single": "Card image uploaded successfully!",
+    "side_upload_success": "{{side}} side uploaded successfully!",
+    "upload_success_double": "Both card sides uploaded successfully!",
+    "incorrect_image_count": "Please select the correct number of images for your scan mode.",
+    "capture_prompt_next_side": "{{current}} captured! Now capture the {{next}} side.",
+    "capture_success_double": "Both sides captured successfully!",
+    "capture_success_single": "Card captured successfully!",
+    "sides": {
+      "front": "Front",
+      "back": "Back"
+    },
+    "header": {
+      "title": "Business Card Scanner",
+      "estimate_text": "Est. cost: {{amount}}",
+      "amount_value": "${{amount}}",
+      "calculating": "Calculating..."
+    },
+    "initial_screen": {
+      "scan_mode": "Scan Mode",
+      "single_side": "Single Side",
+      "both_sides": "Both Sides",
+      "single_mode_description": "Scan one side only",
+      "double_mode_description": "Scan front and back for complete information",
+      "title_single": "Scan Business Card",
+      "title_double": "Scan Both Sides",
+      "subtitle_single": "Extract contact information automatically from business cards using AI",
+      "subtitle_double": "Capture front and back for complete contact information",
+      "take_photo": "Take Photo",
+      "use_device_camera": "Use device camera",
+      "upload_image": "Upload Image",
+      "upload_image_plural": "s",
+      "from_device_gallery": "From device gallery"
+    },
+    "preview_screen": {
+      "front": "Front",
+      "back": "Back",
+      "ready_to_scan": "Ready to Scan",
+      "add_images_to_continue": "Add Images to Continue",
+      "business_card_alt": "Business card {{side}} side",
+      "image_display_failed": "{{side}} image display failed",
+      "side_label": "{{side}} side",
+      "side_image_needed": "{{side}} side image needed",
+      "take_photo": "Take Photo",
+      "upload": "Upload",
+      "processing_with_ai": "Processing with AI...",
+      "extracting_text": "Extracting text and QR codes from your business card",
+      "retake_side": "Retake {{side}}",
+      "retake_photo": "Retake Photo",
+      "retake": "Retake",
+      "add_side": "Add {{side}}",
+      "processing": "Processing...",
+      "scan_card": "Scan Card",
+      "scan_card_plural": "s",
+      "scan": "Scan",
+      "pro_tip": "Pro Tip",
+      "pro_tip_double": "Scanning both sides captures more complete contact information and social media links!",
+      "pro_tip_single": "For best results, ensure the card is well-lit and text is clearly visible. Our AI can detect QR codes too!",
+      "estimated_cost": "Estimated cost: ${{cost}}",
+      "processing_both_sides": "Processing both sides",
+      "single_card_scan": "Single card scan"
     }
   }
 }

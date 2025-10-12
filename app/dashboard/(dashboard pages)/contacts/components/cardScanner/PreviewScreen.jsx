@@ -1,6 +1,7 @@
 // ================================================================
 // app/dashboard/(dashboard pages)/contacts/components/scanner/PreviewScreen.jsx
 import { toast } from 'react-hot-toast';
+import { useTranslation } from "@/lib/translation/useTranslation";
 
 export function PreviewScreen({
     scanMode,
@@ -16,7 +17,13 @@ export function PreviewScreen({
     processingStatus,
     costEstimate
 }) {
+    const { t } = useTranslation();
     const getCurrentImage = () => cardData[currentSide];
+
+    // Translate the current side name
+    const getTranslatedSide = (side) => {
+        return t(`business_card_scanner.preview_screen.${side}`);
+    };
 
     return (
         <div className="p-3 sm:p-4 flex flex-col items-center min-h-full">
@@ -31,7 +38,7 @@ export function PreviewScreen({
                                     : 'text-gray-600 hover:text-gray-800'
                             }`}
                         >
-                            Front {cardData.front.image ? '✅' : '❌'}
+                            {t('business_card_scanner.preview_screen.front')} {cardData.front.image ? '✅' : '❌'}
                         </button>
                         <button
                             onClick={() => setCurrentSide('back')}
@@ -41,13 +48,13 @@ export function PreviewScreen({
                                     : 'text-gray-600 hover:text-gray-800'
                             }`}
                         >
-                            Back {cardData.back.image ? '✅' : '❌'}
+                            {t('business_card_scanner.preview_screen.back')} {cardData.back.image ? '✅' : '❌'}
                         </button>
                     </div>
                 )}
 
                 <h4 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 text-center">
-                    {canProcess() ? 'Ready to Scan' : 'Add Images to Continue'}
+                    {canProcess() ? t('business_card_scanner.preview_screen.ready_to_scan') : t('business_card_scanner.preview_screen.add_images_to_continue')}
                 </h4>
                 
                 {getCurrentImage().previewUrl && (
@@ -55,13 +62,13 @@ export function PreviewScreen({
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                             src={getCurrentImage().previewUrl}
-                            alt={`Business card ${currentSide} side`}
+                            alt={t('business_card_scanner.preview_screen.business_card_alt', { side: getTranslatedSide(currentSide) })}
                             className="w-full h-auto max-h-[300px] sm:max-h-[400px] object-contain rounded-lg shadow-sm"
-                            onError={() => toast.error(`${currentSide} image display failed`)}
+                            onError={() => toast.error(t('business_card_scanner.preview_screen.image_display_failed', { side: getTranslatedSide(currentSide) }))}
                         />
                         {scanMode === 'double' && (
                             <p className="text-center text-sm text-gray-600 mt-2">
-                                {currentSide} side
+                                {t('business_card_scanner.preview_screen.side_label', { side: getTranslatedSide(currentSide) })}
                             </p>
                         )}
                     </div>
@@ -74,7 +81,7 @@ export function PreviewScreen({
                                 <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                             </svg>
                             <span className="text-sm text-yellow-800">
-                                {currentSide} side image needed
+                                {t('business_card_scanner.preview_screen.side_image_needed', { side: getTranslatedSide(currentSide) })}
                             </span>
                         </div>
                         <div className="flex gap-2 mt-3">
@@ -82,13 +89,13 @@ export function PreviewScreen({
                                 onClick={startCamera}
                                 className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
                             >
-                                Take Photo
+                                {t('business_card_scanner.preview_screen.take_photo')}
                             </button>
                             <button
                                 onClick={() => fileInputRef.current?.click()}
                                 className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors"
                             >
-                                Upload
+                                {t('business_card_scanner.preview_screen.upload')}
                             </button>
                         </div>
                     </div>
@@ -99,9 +106,9 @@ export function PreviewScreen({
                         <div className="flex items-center gap-3">
                             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
                             <div className="flex-1">
-                                <p className="text-sm font-medium text-blue-900">Processing with AI...</p>
+                                <p className="text-sm font-medium text-blue-900">{t('business_card_scanner.preview_screen.processing_with_ai')}</p>
                                 <p className="text-xs text-blue-700">
-                                    {processingStatus || 'Extracting text and QR codes from your business card'}
+                                    {processingStatus || t('business_card_scanner.preview_screen.extracting_text')}
                                 </p>
                             </div>
                         </div>
@@ -115,9 +122,12 @@ export function PreviewScreen({
                         className="flex-1 px-3 sm:px-4 py-2 sm:py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors font-medium text-sm sm:text-base"
                     >
                         <span className="hidden sm:inline">
-                            {scanMode === 'double' ? `Retake ${currentSide}` : 'Retake Photo'}
+                            {scanMode === 'double'
+                                ? t('business_card_scanner.preview_screen.retake_side', { side: getTranslatedSide(currentSide) })
+                                : t('business_card_scanner.preview_screen.retake_photo')
+                            }
                         </span>
-                        <span className="sm:hidden">Retake</span>
+                        <span className="sm:hidden">{t('business_card_scanner.preview_screen.retake')}</span>
                     </button>
 
                     {scanMode === 'double' && !canProcess() && (
@@ -126,7 +136,7 @@ export function PreviewScreen({
                             disabled={isProcessing}
                             className="flex-1 px-3 sm:px-4 py-2 sm:py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm sm:text-base"
                         >
-                            Add {currentSide}
+                            {t('business_card_scanner.preview_screen.add_side', { side: getTranslatedSide(currentSide) })}
                         </button>
                     )}
 
@@ -138,7 +148,7 @@ export function PreviewScreen({
                         {isProcessing ? (
                             <>
                                 <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white"></div>
-                                <span>{processingStatus || 'Processing...'}</span>
+                                <span>{processingStatus || t('business_card_scanner.preview_screen.processing')}</span>
                             </>
                         ) : (
                             <>
@@ -146,9 +156,10 @@ export function PreviewScreen({
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                 </svg>
                                 <span className="hidden sm:inline">
-                                    Scan Card{scanMode === 'double' ? 's' : ''}
+                                    {t('business_card_scanner.preview_screen.scan_card')}
+                                    {scanMode === 'double' ? t('business_card_scanner.preview_screen.scan_card_plural') : ''}
                                 </span>
-                                <span className="sm:hidden">Scan</span>
+                                <span className="sm:hidden">{t('business_card_scanner.preview_screen.scan')}</span>
                             </>
                         )}
                     </button>
@@ -161,11 +172,11 @@ export function PreviewScreen({
                                 <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                             </svg>
                             <div className="text-sm text-yellow-800">
-                                <p className="font-medium mb-1">Pro Tip</p>
+                                <p className="font-medium mb-1">{t('business_card_scanner.preview_screen.pro_tip')}</p>
                                 <p className="text-xs">
-                                    {scanMode === 'double' 
-                                        ? 'Scanning both sides captures more complete contact information and social media links!'
-                                        : 'For best results, ensure the card is well-lit and text is clearly visible. Our AI can detect QR codes too!'
+                                    {scanMode === 'double'
+                                        ? t('business_card_scanner.preview_screen.pro_tip_double')
+                                        : t('business_card_scanner.preview_screen.pro_tip_single')
                                     }
                                 </p>
                             </div>
@@ -181,10 +192,15 @@ export function PreviewScreen({
                             </svg>
                             <div className="text-sm text-blue-800">
                                 <p className="font-medium">
-                                    Estimated cost: ${scanMode === 'double' ? (costEstimate.estimated * 2).toFixed(4) : costEstimate.estimated.toFixed(4)}
+                                    {t('business_card_scanner.preview_screen.estimated_cost', {
+                                        cost: scanMode === 'double' ? (costEstimate.estimated * 2).toFixed(4) : costEstimate.estimated.toFixed(4)
+                                    })}
                                 </p>
                                 <p className="text-xs text-blue-600">
-                                    {scanMode === 'double' ? 'Processing both sides' : 'Single card scan'}
+                                    {scanMode === 'double'
+                                        ? t('business_card_scanner.preview_screen.processing_both_sides')
+                                        : t('business_card_scanner.preview_screen.single_card_scan')
+                                    }
                                 </p>
                             </div>
                         </div>

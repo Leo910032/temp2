@@ -131,7 +131,69 @@
     "scan_failed": "Échec du scan de la carte de visite",
     "processing_failed": "Échec du traitement de la carte de visite",
     "image_read_error": "Échec de la lecture du fichier image",
-    "image_display_failed": "Échec de l'affichage de l'image"
+    "image_display_failed": "Échec de l'affichage de l'image",
+    "login_required": "Veuillez vous connecter pour utiliser le scanner de cartes de visite",
+    "upload_success_single": "Image de la carte téléchargée avec succès !",
+    "side_upload_success": "Face {{side}} téléchargée avec succès !",
+    "upload_success_double": "Les deux faces de la carte ont été téléchargées avec succès !",
+    "incorrect_image_count": "Veuillez sélectionner le nombre correct d'images pour votre mode de numérisation.",
+    "capture_prompt_next_side": "Face {{current}} capturée. Capturez maintenant la face {{next}}.",
+    "capture_success_double": "Les deux faces ont été capturées avec succès !",
+    "capture_success_single": "Carte capturée avec succès !",
+    "sides": {
+      "front": "avant",
+      "back": "arrière"
+    },
+    "header": {
+      "title": "Scanner de cartes de visite",
+      "estimate_text": "Coût estimé : {{amount}}",
+      "amount_value": "{{amount}} $",
+      "calculating": "Calcul en cours..."
+    },
+    "initial_screen": {
+      "scan_mode": "Mode de numérisation",
+      "single_side": "Un seul côté",
+      "both_sides": "Les deux côtés",
+      "single_mode_description": "Numériser un seul côté",
+      "double_mode_description": "Numériser le recto et le verso pour obtenir des informations complètes",
+      "title_single": "Scanner une carte de visite",
+      "title_double": "Scanner les deux côtés",
+      "subtitle_single": "Extraire automatiquement les informations de contact des cartes de visite à l'aide de l'IA",
+      "subtitle_double": "Capturez le recto et le verso pour obtenir des informations de contact complètes",
+      "take_photo": "Prendre une photo",
+      "use_device_camera": "Utiliser la caméra de l'appareil",
+      "upload_image": "Télécharger une image",
+      "upload_image_plural": "s",
+      "from_device_gallery": "Depuis la galerie de l'appareil"
+    },
+    "preview_screen": {
+      "front": "Avant",
+      "back": "Arrière",
+      "ready_to_scan": "Prêt à numériser",
+      "add_images_to_continue": "Ajouter des images pour continuer",
+      "business_card_alt": "Carte de visite côté {{side}}",
+      "image_display_failed": "Échec de l'affichage de l'image du côté {{side}}",
+      "side_label": "côté {{side}}",
+      "side_image_needed": "Image du côté {{side}} requise",
+      "take_photo": "Prendre une photo",
+      "upload": "Télécharger",
+      "processing_with_ai": "Traitement avec IA...",
+      "extracting_text": "Extraction du texte et des codes QR de votre carte de visite",
+      "retake_side": "Reprendre {{side}}",
+      "retake_photo": "Reprendre la photo",
+      "retake": "Reprendre",
+      "add_side": "Ajouter {{side}}",
+      "processing": "Traitement en cours...",
+      "scan_card": "Scanner la carte",
+      "scan_card_plural": "s",
+      "scan": "Scanner",
+      "pro_tip": "Conseil de pro",
+      "pro_tip_double": "La numérisation des deux côtés capture des informations de contact plus complètes et des liens vers les réseaux sociaux !",
+      "pro_tip_single": "Pour de meilleurs résultats, assurez-vous que la carte est bien éclairée et que le texte est clairement visible. Notre IA peut également détecter les codes QR !",
+      "estimated_cost": "Coût estimé : {{cost}} $",
+      "processing_both_sides": "Traitement des deux côtés",
+      "single_card_scan": "Numérisation d'une seule carte"
+    }
   },
   "contacts": {
     "welcome": "Bon retour,",
@@ -253,6 +315,7 @@
     "signup": "Inscription",
     "submit": "Envoyer",
     "cancel": "Annuler",
+    "search": "Rechercher",
     "save": "Enregistrer",
     "delete": "Supprimer",
     "edit": "Modifier",
@@ -2021,6 +2084,57 @@
       "scan_card": "Scanner Carte",
       "manage_groups": "Gérer les Groupes ({{count}})"
     },
+    "search": {
+      "title": "Rechercher des contacts",
+      "placeholder": "Recherchez des contacts par nom, e-mail, entreprise...",
+      "semantic_placeholder": "Interrogez votre réseau : 'qui connaît React ?' ou 'experts marketing'",
+      "standard_mode": "Recherche standard",
+      "ai_mode": "Recherche IA",
+      "searching": "Recherche...",
+      "enhanced_title": "Recherche IA avancée",
+      "semantic_title": "Recherche sémantique",
+      "enhanced_description": "L'IA analyse vos contacts de manière sémantique et fournit des informations intelligentes sur la raison pour laquelle chaque contact correspond à votre requête.",
+      "semantic_description": "La recherche sémantique trouve des contacts selon le sens, pas seulement les mots-clés. Passez à Business pour des informations propulsées par l'IA.",
+      "try_examples": "Essayez ces exemples :",
+      "examples": [
+        "Développeurs React",
+        "fondateurs de start-up",
+        "professionnels du marketing",
+        "basés en Californie"
+      ]
+    },
+    "map": {
+      "title": "Carte des contacts",
+      "search_placeholder": "Rechercher des contacts...",
+      "search_unknown_location": "Localisation inconnue",
+      "theme": {
+        "light": "Thème clair",
+        "dark": "Thème sombre"
+      },
+      "map_type_toggle": "Changer le type de carte",
+      "map_type_satellite": "Satellite",
+      "map_type_roadmap": "Plan",
+      "close": "Fermer la carte",
+      "loading": "Chargement de la carte...",
+      "zoom_label": "Zoom",
+      "world_view": "🌍 Vue mondiale",
+      "regional_view": "🗺️ Vue régionale",
+      "street_view": "📍 Vue rue",
+      "total_label": "Total",
+      "contacts_suffix": "contacts",
+      "with_location_label": "avec données de localisation",
+      "controls": {
+        "fit_all": "Cadrer tous les contacts",
+        "reset": "Réinitialiser la vue mondiale",
+        "zoom_in": "Zoom avant",
+        "zoom_out": "Zoom arrière"
+      },
+      "error": {
+        "title": "Erreur de carte",
+        "dismiss": "Fermer"
+      },
+      "aria_label": "Carte interactive des contacts"
+    },
     "groups": {
       "title": "Groupes de Contacts",
       "more": "+{{count}} de plus"
@@ -2032,9 +2146,12 @@
         "phone_numbers": "Numéros de Téléphone",
         "add_phone": "Ajouter un Téléphone",
         "phone_tip": "Astuce : Incluez l'indicatif du pays (ex : +33 pour la France, +1 pour US/Canada) pour la détection automatique du drapeau",
+        "premium_country_detection": "Premium : Détection de Pays",
         "add_custom_field": "Ajouter un Champ Personnalisé",
         "no_fields_in_category": "Aucun champ {{category}} trouvé.",
         "no_fields_detected": "Aucun autre champ détecté. Cliquez sur 'Ajouter un Champ Personnalisé' pour en ajouter.",
+        "field_label_placeholder": "Étiquette du Champ (ex : Profil LinkedIn)",
+        "field_value_placeholder": "Valeur du Champ",
         "standard": "Standard",
         "ai_detected": "Détecté par IA",
         "with_values": "Avec Valeurs",

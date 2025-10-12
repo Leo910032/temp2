@@ -61,7 +61,69 @@
     "scan_failed": "扫描名片失败",
     "processing_failed": "处理名片失败",
     "image_read_error": "读取图片文件失败",
-    "image_display_failed": "显示图片失败"
+    "image_display_failed": "显示图片失败",
+    "login_required": "请登录以使用名片扫描器",
+    "upload_success_single": "名片图像上传成功！",
+    "side_upload_success": "已成功上传{{side}}！",
+    "upload_success_double": "已成功上传名片的正反两面！",
+    "incorrect_image_count": "请根据扫描模式选择正确数量的图片。",
+    "capture_prompt_next_side": "已捕获{{current}}，请继续拍摄{{next}}。",
+    "capture_success_double": "已成功捕获正反两面！",
+    "capture_success_single": "名片捕获成功！",
+    "sides": {
+      "front": "正面",
+      "back": "背面"
+    },
+    "header": {
+      "title": "名片扫描器",
+      "estimate_text": "预计费用：{{amount}}",
+      "amount_value": "${{amount}}",
+      "calculating": "正在计算..."
+    },
+    "initial_screen": {
+      "scan_mode": "扫描模式",
+      "single_side": "单面",
+      "both_sides": "双面",
+      "single_mode_description": "仅扫描一面",
+      "double_mode_description": "扫描正反两面以获取完整信息",
+      "title_single": "扫描名片",
+      "title_double": "扫描双面",
+      "subtitle_single": "使用人工智能自动从名片中提取联系信息",
+      "subtitle_double": "拍摄正反两面以获取完整的联系信息",
+      "take_photo": "拍照",
+      "use_device_camera": "使用设备相机",
+      "upload_image": "上传图片",
+      "upload_image_plural": "",
+      "from_device_gallery": "从设备相册"
+    },
+    "preview_screen": {
+      "front": "正面",
+      "back": "背面",
+      "ready_to_scan": "准备扫描",
+      "add_images_to_continue": "添加图片以继续",
+      "business_card_alt": "名片{{side}}面",
+      "image_display_failed": "{{side}}面图片显示失败",
+      "side_label": "{{side}}面",
+      "side_image_needed": "需要{{side}}面图片",
+      "take_photo": "拍照",
+      "upload": "上传",
+      "processing_with_ai": "使用人工智能处理中...",
+      "extracting_text": "正在从名片中提取文字和二维码",
+      "retake_side": "重拍{{side}}面",
+      "retake_photo": "重拍照片",
+      "retake": "重拍",
+      "add_side": "添加{{side}}面",
+      "processing": "处理中...",
+      "scan_card": "扫描名片",
+      "scan_card_plural": "",
+      "scan": "扫描",
+      "pro_tip": "专业提示",
+      "pro_tip_double": "扫描正反两面可以获取更完整的联系信息和社交媒体链接！",
+      "pro_tip_single": "为获得最佳效果，请确保名片光线充足且文字清晰可见。我们的人工智能还可以检测二维码！",
+      "estimated_cost": "预计费用：${{cost}}",
+      "processing_both_sides": "处理正反两面",
+      "single_card_scan": "单张名片扫描"
+    }
   },
   "contacts": {
     "welcome": "欢迎回来，",
@@ -173,6 +235,7 @@
     "signup": "注册",
     "submit": "提交",
     "cancel": "取消",
+    "search": "搜索",
     "save": "保存",
     "delete": "删除",
     "edit": "编辑",
@@ -1330,6 +1393,57 @@
       "scan_card": "扫描名片",
       "manage_groups": "管理群组 ({{count}})"
     },
+    "search": {
+      "title": "搜索联系人",
+      "placeholder": "按姓名、邮箱或公司搜索联系人...",
+      "semantic_placeholder": "询问您的网络：'谁会 React？' 或 '营销专家'",
+      "standard_mode": "标准搜索",
+      "ai_mode": "AI 搜索",
+      "searching": "正在搜索...",
+      "enhanced_title": "增强型 AI 搜索",
+      "semantic_title": "语义搜索",
+      "enhanced_description": "AI 会以语义方式分析您的联系人，并提供每个联系人匹配您查询的智能见解。",
+      "semantic_description": "语义搜索基于含义而非关键词查找联系人。升级到 Business 以获得 AI 驱动的洞察。",
+      "try_examples": "试试这些示例：",
+      "examples": [
+        "React 开发者",
+        "初创公司创始人",
+        "市场营销专业人士",
+        "位于加利福尼亚"
+      ]
+    },
+    "map": {
+      "title": "联系人地图",
+      "search_placeholder": "搜索联系人...",
+      "search_unknown_location": "未知位置",
+      "theme": {
+        "light": "浅色主题",
+        "dark": "深色主题"
+      },
+      "map_type_toggle": "切换地图类型",
+      "map_type_satellite": "卫星",
+      "map_type_roadmap": "普通地图",
+      "close": "关闭地图",
+      "loading": "正在加载地图...",
+      "zoom_label": "缩放",
+      "world_view": "🌍 世界视图",
+      "regional_view": "🗺️ 区域视图",
+      "street_view": "📍 街景",
+      "total_label": "总计",
+      "contacts_suffix": "联系人",
+      "with_location_label": "具有位置数据",
+      "controls": {
+        "fit_all": "适配所有联系人",
+        "reset": "重置为世界视图",
+        "zoom_in": "放大",
+        "zoom_out": "缩小"
+      },
+      "error": {
+        "title": "地图错误",
+        "dismiss": "关闭"
+      },
+      "aria_label": "交互式联系人地图"
+    },
     "groups": {
       "title": "联系人群组",
       "more": "+{{count}} 更多"
@@ -1341,9 +1455,12 @@
         "phone_numbers": "电话号码",
         "add_phone": "添加电话",
         "phone_tip": "提示：包含国家代码（例如，法国为 +33，美国/加拿大为 +1）以自动检测国旗",
+        "premium_country_detection": "高级版：国家检测",
         "add_custom_field": "添加自定义字段",
         "no_fields_in_category": "未找到 {{category}} 字段。",
         "no_fields_detected": "未检测到其他字段。单击'添加自定义字段'以添加更多。",
+        "field_label_placeholder": "字段标签（例如：领英个人资料）",
+        "field_value_placeholder": "字段值",
         "standard": "标准",
         "ai_detected": "AI 检测",
         "with_values": "有值",

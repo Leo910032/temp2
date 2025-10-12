@@ -3,7 +3,7 @@
 
 import { useTranslation } from '@/lib/translation/useTranslation';
 import { toast } from 'react-hot-toast';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from "@/contexts/AuthContext";
 import { useCameraCapture } from './cardScanner/useCameraCapture';
 import { useImageProcessor } from './cardScanner/useImageProcessor';
@@ -60,6 +60,30 @@ export default function BusinessCardScanner({ isOpen, onClose, onContactParsed }
         onContactParsed
     });
 
+    const formatMessage = useCallback((template, replacements = {}) => {
+        return Object.entries(replacements).reduce(
+            (acc, [key, value]) => acc.split(`{{${key}}}`).join(value ?? ''),
+            template
+        );
+    }, []);
+
+    const translateWithFallback = useCallback(
+        (key, fallback, replacements = {}) => {
+            const template = t(key);
+            const resolved = template && template !== key ? template : fallback;
+            return formatMessage(resolved, replacements);
+        },
+        [t, formatMessage]
+    );
+
+    const sideLabels = useMemo(
+        () => ({
+            front: translateWithFallback('business_card_scanner.sides.front', 'Front'),
+            back: translateWithFallback('business_card_scanner.sides.back', 'Back')
+        }),
+        [translateWithFallback]
+    );
+
     // Define resetCardData with useCallback
     const resetCardData = useCallback(() => {
         setCardData(prev => {
@@ -78,10 +102,15 @@ export default function BusinessCardScanner({ isOpen, onClose, onContactParsed }
     // Authentication check
     useEffect(() => {
         if (isOpen && !currentUser) {
-            toast.error('Please log in to use the business card scanner');
+            toast.error(
+                translateWithFallback(
+                    'business_card_scanner.login_required',
+                    'Please log in to use the business card scanner'
+                )
+            );
             onClose();
         }
-    }, [isOpen, currentUser, onClose]);
+    }, [isOpen, currentUser, onClose, translateWithFallback]);
 
     // Media stream management
     useEffect(() => {
@@ -137,11 +166,18 @@ export default function BusinessCardScanner({ isOpen, onClose, onContactParsed }
 
         for (const file of files) {
             if (!file.type.startsWith('image/')) {
-                toast.error(t('business_card_scanner.invalid_file_type') || 'Invalid file type');
+                toast.error(
+                    translateWithFallback(
+                        'business_card_scanner.invalid_file_type',
+                        'Invalid file type'
+                    )
+                );
                 return;
             }
             if (file.size > 10 * 1024 * 1024) {
-                toast.error(t('business_card_scanner.file_too_large') || 'File too large');
+                toast.error(
+                    translateWithFallback('business_card_scanner.file_too_large', 'File too large')
+                );
                 return;
             }
         }
@@ -161,9 +197,22 @@ export default function BusinessCardScanner({ isOpen, onClose, onContactParsed }
                     };
                 });
                 
-                toast.success(scanMode === 'single' 
-                    ? 'Card image uploaded successfully!' 
-                    : `${currentSide} side uploaded successfully!`);
+                toast.success(
+                    scanMode === 'single'
+                        ? translateWithFallback(
+                              'business_card_scanner.upload_success_single',
+                              'Card image uploaded successfully!'
+                          )
+                        : translateWithFallback(
+                              'business_card_scanner.side_upload_success',
+                              '{{side}} side uploaded successfully!',
+                              {
+                                  side:
+                                      sideLabels[currentSide] ||
+                                      currentSide.charAt(0).toUpperCase() + currentSide.slice(1)
+                              }
+                          )
+                );
             } else if (files.length === 2 && scanMode === 'double') {
                 const [frontFile, backFile] = files;
                 const frontUrl = URL.createObjectURL(frontFile);
@@ -181,13 +230,28 @@ export default function BusinessCardScanner({ isOpen, onClose, onContactParsed }
                     };
                 });
                 
-                toast.success('Both card sides uploaded successfully!');
+                toast.success(
+                    translateWithFallback(
+                        'business_card_scanner.upload_success_double',
+                        'Both card sides uploaded successfully!'
+                    )
+                );
             } else {
-                toast.error('Please select the correct number of images for your scan mode.');
+                toast.error(
+                    translateWithFallback(
+                        'business_card_scanner.incorrect_image_count',
+                        'Please select the correct number of images for your scan mode.'
+                    )
+                );
             }
         } catch (error) {
             console.error('Error processing files:', error);
-            toast.error(t('business_card_scanner.image_load_failed') || 'Image load failed');
+            toast.error(
+                translateWithFallback(
+                    'business_card_scanner.image_load_failed',
+                    'Image load failed'
+                )
+            );
         }
         
         event.target.value = '';

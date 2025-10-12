@@ -5,6 +5,7 @@ import { Loader } from '@googlemaps/js-api-loader';
 import GroupClusterManager from './ContactsMap/GroupClusterManager';
 import ContactProfileModal from './ContactsMap/ContactProfileModal';
 import { MapLegend } from './ContactsMap/MapLegend';
+import { useTranslation } from '@/lib/translation/useTranslation';
 
 // Modern minimalist map styles - Light theme
 const lightMapStyles = [
@@ -83,6 +84,40 @@ export default function ContacctsMap({
     const [selectedContact, setSelectedContact] = useState(null);
     const [showContactProfile, setShowContactProfile] = useState(false);
     const [selectedGroupIds, setSelectedGroupIds] = useState([]);
+
+    const { t } = useTranslation();
+
+    const translate = useCallback((key, fallback) => {
+        const value = t(key);
+        return value && value !== key ? value : fallback;
+    }, [t]);
+
+    const mapTexts = useMemo(() => ({
+        title: translate('contacts.map.title', 'Contacts Map'),
+        searchPlaceholder: translate('contacts.map.search_placeholder', 'Search contacts...'),
+        searchUnknownLocation: translate('contacts.map.search_unknown_location', 'Unknown location'),
+        themeLight: translate('contacts.map.theme.light', 'Light theme'),
+        themeDark: translate('contacts.map.theme.dark', 'Dark theme'),
+        mapTypeToggle: translate('contacts.map.map_type_toggle', 'Toggle map type'),
+        mapTypeSatellite: translate('contacts.map.map_type_satellite', 'Satellite'),
+        mapTypeRoadmap: translate('contacts.map.map_type_roadmap', 'Roadmap'),
+        close: translate('contacts.map.close', 'Close map'),
+        loading: translate('contacts.map.loading', 'Loading map...'),
+        zoomLabel: translate('contacts.map.zoom_label', 'Zoom'),
+        worldView: translate('contacts.map.world_view', '🌍 World view'),
+        regionalView: translate('contacts.map.regional_view', '🗺️ Regional view'),
+        streetView: translate('contacts.map.street_view', '📍 Street view'),
+        totalLabel: translate('contacts.map.total_label', 'Total'),
+        contactsSuffix: translate('contacts.map.contacts_suffix', 'contacts'),
+        withLocationLabel: translate('contacts.map.with_location_label', 'with location data'),
+        fitAll: translate('contacts.map.controls.fit_all', 'Fit to all contacts'),
+        resetWorld: translate('contacts.map.controls.reset', 'Reset to world view'),
+        zoomIn: translate('contacts.map.controls.zoom_in', 'Zoom in'),
+        zoomOut: translate('contacts.map.controls.zoom_out', 'Zoom out'),
+        errorTitle: translate('contacts.map.error.title', 'Map Error'),
+        dismiss: translate('contacts.map.error.dismiss', 'Dismiss'),
+        ariaLabel: translate('contacts.map.aria_label', 'Interactive contacts map')
+    }), [translate]);
 
     // Responsive detection
     useEffect(() => {
@@ -475,7 +510,7 @@ export default function ContacctsMap({
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                     </svg>
                                     <h2 className="text-sm font-semibold text-gray-900">
-                                        Contacts Map
+                                        {mapTexts.title}
                                     </h2>
                                 </div>
                             </div>
@@ -486,7 +521,7 @@ export default function ContacctsMap({
                                     type="text"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    placeholder="Search contacts..."
+                                    placeholder={mapTexts.searchPlaceholder}
                                     className="bg-white/95 backdrop-blur-md shadow-lg rounded-xl pl-10 pr-4 py-2.5 border border-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 w-64 transition-all"
                                 />
                                 <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -514,7 +549,7 @@ export default function ContacctsMap({
                                                     <div className="text-xs text-gray-500 truncate">
                                                         {contact.location?.city && contact.location?.country
                                                             ? `${contact.location.city}, ${contact.location.country}`
-                                                            : contact.location?.country || 'Unknown location'}
+                                                            : contact.location?.country || mapTexts.searchUnknownLocation}
                                                     </div>
                                                 </div>
                                             </button>
@@ -530,7 +565,7 @@ export default function ContacctsMap({
                             <button
                                 onClick={() => setIsDarkTheme(!isDarkTheme)}
                                 className="bg-white/95 backdrop-blur-md shadow-lg rounded-xl p-2.5 border border-gray-100 hover:bg-gray-50 transition-all group"
-                                title={isDarkTheme ? 'Light theme' : 'Dark theme'}
+                                title={isDarkTheme ? mapTexts.themeLight : mapTexts.themeDark}
                             >
                                 {isDarkTheme ? (
                                     <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -547,21 +582,21 @@ export default function ContacctsMap({
                             <button
                                 onClick={() => setMapType(mapType === 'roadmap' ? 'satellite' : 'roadmap')}
                                 className="bg-white/95 backdrop-blur-md shadow-lg rounded-xl px-3 py-2.5 border border-gray-100 hover:bg-gray-50 transition-all text-xs font-medium text-gray-700 hidden md:block"
-                                title="Toggle map type"
+                                title={mapTexts.mapTypeToggle}
                             >
                                 {mapType === 'roadmap' ? (
                                     <div className="flex items-center gap-1.5">
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
-                                        Satellite
+                                        {mapTexts.mapTypeSatellite}
                                     </div>
                                 ) : (
                                     <div className="flex items-center gap-1.5">
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                                         </svg>
-                                        Roadmap
+                                        {mapTexts.mapTypeRoadmap}
                                     </div>
                                 )}
                             </button>
@@ -570,8 +605,8 @@ export default function ContacctsMap({
                             <button
                                 onClick={onClose}
                                 className="bg-red-500 hover:bg-red-600 backdrop-blur-md shadow-lg rounded-xl p-2.5 border border-red-600 transition-all group"
-                                aria-label="Close map"
-                                title="Close map"
+                                aria-label={mapTexts.close}
+                                title={mapTexts.close}
                             >
                                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -595,7 +630,7 @@ export default function ContacctsMap({
                                 </div>
                                 <div className="bg-white/80 backdrop-blur-sm px-6 py-3 rounded-full shadow-lg">
                                     <span className="text-gray-700 text-sm font-medium">
-                                        Loading map...
+                                        {mapTexts.loading}
                                     </span>
                                 </div>
                             </div>
@@ -606,7 +641,7 @@ export default function ContacctsMap({
                     <div 
                         className="h-full w-full"
                         ref={mapRef}
-                        aria-label="Interactive contacts map"
+                        aria-label={mapTexts.ariaLabel}
                     />
 
                     {/* Modern Floating Controls (only show when ready) */}
@@ -621,7 +656,7 @@ export default function ContacctsMap({
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
                                         </svg>
                                         <span className="text-xs font-medium text-gray-700">
-                                            Zoom {currentZoom}
+                                            {`${mapTexts.zoomLabel} ${currentZoom}`}
                                         </span>
                                     </div>
                                 </div>
@@ -629,9 +664,9 @@ export default function ContacctsMap({
                                 {/* Quick Info */}
                                 {!isMobile && (
                                     <div className="bg-white/95 backdrop-blur-md shadow-lg rounded-xl px-3 py-2 border border-gray-100 text-xs text-gray-600">
-                                        {currentZoom < 11 && '🌍 World view'}
-                                        {currentZoom >= 11 && currentZoom < 14 && '🗺️ Regional view'}
-                                        {currentZoom >= 14 && '📍 Street view'}
+                                        {currentZoom < 11 && mapTexts.worldView}
+                                        {currentZoom >= 11 && currentZoom < 14 && mapTexts.regionalView}
+                                        {currentZoom >= 14 && mapTexts.streetView}
                                     </div>
                                 )}
 
@@ -639,10 +674,10 @@ export default function ContacctsMap({
                                 <div className="bg-white/95 backdrop-blur-md shadow-lg rounded-xl px-3 py-2 border border-gray-100">
                                     <div className="text-xs space-y-1">
                                         <div className="font-medium text-gray-700">
-                                            Total: {contacts.length} contacts
+                                            {`${mapTexts.totalLabel}: ${contacts.length} ${mapTexts.contactsSuffix}`}
                                         </div>
                                         <div className="text-gray-600">
-                                            📍 {contactsWithLocation.length} with location data
+                                            {`📍 ${contactsWithLocation.length} ${mapTexts.withLocationLabel}`}
                                         </div>
                                     </div>
                                 </div>
@@ -655,7 +690,7 @@ export default function ContacctsMap({
                                     onClick={fitToAllContacts}
                                     disabled={contactsWithLocation.length === 0}
                                     className="bg-white/95 backdrop-blur-md shadow-lg rounded-xl p-3 border border-gray-100 text-gray-700 hover:bg-gray-50 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
-                                    title="Fit to all contacts"
+                                    title={mapTexts.fitAll}
                                 >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
@@ -666,7 +701,7 @@ export default function ContacctsMap({
                                 <button
                                     onClick={resetToWorldView}
                                     className="bg-white/95 backdrop-blur-md shadow-lg rounded-xl p-3 border border-gray-100 text-gray-700 hover:bg-gray-50 hover:scale-105 active:scale-95 transition-all group"
-                                    title="Reset to world view"
+                                    title={mapTexts.resetWorld}
                                 >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -681,7 +716,7 @@ export default function ContacctsMap({
                                             if (map) map.setZoom(map.getZoom() + 1);
                                         }}
                                         className="p-3 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-100 block w-full"
-                                        title="Zoom in"
+                                        title={mapTexts.zoomIn}
                                     >
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -693,7 +728,7 @@ export default function ContacctsMap({
                                             if (map) map.setZoom(map.getZoom() - 1);
                                         }}
                                         className="p-3 text-gray-700 hover:bg-gray-50 transition-colors block w-full"
-                                        title="Zoom out"
+                                        title={mapTexts.zoomOut}
                                     >
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
@@ -713,14 +748,14 @@ export default function ContacctsMap({
                                 <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                                 </svg>
-                                <span className="font-medium">Map Error</span>
+                                <span className="font-medium">{mapTexts.errorTitle}</span>
                             </div>
                             <p className="text-red-700 text-sm mt-1">{error}</p>
                             <button
                                 onClick={() => setError(null)}
                                 className="mt-2 px-3 py-1 bg-red-100 text-red-800 rounded text-xs hover:bg-red-200 transition-colors"
                             >
-                                Dismiss
+                                {mapTexts.dismiss}
                             </button>
                         </div>
                     )}

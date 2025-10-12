@@ -2,6 +2,7 @@
 "use client";
 
 import { CONTACT_FEATURES } from '@/lib/services/constants';
+import { useTranslation } from '@/lib/translation/useTranslation';
 
 export default function SearchBar({
     searchMode,
@@ -13,6 +14,33 @@ export default function SearchBar({
     handleEnhancedSearch,
     hasFeature
 }) {
+    const { t } = useTranslation();
+
+    const translations = {
+        title: t('contacts.search.title') || 'Search Contacts',
+        standardMode: t('contacts.search.standard_mode') || 'Standard',
+        aiMode: t('contacts.search.ai_mode') || 'AI Search',
+        searchPlaceholder: t('contacts.search.placeholder') || 'Search contacts by name, email, or company...',
+        semanticPlaceholder: t('contacts.search.semantic_placeholder') || "Ask about your network: 'who knows React?' or 'marketing experts'",
+        searchButton: t('common.search') || 'Search',
+        searching: t('contacts.search.searching') || 'Searching...',
+        enhancedTitle: t('contacts.search.enhanced_title') || 'Enhanced AI Search',
+        semanticTitle: t('contacts.search.semantic_title') || 'Semantic Search',
+        enhancedDescription: t('contacts.search.enhanced_description') || 'AI analyzes your contacts semantically and provides intelligent insights about why each contact matches your query.',
+        semanticDescription: t('contacts.search.semantic_description') || 'Semantic search finds contacts based on meaning, not just keywords. Upgrade to Business for AI-powered insights.',
+        tryExamples: t('contacts.search.try_examples') || 'Try these examples:',
+        exampleSuggestions: t('contacts.search.examples')
+    };
+
+    const exampleSuggestions = Array.isArray(translations.exampleSuggestions)
+        ? translations.exampleSuggestions
+        : [
+            'React developers',
+            'startup founders',
+            'marketing professionals',
+            'based in California'
+        ];
+
     const canUseSemanticSearch = hasFeature(CONTACT_FEATURES.PREMIUM_SEMANTIC_SEARCH);
     const canUseFullAiSearch = hasFeature(CONTACT_FEATURES.BUSINESS_AI_SEARCH);
 
@@ -30,7 +58,7 @@ export default function SearchBar({
         <div className="bg-white p-4 rounded-lg shadow mb-6 space-y-4">
             {/* Search Header with Mode Toggle */}
             <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium text-gray-900">Search Contacts</h3>
+                <h3 className="text-lg font-medium text-gray-900">{translations.title}</h3>
                 
                 {canUseSemanticSearch && (
                     <div className="flex items-center gap-2">
@@ -45,7 +73,7 @@ export default function SearchBar({
                                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             }`}
                         >
-                            Standard
+                            {translations.standardMode}
                         </button>
                         <button
                             onClick={() => setSearchMode('semantic')}
@@ -56,7 +84,7 @@ export default function SearchBar({
                             }`}
                         >
                             <span>🤖</span>
-                            AI Search
+                            {translations.aiMode}
                         </button>
                     </div>
                 )}
@@ -68,8 +96,8 @@ export default function SearchBar({
                     type="text"
                     placeholder={
                         searchMode === 'semantic'
-                            ? "Ask about your network: 'who knows React?' or 'marketing experts'"
-                            : "Search contacts by name, email, or company..."
+                            ? translations.semanticPlaceholder
+                            : translations.searchPlaceholder
                     }
                     value={searchMode === 'semantic' ? aiSearchQuery : searchTerm}
                     onChange={(e) => {
@@ -105,7 +133,7 @@ export default function SearchBar({
                     disabled={isAiSearching}
                     className="absolute right-2 top-1/2 transform -translate-y-1/2 px-4 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 >
-                    {isAiSearching ? 'Searching...' : 'Search'}
+                    {isAiSearching ? translations.searching : translations.searchButton}
                 </button>
             </div>
 
@@ -116,35 +144,24 @@ export default function SearchBar({
                         <div className="flex items-center gap-2">
                             <span className="text-lg">🤖</span>
                             <h4 className="font-semibold text-purple-800">
-                                {canUseFullAiSearch ? 'Enhanced AI Search' : 'Semantic Search'}
+                                {canUseFullAiSearch ? translations.enhancedTitle : translations.semanticTitle}
                             </h4>
                         </div>
 
                         <div className="text-sm text-purple-700">
                             {canUseFullAiSearch ? (
-                                <p>
-                                    AI analyzes your contacts semantically and provides intelligent insights
-                                    about why each contact matches your query.
-                                </p>
+                                <p>{translations.enhancedDescription}</p>
                             ) : (
-                                <p>
-                                    Semantic search finds contacts based on meaning, not just keywords.
-                                    Upgrade to Business for AI-powered insights.
-                                </p>
+                                <p>{translations.semanticDescription}</p>
                             )}
                         </div>
 
                         {/* Quick Examples */}
                         {(!aiSearchQuery || aiSearchQuery.length === 0) && (
                             <div className="pt-2 border-t border-purple-200">
-                                <div className="text-xs text-purple-600 mb-2">Try these examples:</div>
+                                <div className="text-xs text-purple-600 mb-2">{translations.tryExamples}</div>
                                 <div className="flex flex-wrap gap-1">
-                                    {[
-                                        "React developers",
-                                        "startup founders",
-                                        "marketing professionals",
-                                        "based in California"
-                                    ].map((example, index) => (
+                                    {exampleSuggestions.map((example, index) => (
                                         <button
                                             key={index}
                                             onClick={() => {

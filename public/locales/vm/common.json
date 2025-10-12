@@ -94,7 +94,69 @@
     "scan_failed": "Quét danh thiếp thất bại",
     "processing_failed": "Xử lý danh thiếp thất bại",
     "image_read_error": "Không thể đọc tệp ảnh",
-    "image_display_failed": "Không thể hiển thị ảnh"
+    "image_display_failed": "Không thể hiển thị ảnh",
+    "login_required": "Vui lòng đăng nhập để sử dụng trình quét danh thiếp",
+    "upload_success_single": "Tải thành công hình ảnh danh thiếp!",
+    "side_upload_success": "Đã tải thành công mặt {{side}}!",
+    "upload_success_double": "Đã tải thành công cả hai mặt danh thiếp!",
+    "incorrect_image_count": "Vui lòng chọn đúng số lượng hình ảnh cho chế độ quét của bạn.",
+    "capture_prompt_next_side": "Đã chụp xong mặt {{current}}. Bắt đầu chụp mặt {{next}} nhé.",
+    "capture_success_double": "Đã chụp thành công cả hai mặt!",
+    "capture_success_single": "Đã chụp danh thiếp thành công!",
+    "sides": {
+      "front": "trước",
+      "back": "sau"
+    },
+    "header": {
+      "title": "Trình quét danh thiếp",
+      "estimate_text": "Chi phí ước tính: {{amount}}",
+      "amount_value": "${{amount}}",
+      "calculating": "Đang tính toán..."
+    },
+    "initial_screen": {
+      "scan_mode": "Chế độ quét",
+      "single_side": "Một mặt",
+      "both_sides": "Cả hai mặt",
+      "single_mode_description": "Chỉ quét một mặt",
+      "double_mode_description": "Quét cả mặt trước và mặt sau để có thông tin đầy đủ",
+      "title_single": "Quét danh thiếp",
+      "title_double": "Quét cả hai mặt",
+      "subtitle_single": "Tự động trích xuất thông tin liên hệ từ danh thiếp bằng AI",
+      "subtitle_double": "Chụp cả mặt trước và mặt sau để có thông tin liên hệ đầy đủ",
+      "take_photo": "Chụp ảnh",
+      "use_device_camera": "Sử dụng máy ảnh thiết bị",
+      "upload_image": "Tải ảnh lên",
+      "upload_image_plural": "",
+      "from_device_gallery": "Từ thư viện thiết bị"
+    },
+    "preview_screen": {
+      "front": "Trước",
+      "back": "Sau",
+      "ready_to_scan": "Sẵn sàng quét",
+      "add_images_to_continue": "Thêm hình ảnh để tiếp tục",
+      "business_card_alt": "Danh thiếp mặt {{side}}",
+      "image_display_failed": "Hiển thị hình ảnh mặt {{side}} thất bại",
+      "side_label": "mặt {{side}}",
+      "side_image_needed": "Cần hình ảnh mặt {{side}}",
+      "take_photo": "Chụp ảnh",
+      "upload": "Tải lên",
+      "processing_with_ai": "Đang xử lý bằng AI...",
+      "extracting_text": "Đang trích xuất văn bản và mã QR từ danh thiếp của bạn",
+      "retake_side": "Chụp lại {{side}}",
+      "retake_photo": "Chụp lại ảnh",
+      "retake": "Chụp lại",
+      "add_side": "Thêm {{side}}",
+      "processing": "Đang xử lý...",
+      "scan_card": "Quét thẻ",
+      "scan_card_plural": "",
+      "scan": "Quét",
+      "pro_tip": "Mẹo chuyên nghiệp",
+      "pro_tip_double": "Quét cả hai mặt giúp lưu trữ thông tin liên hệ đầy đủ hơn và các liên kết mạng xã hội!",
+      "pro_tip_single": "Để có kết quả tốt nhất, hãy đảm bảo thẻ được chiếu sáng tốt và văn bản rõ ràng. AI của chúng tôi cũng có thể phát hiện mã QR!",
+      "estimated_cost": "Chi phí ước tính: ${{cost}}",
+      "processing_both_sides": "Đang xử lý cả hai mặt",
+      "single_card_scan": "Quét một thẻ duy nhất"
+    }
   },
   "contacts": {
     "welcome": "Chào mừng trở lại,",
@@ -208,6 +270,7 @@
     "signup": "Đăng ký",
     "submit": "Gửi",
     "cancel": "Hủy",
+    "search": "Tìm kiếm",
     "save": "Lưu",
     "delete": "Xóa",
     "edit": "Sửa",
@@ -1783,6 +1846,57 @@
       "scan_card": "Quét Thẻ",
       "manage_groups": "Quản lý Nhóm ({{count}})"
     },
+    "search": {
+      "title": "Tìm kiếm Liên hệ",
+      "placeholder": "Tìm kiếm liên hệ theo tên, email, công ty...",
+      "semantic_placeholder": "Hỏi về mạng lưới của bạn: 'ai biết React?' hoặc 'chuyên gia marketing'",
+      "standard_mode": "Tìm kiếm tiêu chuẩn",
+      "ai_mode": "Tìm kiếm bằng AI",
+      "searching": "Đang tìm kiếm...",
+      "enhanced_title": "Tìm kiếm AI nâng cao",
+      "semantic_title": "Tìm kiếm ngữ nghĩa",
+      "enhanced_description": "AI phân tích danh bạ của bạn theo ngữ nghĩa và cung cấp thông tin thông minh về lý do mỗi liên hệ khớp với truy vấn.",
+      "semantic_description": "Tìm kiếm ngữ nghĩa tìm liên hệ dựa trên ý nghĩa, không chỉ từ khóa. Nâng cấp lên Business để có thông tin do AI cung cấp.",
+      "try_examples": "Hãy thử các ví dụ sau:",
+      "examples": [
+        "Lập trình viên React",
+        "nhà sáng lập startup",
+        "chuyên gia marketing",
+        "ở California"
+      ]
+    },
+    "map": {
+      "title": "Bản đồ Danh bạ",
+      "search_placeholder": "Tìm kiếm liên hệ...",
+      "search_unknown_location": "Vị trí chưa xác định",
+      "theme": {
+        "light": "Chủ đề sáng",
+        "dark": "Chủ đề tối"
+      },
+      "map_type_toggle": "Chuyển đổi loại bản đồ",
+      "map_type_satellite": "Vệ tinh",
+      "map_type_roadmap": "Đường đi",
+      "close": "Đóng bản đồ",
+      "loading": "Đang tải bản đồ...",
+      "zoom_label": "Thu phóng",
+      "world_view": "🌍 Chế độ toàn cầu",
+      "regional_view": "🗺️ Chế độ khu vực",
+      "street_view": "📍 Chế độ đường phố",
+      "total_label": "Tổng",
+      "contacts_suffix": "liên hệ",
+      "with_location_label": "có dữ liệu vị trí",
+      "controls": {
+        "fit_all": "Hiển thị mọi liên hệ",
+        "reset": "Đặt lại về chế độ toàn cầu",
+        "zoom_in": "Phóng to",
+        "zoom_out": "Thu nhỏ"
+      },
+      "error": {
+        "title": "Lỗi bản đồ",
+        "dismiss": "Đóng"
+      },
+      "aria_label": "Bản đồ danh bạ tương tác"
+    },
     "groups": {
       "title": "Nhóm Liên hệ",
       "more": "+{{count}} thêm"
@@ -1794,9 +1908,12 @@
         "phone_numbers": "Số Điện thoại",
         "add_phone": "Thêm Điện thoại",
         "phone_tip": "Mẹo: Bao gồm mã quốc gia (ví dụ: +33 cho Pháp, +1 cho Mỹ/Canada) để tự động phát hiện cờ",
+        "premium_country_detection": "Premium: Phát hiện Quốc gia",
         "add_custom_field": "Thêm Trường Tùy chỉnh",
         "no_fields_in_category": "Không tìm thấy trường {{category}}.",
         "no_fields_detected": "Không phát hiện trường nào khác. Nhấp 'Thêm Trường Tùy chỉnh' để thêm.",
+        "field_label_placeholder": "Nhãn Trường (ví dụ: Hồ sơ LinkedIn)",
+        "field_value_placeholder": "Giá trị Trường",
         "standard": "Tiêu chuẩn",
         "ai_detected": "Phát hiện bởi AI",
         "with_values": "Có Giá trị",

@@ -9,7 +9,7 @@ import { CONTACT_FEATURES } from '@/lib/services/constants';
 // Import tab components
 import OverviewTab from './GroupModalComponents/OverviewTab.jsx';
 import GroupsTab from './GroupModalComponents/GroupsTab';
-// import CreateGroupTab from './GroupModalComponents/CreateGroupTab';
+import CreateGroupTab from './GroupModalComponents/CreateGroupTab';
 // import AIGenerateTab from './GroupModalComponents/AIGenerateTab';
 // import RulesGenerateTab from './GroupModalComponents/RulesGenerateTab';
 // import AIGroupsTab from './GroupModalComponents/AIGroupsTab';
@@ -61,12 +61,33 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
 
     const [activeTab, setActiveTab] = useState('overview');
 
+    // Form state for Create Group tab
+    const [formState, setFormState] = useState({
+        newGroupName: '',
+        newGroupType: 'custom',
+        newGroupDescription: '',
+        selectedContacts: [],
+        useTimeFrame: false,
+        startDate: '',
+        endDate: '',
+        timeFramePreset: '',
+        eventLocation: null,
+        showCreateModal: false
+    });
+
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
     useImperativeHandle(ref, () => ({
         setActiveTab: (tabId) => {
             console.log(`[Modal] Parent component set active tab to: ${tabId}`);
             setActiveTab(tabId);
         }
     }));
+
+    // Update form state helper
+    const updateFormState = (updates) => {
+        setFormState(prev => ({ ...prev, ...updates }));
+    };
 
     // Handler functions for group actions
     const handleDeleteGroup = async (groupId) => {
@@ -85,6 +106,51 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
     const handleEditGroup = (group) => {
         // TODO: Implement edit group functionality
         console.log('Edit group:', group);
+    };
+
+    const handleCreateGroup = async (e) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+
+        try {
+            // TODO: Implement create group API call
+            console.log('Creating group with data:', {
+                name: formState.newGroupName,
+                type: formState.newGroupType,
+                description: formState.newGroupDescription,
+                contactIds: formState.selectedContacts,
+                useTimeFrame: formState.useTimeFrame,
+                startDate: formState.startDate,
+                endDate: formState.endDate,
+                eventLocation: formState.eventLocation
+            });
+
+            // Reset form after successful creation
+            setFormState({
+                newGroupName: '',
+                newGroupType: 'custom',
+                newGroupDescription: '',
+                selectedContacts: [],
+                useTimeFrame: false,
+                startDate: '',
+                endDate: '',
+                timeFramePreset: '',
+                eventLocation: null,
+                showCreateModal: false
+            });
+
+            // Refresh data
+            if (onRefreshData) {
+                await onRefreshData();
+            }
+
+            // Switch to groups tab to see the new group
+            setActiveTab('groups');
+        } catch (error) {
+            console.error('Error creating group:', error);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     // Feature flags based on permissions
@@ -107,6 +173,19 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
     useEffect(() => {
         if (!isOpen) {
             setActiveTab('overview');
+            // Reset form state
+            setFormState({
+                newGroupName: '',
+                newGroupType: 'custom',
+                newGroupDescription: '',
+                selectedContacts: [],
+                useTimeFrame: false,
+                startDate: '',
+                endDate: '',
+                timeFramePreset: '',
+                eventLocation: null,
+                showCreateModal: false
+            });
         }
     }, [isOpen]);
 
@@ -153,14 +232,14 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
                         setActiveTab={setActiveTab}
                     />
 
-                    {/* {hasBasicGroups && (
+                    {hasBasicGroups && (
                         <TabButton
                             id="create"
                             label="Create Group"
                             activeTab={activeTab}
                             setActiveTab={setActiveTab}
                         />
-                    )} */}
+                    )}
 
                     {/* {hasRulesBasedGroups && (
                         <TabButton
@@ -212,6 +291,16 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
                             onDeleteGroup={handleDeleteGroup}
                             onEditGroup={handleEditGroup}
                             onTabChange={setActiveTab}
+                        />
+                    )}
+
+                    {activeTab === 'create' && (
+                        <CreateGroupTab
+                            contacts={contacts}
+                            formState={formState}
+                            updateFormState={updateFormState}
+                            onCreateGroup={handleCreateGroup}
+                            isSubmitting={isSubmitting}
                         />
                     )}
 

@@ -7,10 +7,12 @@ export async function POST(request) {
     // Authentication and session creation using the new architecture
     const session = await createApiSession(request);
 
-    // Parse request body
+    // Parse request body (includes: place_id, sessiontoken, sessionId, fields)
     const body = await request.json();
 
     // Call the server-side PlacesService
+    // The body automatically includes sessionId which will be used for cost tracking
+    // This endpoint will also finalize the session after getting place details
     const result = await PlacesService.getPlaceDetails(session.userId, body);
 
     return NextResponse.json(result);

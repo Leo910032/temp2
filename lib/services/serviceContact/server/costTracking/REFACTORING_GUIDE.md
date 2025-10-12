@@ -29,6 +29,27 @@ lib/services/
     └── placesService.js (uses constants & sessions)
 ```
 
+## ⚠️ CRITICAL: Session vs Standalone Operations
+
+The system now implements a clear separation:
+
+### **Operations WITH `sessionId`**
+- Recorded **ONLY** in `SessionUsage/{userId}/sessions/{sessionId}`
+- **NOT duplicated** in `ApiUsage` or `AIUsage` collections
+- Example: Google Maps search (autocomplete + details = 2 steps in 1 session)
+- Purpose: Track multi-step workflows as a single logical operation
+
+### **Operations WITHOUT `sessionId`**
+- Recorded in `AIUsage` or `ApiUsage` collections
+- Example: Standalone AI analysis, one-off API calls
+- Purpose: Track individual, independent operations
+
+### Why This Matters
+- **No Duplication**: Each operation is stored in exactly ONE place
+- **Clear Intent**: Session = workflow, Standalone = individual call
+- **Better Analytics**: See complete workflows vs individual operations
+- **Cost Accuracy**: Session totals reflect true feature costs
+
 ## Key Changes
 
 ### 1. API Cost Constants (`lib/services/constants/apiCosts.js`)

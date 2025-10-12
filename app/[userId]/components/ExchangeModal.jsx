@@ -8,6 +8,10 @@ import { toast } from 'react-hot-toast';
 // Import the enhanced service (instead of the old mixed approach)
 import { EnhancedExchangeService } from '@/lib/services/serviceContact/client/services/EnhancedExchangeService';
 
+// Import the working BusinessCardScanner component from contacts
+import BusinessCardScanner from '@/app/dashboard/(dashboard pages)/contacts/components/BusinessCardScanner';
+import ContactReviewModal from '@/app/dashboard/(dashboard pages)/contacts/components/ContactReviewModal';
+
 export default function ExchangeModal({ 
     isOpen, 
     onClose, 
@@ -50,35 +54,14 @@ export default function ExchangeModal({
     const [dynamicFields, setDynamicFields] = useState([]);
     const [scanMetadata, setScanMetadata] = useState(null);
     const [personalizedMessage, setPersonalizedMessage] = useState(null);
-    
-    // Scanner UI states
-    const [showScanner, setShowScanner] = useState(false);
-    const [isScanning, setIsScanning] = useState(false);
-    const [scanResult, setScanResult] = useState(null);
-    const [showCamera, setShowCamera] = useState(false);
-    const [mediaStream, setMediaStream] = useState(null);
-    
-    // Enhanced scanning modes
-    const [scanMode, setScanMode] = useState('single'); // 'single' or 'double'
-    const [currentSide, setCurrentSide] = useState('front');
-    const [cardData, setCardData] = useState({
-        front: { image: null, previewUrl: null },
-        back: { image: null, previewUrl: null }
-    });
-    
-    // Refs for camera and file handling
-    const videoRef = useRef(null);
-    const canvasRef = useRef(null);
-    const fileInputRef = useRef(null);
 
-    // Cleanup media stream on unmount
-    useEffect(() => {
-        return () => {
-            if (mediaStream) {
-                mediaStream.getTracks().forEach(track => track.stop());
-            }
-        };
-    }, [mediaStream]);
+    // Scanner UI state - simplified to just toggle the BusinessCardScanner modal
+    const [showScanner, setShowScanner] = useState(false);
+    const [scanResult, setScanResult] = useState(null);
+
+    // Review modal state
+    const [showReviewModal, setShowReviewModal] = useState(false);
+    const [reviewData, setReviewData] = useState(null);
 
     const requestLocation = useCallback(async () => {
         try {
@@ -143,262 +126,61 @@ export default function ExchangeModal({
     }
 }, [preVerified, scanToken, scanAvailable, t, requestLocation]);
 
-    // ==================== ENHANCED BUSINESS CARD SCANNING ====================
+    // ==================== BUSINESS CARD SCANNING CALLBACK ====================
 
-    const startCamera = async () => {
-        try {
-            const constraints = exchangeService.current.getScanningCapabilities().camera || {
-                video: {
-                    facingMode: 'environment',
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 }
-                }
-            };
+    /**
+     * Callback when BusinessCardScanner completes and returns parsed data
+     *
+     * Note: Cost tracking is automatically handled by the BusinessCardService
+     * via CostTrackingService.recordSeparatedUsage() on the server side.
+     * The scan cost is charged to the current user's account.
+     */
+    const handleContactParsed = useCallback((parsedData) => {
+        console.log('Card scan complete, received data:', parsedData);
 
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            setMediaStream(stream);
-            setShowCamera(true);
+        // Store the parsed data for review
+        setReviewData(parsedData);
+        setScanMetadata(parsedData.metadata);
+        setScanResult(parsedData);
 
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-            }
+        // Close the scanner and open the review modal
+        setShowScanner(false);
+        setShowReviewModal(true);
+    }, []);
 
-        } catch (error) {
-            console.error('Camera access error:', error);
-            toast.error('Camera access denied or not available');
-        }
-    };
+    /**
+     * Handle save from ContactReviewModal - populate the form with reviewed data
+     */
+    const handleReviewSave = useCallback(async (reviewedData) => {
+        console.log('Review complete, populating form with:', reviewedData);
 
-    const stopCamera = () => {
-        if (mediaStream) {
-            mediaStream.getTracks().forEach(track => track.stop());
-            setMediaStream(null);
-        }
-        setShowCamera(false);
-    };
+        // Combine standard and dynamic fields
+        const allFields = [
+            ...(reviewedData.standardFields || []),
+            ...(reviewedData.dynamicFields || [])
+        ];
 
-    const capturePhoto = () => {
-        const canvas = canvasRef.current;
-        const video = videoRef.current;
-        
-        if (!canvas || !video || !video.videoWidth) return;
-        
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0);
+        // Process the reviewed fields
+        const processedFields = processEnhancedScanResults(allFields, []);
 
-        canvas.toBlob((blob) => {
-            const file = new File([blob], `business-card-${currentSide}.jpg`, { type: 'image/jpeg' });
-            
-            setCardData(prev => ({
+        // Populate form with reviewed data
+        populateFormFromEnhancedScan(processedFields.standardFields, processedFields.dynamicFields);
+
+        // Handle phone numbers separately
+        if (reviewedData.phoneNumbers && reviewedData.phoneNumbers.length > 0) {
+            // Use the first phone number for the main phone field
+            setFormData(prev => ({
                 ...prev,
-                [currentSide]: { image: file, previewUrl: URL.createObjectURL(blob) }
+                phone: reviewedData.phoneNumbers[0]
             }));
-            
-            if (scanMode === 'double' && currentSide === 'front') {
-                toast.success('Front captured! Now capture the back.');
-                setCurrentSide('back');
-            } else {
-                stopCamera();
-                toast.success(`${currentSide} side captured! Click "Scan Card" to process.`);
-            }
-        }, 'image/jpeg', 0.9);
-    };
-
-    const handleFileSelect = async (event) => {
-        const files = Array.from(event.target.files);
-        if (files.length === 0) return;
-
-        console.log(`Selected ${files.length} file(s)`);
-
-        // Validate files
-        for (const file of files) {
-            if (!file.type.startsWith('image/')) {
-                toast.error('Invalid file type. Please select image files only.');
-                return;
-            }
-            
-            if (file.size > 10 * 1024 * 1024) {
-                toast.error('File too large. Maximum size is 10MB.');
-                return;
-            }
         }
 
-        try {
-            if (files.length === 1) {
-                const file = files[0];
-                const url = URL.createObjectURL(file);
-                
-                setCardData(prev => {
-                    if (prev[currentSide].previewUrl?.startsWith('blob:')) {
-                        URL.revokeObjectURL(prev[currentSide].previewUrl);
-                    }
-                    
-                    return {
-                        ...prev,
-                        [currentSide]: {
-                            image: file,
-                            previewUrl: url
-                        }
-                    };
-                });
-                
-            } else if (files.length === 2 && scanMode === 'double') {
-                const frontFile = files[0];
-                const backFile = files[1];
-                const frontUrl = URL.createObjectURL(frontFile);
-                const backUrl = URL.createObjectURL(backFile);
-                
-                setCardData(prev => {
-                    Object.values(prev).forEach(side => {
-                        if (side.previewUrl?.startsWith('blob:')) {
-                            URL.revokeObjectURL(side.previewUrl);
-                        }
-                    });
-                    
-                    return {
-                        front: { image: frontFile, previewUrl: frontUrl },
-                        back: { image: backFile, previewUrl: backUrl }
-                    };
-                });
-                
-                toast.success('Both card sides uploaded successfully! Click "Process Cards" to scan.');
-            } else {
-                toast.error('Please select the correct number of images for your scan mode.');
-            }
-            
-        } catch (error) {
-            console.error('Error processing files:', error);
-            toast.error('Image load failed');
-        }
-        
-        event.target.value = '';
-    };
+        const totalFieldCount = allFields.length;
+        toast.success(`Form populated with ${totalFieldCount} fields from scan!`, { duration: 3000 });
 
-    const processScannedImages = async () => {
-        if (!scanAvailable) {
-            toast.error('Business card scanning is not available for this profile');
-            return;
-        }
-
-        // Check if we have a cached token
-        const cachedToken = exchangeService.current.getCachedScanToken();
-        if (!cachedToken && !scanToken) {
-            toast.error('Scan session expired. Please refresh the page.');
-            return;
-        }
-
-        setIsScanning(true);
-        setScanResult(null);
-        setPersonalizedMessage(null);
-        setDynamicFields([]);
-        setScanMetadata(null);
-
-        try {
-            console.log('Processing business card scan...');
-            console.log('Scan mode:', scanMode);
-
-            let result;
-
-            if (scanMode === 'single') {
-                // Single-sided scan
-                console.log('Scanning front side only...');
-                result = await exchangeService.current.scanBusinessCard(cardData.front.image, {
-                    profileIdentifier: profileOwnerUsername || profileOwnerId,
-                    identifierType: profileOwnerUsername ? 'username' : 'userId',
-                    language: locale || 'en',
-                    side: 'front'
-                });
-            } else {
-                // Double-sided scan - scan both sides separately
-                console.log('Scanning both sides...');
-
-                const frontResult = await exchangeService.current.scanBusinessCard(cardData.front.image, {
-                    profileIdentifier: profileOwnerUsername || profileOwnerId,
-                    identifierType: profileOwnerUsername ? 'username' : 'userId',
-                    language: locale || 'en',
-                    side: 'front'
-                });
-
-                const backResult = await exchangeService.current.scanBusinessCard(cardData.back.image, {
-                    profileIdentifier: profileOwnerUsername || profileOwnerId,
-                    identifierType: profileOwnerUsername ? 'username' : 'userId',
-                    language: locale || 'en',
-                    side: 'back'
-                });
-
-                // Merge results from both sides
-                result = {
-                    success: frontResult.success || backResult.success,
-                    parsedFields: [
-                        ...(frontResult.parsedFields || []),
-                        ...(backResult.parsedFields || [])
-                    ],
-                    personalizedMessage: frontResult.personalizedMessage || backResult.personalizedMessage,
-                    metadata: {
-                        ...frontResult.metadata,
-                        ...backResult.metadata,
-                        sidesProcessed: ['front', 'back'],
-                        bothSides: true
-                    }
-                };
-
-                console.log('Both sides scanned. Merged results:', {
-                    totalFields: result.parsedFields.length,
-                    frontFields: frontResult.parsedFields?.length || 0,
-                    backFields: backResult.parsedFields?.length || 0
-                });
-            }
-
-            if (result.success) {
-                console.log('Business card scan completed successfully');
-                setScanResult(result);
-                setScanMetadata(result.metadata);
-
-                // Process the scan results using the enhanced data structure
-                const processedFields = processEnhancedScanResults(result.parsedFields, result.dynamicFields);
-                populateFormFromEnhancedScan(processedFields.standardFields, processedFields.dynamicFields);
-
-                if (result.personalizedMessage) {
-                    setPersonalizedMessage(result.personalizedMessage);
-                }
-
-                const totalFieldCount = (result.parsedFields?.length || 0) + (result.dynamicFields?.length || 0);
-                toast.success(`Scan complete! Found ${totalFieldCount} fields.`, { duration: 4000 });
-
-                setShowScanner(false);
-            } else {
-                throw new Error(result.error || 'No data extracted from card');
-            }
-
-        } catch (error) {
-            console.error('Business card scan error:', error);
-            
-            let errorMessage = 'Failed to scan business card';
-            if (error.message.includes('BUDGET_EXCEEDED')) {
-                errorMessage = 'Profile owner has reached their AI usage limit';
-            } else if (error.message.includes('RATE_LIMIT')) {
-                errorMessage = 'Too many scan attempts. Please try again later.';
-            } else if (error.message.includes('Invalid or expired')) {
-                errorMessage = 'This scan session has expired. Please refresh the page.';
-            }
-            
-            toast.error(errorMessage);
-        } finally {
-            setIsScanning(false);
-        }
-    };
-
-    // Helper functions for the scanning UI
-    const getCurrentImage = () => cardData[currentSide];
-    const hasAnyImages = () => cardData.front.image || cardData.back.image;
-    const canProcess = () => {
-        if (scanMode === 'single') return cardData.front.image;
-        return cardData.front.image && cardData.back.image;
-    };
-    const switchSide = (side) => setCurrentSide(side);
+        // Close the review modal
+        setShowReviewModal(false);
+    }, []);
 
     /**
      * Process enhanced scan results that include both standard and dynamic fields
@@ -685,41 +467,15 @@ export default function ExchangeModal({
         setPersonalizedMessage(null);
         setScanMetadata(null);
         setShowScanner(false);
-
-        // Reset card scanning states
-        setScanMode('single');
-        setCurrentSide('front');
-        resetCardData();
     };
 
-    const resetCardData = useCallback(() => {
-        Object.values(cardData).forEach(side => {
-            if (side.previewUrl && side.previewUrl.startsWith('blob:')) {
-                URL.revokeObjectURL(side.previewUrl);
-            }
-        });
-
-        setCardData({
-            front: { image: null, previewUrl: null },
-            back: { image: null, previewUrl: null }
-        });
-    }, [cardData]);
-
-   const resetModalState = useCallback(() => {
-    setShowScanner(false);
-    setIsScanning(false);
-    setScanResult(null);
-    setDynamicFields([]);
-    setScanMetadata(null);
-    setPersonalizedMessage(null);
-    setShowCamera(false);
-    resetCardData();
-
-    if (mediaStream) {
-        mediaStream.getTracks().forEach(track => track.stop());
-        setMediaStream(null);
-    }
-}, [mediaStream, resetCardData]);
+    const resetModalState = useCallback(() => {
+        setShowScanner(false);
+        setScanResult(null);
+        setDynamicFields([]);
+        setScanMetadata(null);
+        setPersonalizedMessage(null);
+    }, []);
 
   // After
 useEffect(() => {
@@ -732,331 +488,8 @@ useEffect(() => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [isOpen, profileOwnerUsername, profileOwnerId, preVerified, scanAvailable]);
+
     if (!isOpen) return null;
-
-    // Scanner UI
-    if (showScanner) {
-        return (
-            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm">
-                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden">
-                    {/* Header */}
-                    <div className="flex items-center justify-between p-4 border-b">
-                        <h3 className="text-lg font-semibold">📇 Enhanced Card Scanner</h3>
-                        <button
-                            onClick={() => setShowScanner(false)}
-                            className="p-2 hover:bg-gray-100 rounded-full"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-
-                    <div className="p-6 space-y-4 max-h-[calc(90vh-80px)] overflow-y-auto">
-                        {/* Initial choice screen */}
-                        {!showCamera && !hasAnyImages() && (
-                            <>
-                                {/* Scan mode selection */}
-                                <div className="mb-6">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Scan Mode
-                                    </label>
-                                    <div className="flex rounded-lg border border-gray-300 overflow-hidden">
-                                        <button
-                                            onClick={() => setScanMode('single')}
-                                            className={`flex-1 px-3 py-2 text-sm font-medium ${
-                                                scanMode === 'single'
-                                                    ? 'bg-blue-600 text-white'
-                                                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                                            }`}
-                                        >
-                                            Single Side
-                                        </button>
-                                        <button
-                                            onClick={() => setScanMode('double')}
-                                            className={`flex-1 px-3 py-2 text-sm font-medium ${
-                                                scanMode === 'double'
-                                                    ? 'bg-blue-600 text-white'
-                                                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                                            }`}
-                                        >
-                                            Both Sides
-                                        </button>
-                                    </div>
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        {scanMode === 'double' ? 'Enhanced extraction from front and back' : 'Quick scan of one side'}
-                                    </p>
-                                </div>
-
-                                <div className="text-center mb-6">
-                                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                        </svg>
-                                    </div>
-                                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                                        Enhanced Business Card Scanner
-                                    </h3>
-                                    <p className="text-gray-600 text-sm">
-                                        AI-powered extraction with dynamic field detection and personalized messaging
-                                    </p>
-                                </div>
-
-                                <div className="space-y-3">
-                                    <button
-                                        onClick={startCamera}
-                                        className="w-full flex items-center justify-center gap-3 p-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
-                                    >
-                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                        </svg>
-                                        Take Photo
-                                    </button>
-
-                                    <button
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="w-full flex items-center justify-center gap-3 p-4 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors"
-                                    >
-                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                        </svg>
-                                        Upload Image{scanMode === 'double' ? 's' : ''}
-                                    </button>
-                                </div>
-                            </>
-                        )}
-
-                        {/* Camera view */}
-                        {showCamera && (
-                            <div className="space-y-4">
-                                {scanMode === 'double' && (
-                                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                        <div className="flex items-center justify-center gap-4">
-                                            <div className={`flex items-center gap-2 ${currentSide === 'front' ? 'text-blue-600 font-semibold' : 'text-gray-500'}`}>
-                                                {cardData.front.image ? '✅' : '📷'} Front
-                                            </div>
-                                            <div className="w-8 h-0.5 bg-gray-300"></div>
-                                            <div className={`flex items-center gap-2 ${currentSide === 'back' ? 'text-blue-600 font-semibold' : 'text-gray-500'}`}>
-                                                {cardData.back.image ? '✅' : '📷'} Back
-                                            </div>
-                                        </div>
-                                        <p className="text-sm text-blue-700 text-center mt-2">
-                                            Currently capturing: <strong>{currentSide} side</strong>
-                                        </p>
-                                    </div>
-                                )}
-
-                                <div className="relative bg-black rounded-lg overflow-hidden">
-                                    <video
-                                        ref={videoRef}
-                                        autoPlay
-                                        playsInline
-                                        className="w-full h-64 object-cover"
-                                    />
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                        <div className="border-2 border-white border-dashed rounded-lg w-48 h-32">
-                                            <div className="absolute -top-1 -left-1 w-4 h-4 border-l-2 border-t-2 border-yellow-400"></div>
-                                            <div className="absolute -top-1 -right-1 w-4 h-4 border-r-2 border-t-2 border-yellow-400"></div>
-                                            <div className="absolute -bottom-1 -left-1 w-4 h-4 border-l-2 border-b-2 border-yellow-400"></div>
-                                            <div className="absolute -bottom-1 -right-1 w-4 h-4 border-r-2 border-b-2 border-yellow-400"></div>
-                                        </div>
-                                        <div className="absolute -bottom-8 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
-                                            Position {scanMode === 'double' ? currentSide : 'card'} within frame
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={stopCamera}
-                                        className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        onClick={capturePhoto}
-                                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                                    >
-                                        Capture {scanMode === 'double' ? currentSide : ''}
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Preview and processing screen */}
-                        {!showCamera && hasAnyImages() && (
-                            <div className="space-y-4">
-                                {scanMode === 'double' && (
-                                    <div className="flex bg-gray-100 rounded-lg p-1">
-                                        <button
-                                            onClick={() => switchSide('front')}
-                                            className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                                                currentSide === 'front'
-                                                    ? 'bg-white text-blue-600 shadow-sm'
-                                                    : 'text-gray-600 hover:text-gray-800'
-                                            }`}
-                                        >
-                                            Front {cardData.front.image ? '✅' : '❌'}
-                                        </button>
-                                        <button
-                                            onClick={() => switchSide('back')}
-                                            className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                                                currentSide === 'back'
-                                                    ? 'bg-white text-blue-600 shadow-sm'
-                                                    : 'text-gray-600 hover:text-gray-800'
-                                            }`}
-                                        >
-                                            Back {cardData.back.image ? '✅' : '❌'}
-                                        </button>
-                                    </div>
-                                )}
-
-                                <h4 className="text-lg font-semibold text-gray-900 text-center">
-                                    {canProcess() ? 'Ready for Enhanced Scan' : 'Add Images to Continue'}
-                                </h4>
-                                
-                                {getCurrentImage().previewUrl && (
-                                    <div className="bg-gray-100 rounded-lg p-4">
-<Image
-    src={getCurrentImage().previewUrl}
-    alt={`Business card ${currentSide} side`}
-    width={800}
-    height={600}
-    className="w-full h-auto max-h-[300px] object-contain rounded-lg shadow-sm"
-    unoptimized
-/>
-                                        {scanMode === 'double' && (
-                                            <p className="text-center text-sm text-gray-600 mt-2">
-                                                {currentSide} side
-                                            </p>
-                                        )}
-                                    </div>
-                                )}
-
-                                {scanMode === 'double' && !getCurrentImage().image && (
-                                    <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                                        <div className="flex items-center justify-center">
-                                            <svg className="w-5 h-5 text-yellow-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                            </svg>
-                                            <span className="text-sm text-yellow-800">
-                                                {currentSide} side image needed
-                                            </span>
-                                        </div>
-                                        <div className="flex gap-2 mt-3">
-                                            <button
-                                                onClick={startCamera}
-                                                className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
-                                            >
-                                                Take Photo
-                                            </button>
-                                            <button
-                                                onClick={() => fileInputRef.current?.click()}
-                                                className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors"
-                                                disabled={isScanning}
-                                            >
-                                                Upload
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                                
-                                {isScanning && (
-                                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                        <div className="flex items-center gap-3">
-                                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-                                            <div className="flex-1">
-                                                <p className="text-sm font-medium text-blue-900">
-                                                    Enhanced AI processing...
-                                                </p>
-                                                <p className="text-xs text-blue-700">
-                                                    Extracting fields and generating personalized response
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                                
-                               <div className="flex gap-3">
-                                    <button
-                                        onClick={() => {
-                                            if (scanMode === 'single' || currentSide === 'front') {
-                                                resetCardData();
-                                                setCurrentSide('front');
-                                            } else {
-                                                setCardData(prev => {
-                                                    if (prev[currentSide].previewUrl?.startsWith('blob:')) {
-                                                        URL.revokeObjectURL(prev[currentSide].previewUrl);
-                                                    }
-                                                    return {
-                                                        ...prev,
-                                                        [currentSide]: { image: null, previewUrl: null }
-                                                    };
-                                                });
-                                            }
-                                        }}
-                                        disabled={isScanning}
-                                        className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
-                                    >
-                                        {scanMode === 'double' ? `Retake ${currentSide}` : 'Retake Photo'}
-                                    </button>
-
-                                    <button
-                                        onClick={canProcess() ? processScannedImages : () => toast.error('Please add required images first')}
-                                        disabled={isScanning || !canProcess()}
-                                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-                                    >
-                                        {isScanning ? (
-                                            <>
-                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                                Processing...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                                </svg>
-                                                Enhanced Scan
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-
-                                {!isScanning && canProcess() && (
-                                    <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                                        <div className="flex">
-                                            <svg className="w-5 h-5 text-green-400 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                            </svg>
-                                            <div className="text-sm text-green-800">
-                                                <p className="font-medium mb-1">Enhanced Processing Ready</p>
-                                                <p className="text-xs">
-                                                    {scanMode === 'double' 
-                                                        ? 'Our AI will analyze both sides for complete contact extraction with dynamic fields!'
-                                                        : 'AI will extract contact information, detect QR codes, and generate personalized messaging!'
-                                                    }
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={handleFileSelect}
-                            className="hidden"
-                            multiple={scanMode === 'double'}
-                        />
-                        <canvas ref={canvasRef} className="hidden" />
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
     // Location status display helper
     const getLocationStatusDisplay = () => {
@@ -1064,8 +497,8 @@ useEffect(() => {
             case 'granted':
                 return {
                     color: 'text-green-600',
-                    message: location 
-                        ? (t('exchange.location_shared') || 'Location shared') 
+                    message: location
+                        ? (t('exchange.location_shared') || 'Location shared')
                         : (t('exchange.location_granted') || 'Location access granted'),
                     icon: '✓'
                 };
@@ -1093,34 +526,57 @@ useEffect(() => {
     const locationDisplay = getLocationStatusDisplay();
 
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden">
-                {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                            </svg>
+        <>
+            {/* BusinessCardScanner Component - Only render when needed */}
+            {showScanner && (
+                <BusinessCardScanner
+                    isOpen={showScanner}
+                    onClose={() => setShowScanner(false)}
+                    onContactParsed={handleContactParsed}
+                />
+            )}
+
+            {/* ContactReviewModal - Review scanned data before populating form */}
+            {showReviewModal && reviewData && (
+                <ContactReviewModal
+                    isOpen={showReviewModal}
+                    onClose={() => setShowReviewModal(false)}
+                    parsedFields={reviewData}
+                    onSave={handleReviewSave}
+                    hasFeature={() => false} // Public users don't have premium features
+                />
+            )}
+
+            {/* Main Exchange Modal - Hide when review modal is open */}
+            {!showReviewModal && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden">
+                    {/* Header */}
+                    <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                </svg>
+                            </div>
+                            <h2 className="text-xl font-bold text-gray-900">
+                                {t('exchange.title') || 'Enhanced Exchange'}
+                            </h2>
                         </div>
-                        <h2 className="text-xl font-bold text-gray-900">
-                            {t('exchange.title') || 'Enhanced Exchange'}
-                        </h2>
+                        <button
+                            onClick={onClose}
+                            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                            aria-label={t('exchange.close_modal') || 'Close modal'}
+                        >
+                            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                        aria-label={t('exchange.close_modal') || 'Close modal'}
-                    >
-                        <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-   
-                {/* Content */}
-                <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-                     {personalizedMessage && typeof personalizedMessage === 'object' && (
+
+                    {/* Content */}
+                    <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+                        {personalizedMessage && typeof personalizedMessage === 'object' && (
                     <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg">
                         <div className="flex items-start gap-3">
                             <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -1448,5 +904,7 @@ useEffect(() => {
                 </div>
             </div>
         </div>
+            )}
+        </>
     );
 }

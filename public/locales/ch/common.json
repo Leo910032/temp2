@@ -1470,5 +1470,85 @@
         "save_error": "保存联系人失败。"
       }
     }
+  },
+  "shareCard": {
+    "title": "分享您的 Linktree",
+    "subtitle": "通过在各处分享您的 Linktree 来获得更多访问者。",
+    "homePage": {
+      "addSocials": {
+        "title": "添加到您的社交媒体",
+        "topText": "将 Linktree 添加到您的社交媒体",
+        "description": "将您的 Linktree URL 添加到您的社交媒体资料中，以便全世界轻松找到您的 Linktree。"
+      },
+      "shareTo": {
+        "title": "将我的 Linktree 分享到...",
+        "topText": "分享到...",
+        "description": "将您的 Linktree 分享给所有联系人，让每个人都知道它。"
+      },
+      "qrCode": {
+        "title": "我的 Linktree 二维码",
+        "topText": "二维码",
+        "description": "这是您独特的 Linktree 二维码，扫描后将引导人们访问您的 Linktree。"
+      },
+      "openLinktree": {
+        "title": "打开我的 Linktree"
+      }
+    },
+    "socials": {
+      "snapchat": "Snapchat",
+      "instagram": "Instagram",
+      "facebookProfile": "Facebook 个人资料",
+      "tiktokProfile": "Tiktok 个人资料",
+      "twitchProfile": "Twitch 个人资料",
+      "facebookPage": "Facebook 页面",
+      "youtube": "Youtube",
+      "linkedin": "Linkedin",
+      "pinterest": "Pinterest",
+      "twitter": "Twitter",
+      "tiktok": "Tiktok",
+      "twitch": "Twitch",
+      "facebook": "Facebook"
+    },
+    "shareTo": {
+      "snapchat": "在 Snapchat 上分享",
+      "facebook": "在 Facebook 上分享",
+      "linkedin": "在 Linkedin 上分享",
+      "twitter": "在 Twitter 上分享",
+      "whatsapp": "通过 WhatsApp 分享",
+      "messenger": "通过 Messenger 分享",
+      "email": "通过电子邮件分享"
+    },
+    "socialPage": {
+      "snapchat": {
+        "description": "将您的 Linktree 添加到 Snapchat 公开资料。只需复制您的 Linktree URL，打开 Snapchat，进入我的公开资料，点击编辑，然后选择 Linktree 或网站，然后添加您的 Linktree 并将您的 Linktree URL 粘贴到添加 Linktree 字段中。"
+      },
+      "instagram": {
+        "description": "将您的 Linktree 添加到 Instagram 个人资料。只需复制您的 Linktree URL，进入编辑个人资料，然后将其粘贴到网站字段中。"
+      },
+      "facebook": {
+        "description": "将您的 Linktree 添加到 Facebook 个人资料。只需复制您的 Linktree URL，进入您个人资料的关于页面，点击联系信息和基本信息，然后点击 + 添加网站，将您的 Linktree URL 粘贴到网站地址字段中，然后点击保存。"
+      },
+      "tiktok": {
+        "description": "将您的 Linktree 添加到 TikTok 个人资料。只需复制您的 Linktree URL，进入您的 TikTok 个人资料，点击管理帐户，点击编辑个人资料，并将您的 Linktree URL 粘贴到网站字段中，然后点击保存。（注意：您可能需要切换到 TikTok 商业帐户才能激活此功能）。"
+      },
+      "twitch": {
+        "description": "将您的 Linktree 添加到 Twitch 频道。只需复制您的 Linktree URL，进入您的 Twitch 频道，点击关于，然后点击编辑关于和链接设置，向下滚动到社交链接，在第一个文本字段中添加 Linktree，并将您的 Linktree URL 粘贴到第二个文本字段中，然后点击添加。"
+      },
+      "facebookPage": {
+        "description": "将您的 Linktree 添加到 Facebook 页面。只需复制您的 Linktree URL，进入关于页面，滚动到其他联系信息，点击输入网站，并将您的 Linktree URL 粘贴到网站字段中。"
+      },
+      "youtube": {
+        "description": "将您的 Linktree 添加到 YouTube 频道。只需复制您的 Linktree URL，进入您的 YouTube 频道，点击自定义频道，然后点击基本信息，在链接下，添加链接标题并将您的 Linktree URL 粘贴到 URL 字段中，然后点击发布。"
+      },
+      "linkedin": {
+        "description": "将您的 Linktree 添加到 LinkedIn 个人资料。只需复制您的 Linktree URL，进入您的 LinkedIn 个人资料，点击铅笔图标，向下滚动到联系信息，将您的 Linktree URL 粘贴到网站 URL 字段中，然后点击应用。"
+      },
+      "pinterest": {
+        "description": "将您的 Linktree 添加到 Pinterest 个人资料。只需复制您的 Linktree URL，进入您的 Pinterest 设置，将您的 Linktree URL 粘贴到网站 URL 字段中，然后点击保存。"
+      },
+      "twitter": {
+        "description": "将您的 Linktree 添加到 Twitter 个人资料。只需复制您的 Linktree URL，进入您的个人资料，点击编辑个人资料，并将您的 Linktree URL 粘贴到网站字段中。"
+      }
+    }
   }
 }

@@ -74,9 +74,9 @@ export default function NavBar() {
         setUsername(newUsername);
         setDisplayName(newDisplayName);
 
-     
-    // ✅ CHANGE: Use the environment variable with a fallback
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
+
+    // ✅ CHANGE: Use NEXT_PUBLIC_APP_URL instead of NEXT_PUBLIC_BASE_URL
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
     const newMyLink = newUsername ? `${baseUrl}/${newUsername}` : "";
     setMyLink(newMyLink);
 
@@ -156,9 +156,9 @@ export default function NavBar() {
             
             setUsername(fallbackUsername);
             setDisplayName(fallbackDisplayName);
- // ✅ CHANGE: Use the environment variable here as well
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
-    setMyLink(fallbackUsername ? `${baseUrl}/${fallbackUsername}` : "");
+            // ✅ CHANGE: Use NEXT_PUBLIC_APP_URL instead of NEXT_PUBLIC_BASE_URL
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
+            setMyLink(fallbackUsername ? `${baseUrl}/${fallbackUsername}` : "");
                 
             setProfilePicture(
                 <div className="h-[95%] aspect-square w-[95%] rounded-full bg-gray-300 border grid place-items-center">

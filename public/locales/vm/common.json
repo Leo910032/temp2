@@ -1923,5 +1923,85 @@
         "save_error": "Lưu liên hệ thất bại."
       }
     }
+  },
+  "shareCard": {
+    "title": "Chia sẻ Linktree của bạn",
+    "subtitle": "Nhận thêm khách truy cập bằng cách chia sẻ Linktree của bạn ở mọi nơi.",
+    "homePage": {
+      "addSocials": {
+        "title": "Thêm vào mạng xã hội của bạn",
+        "topText": "Thêm Linktree vào mạng xã hội của bạn",
+        "description": "Thêm URL Linktree của bạn vào hồ sơ mạng xã hội để mọi người dễ dàng tìm thấy Linktree của bạn."
+      },
+      "shareTo": {
+        "title": "Chia sẻ Linktree của tôi đến...",
+        "topText": "Chia sẻ đến...",
+        "description": "Chia sẻ Linktree của bạn với tất cả các kết nối để mọi người đều biết về nó."
+      },
+      "qrCode": {
+        "title": "Mã QR Linktree của tôi",
+        "topText": "Mã QR",
+        "description": "Đây là mã QR Linktree độc đáo của bạn sẽ dẫn mọi người đến Linktree của bạn khi được quét."
+      },
+      "openLinktree": {
+        "title": "Mở Linktree của tôi"
+      }
+    },
+    "socials": {
+      "snapchat": "Snapchat",
+      "instagram": "Instagram",
+      "facebookProfile": "Hồ sơ Facebook",
+      "tiktokProfile": "Hồ sơ Tiktok",
+      "twitchProfile": "Hồ sơ Twitch",
+      "facebookPage": "Trang Facebook",
+      "youtube": "Youtube",
+      "linkedin": "Linkedin",
+      "pinterest": "Pinterest",
+      "twitter": "Twitter",
+      "tiktok": "Tiktok",
+      "twitch": "Twitch",
+      "facebook": "Facebook"
+    },
+    "shareTo": {
+      "snapchat": "Chia sẻ trên Snapchat",
+      "facebook": "Chia sẻ trên Facebook",
+      "linkedin": "Chia sẻ trên Linkedin",
+      "twitter": "Chia sẻ trên Twitter",
+      "whatsapp": "Chia sẻ qua WhatsApp",
+      "messenger": "Chia sẻ qua Messenger",
+      "email": "Chia sẻ qua Email"
+    },
+    "socialPage": {
+      "snapchat": {
+        "description": "Thêm Linktree của bạn vào Hồ sơ Công khai Snapchat. Chỉ cần sao chép URL Linktree của bạn, mở Snapchat, đi tới Hồ sơ Công khai của Tôi, nhấn Chỉnh sửa, sau đó chọn Linktree hoặc Trang web, sau đó Thêm Linktree của Bạn và dán URL Linktree của bạn vào trường Thêm Linktree."
+      },
+      "instagram": {
+        "description": "Thêm Linktree của bạn vào hồ sơ Instagram. Chỉ cần sao chép URL Linktree của bạn, đi tới Chỉnh sửa Hồ sơ và dán vào trường Trang web."
+      },
+      "facebook": {
+        "description": "Thêm Linktree của bạn vào hồ sơ Facebook. Chỉ cần sao chép URL Linktree của bạn, đi tới trang Giới thiệu trên hồ sơ của bạn, nhấp vào Thông tin liên hệ và thông tin cơ bản, sau đó nhấp vào + Thêm trang web, dán URL Linktree của bạn vào trường Địa chỉ trang web và nhấp vào Lưu."
+      },
+      "tiktok": {
+        "description": "Thêm Linktree của bạn vào hồ sơ TikTok. Chỉ cần sao chép URL Linktree của bạn, đi tới hồ sơ TikTok của bạn, nhấp vào Quản lý Tài khoản, nhấp vào Chỉnh sửa hồ sơ và dán URL Linktree của bạn vào trường Trang web, sau đó nhấp vào Lưu. (Lưu ý: bạn có thể cần chuyển sang tài khoản doanh nghiệp TikTok để kích hoạt tính năng này)."
+      },
+      "twitch": {
+        "description": "Thêm Linktree của bạn vào kênh Twitch. Chỉ cần sao chép URL Linktree của bạn, đi tới kênh Twitch của bạn, nhấp vào Giới thiệu, sau đó nhấp vào Chỉnh sửa cài đặt Giới thiệu và liên kết, cuộn xuống Liên kết Xã hội, thêm Linktree vào trường văn bản đầu tiên và dán URL Linktree của bạn vào trường văn bản thứ hai, sau đó nhấp vào Thêm."
+      },
+      "facebookPage": {
+        "description": "Thêm Linktree của bạn vào trang Facebook. Chỉ cần sao chép URL Linktree của bạn, đi tới trang Giới thiệu, cuộn xuống Thông tin Liên hệ Bổ sung, nhấp vào Nhập trang web và dán URL Linktree của bạn vào trường Trang web."
+      },
+      "youtube": {
+        "description": "Thêm Linktree của bạn vào kênh YouTube. Chỉ cần sao chép URL Linktree của bạn, đi tới kênh YouTube của bạn, nhấp vào Tùy chỉnh Kênh, sau đó nhấp vào Thông tin cơ bản, và trong Liên kết, thêm tiêu đề liên kết và dán URL Linktree của bạn vào trường URL, sau đó nhấp vào Xuất bản."
+      },
+      "linkedin": {
+        "description": "Thêm Linktree của bạn vào hồ sơ LinkedIn. Chỉ cần sao chép URL Linktree của bạn, đi tới hồ sơ LinkedIn của bạn, nhấp vào biểu tượng bút chì, cuộn xuống Thông tin liên hệ, dán URL Linktree của bạn vào trường URL Trang web, sau đó nhấp vào Áp dụng."
+      },
+      "pinterest": {
+        "description": "Thêm Linktree của bạn vào hồ sơ Pinterest. Chỉ cần sao chép URL Linktree của bạn, đi tới cài đặt Pinterest của bạn, dán URL Linktree của bạn vào trường URL Trang web, sau đó nhấp vào Lưu."
+      },
+      "twitter": {
+        "description": "Thêm Linktree của bạn vào hồ sơ Twitter. Chỉ cần sao chép URL Linktree của bạn, đi tới hồ sơ của bạn, nhấp vào Chỉnh sửa Hồ sơ và dán URL Linktree của bạn vào trường Trang web."
+      }
+    }
   }
 }

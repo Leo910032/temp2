@@ -1,19 +1,21 @@
 // File: app/components/NavComponents/ShareCard.jsx
 
 "use client"
-import React, { useContext, useEffect, useState, forwardRef } from "react";
+import React, { useContext, useEffect, useState, forwardRef, useMemo } from "react";
 import { NavContext } from "../General Components/NavBar";
 import Image from "next/image";
 import ShareLiElement from "./elements/ShareLiElement";
-import { ShareTo, addSocials, homePage, socialPage } from "@/lib/ShareCardArrays";
+import { getShareCardData } from "@/lib/ShareCardArrays";
 import MLink from "./elements/MLink";
 import MyQrCode from "./elements/MyQrCode";
+import { useTranslation } from "@/lib/translation/useTranslation";
 
 export const ShareContext = React.createContext();
 
 // ✅ Wrap the component in forwardRef
 const ShareCard = forwardRef(function ShareCard(props, ref) {
     const [currentPage, setCurrentPage] = useState([{ page: "home" }]);
+    const { t } = useTranslation();
     const {
         showShareCard,
         setShowShareCard,
@@ -21,6 +23,9 @@ const ShareCard = forwardRef(function ShareCard(props, ref) {
         username, // ✅ ADD: Get username from context
         isLoading, // ✅ ADD: Get loading state from context
     } = useContext(NavContext);
+
+    // ✅ Get translated data using useMemo to avoid recreating on every render
+    const { homePage, addSocials, ShareTo, socialPage } = useMemo(() => getShareCardData(t), [t]);
 
     useEffect(() => {
         // Reset to home page whenever the card is shown
@@ -67,10 +72,10 @@ const ShareCard = forwardRef(function ShareCard(props, ref) {
                     {currentPage[currentPage.length - 1].page === "home" && <>
                         <div className="grid grid-cols-[32px_auto_32px] items-center p-3">
                             <span></span>
-                            <span className="font-semibold text-center">Share your Linktree</span>
+                            <span className="font-semibold text-center">{t('shareCard.title')}</span>
                             <div className="cursor-pointer grid place-items-center h-md aspect-square rounded-lg hover:bg-black/5" onClick={handleClose}><Image src={"https://linktree.sirv.com/Images/icons/svgexport-40.svg"} alt="x" width={15} height={15} /></div>
                         </div>
-                        <p className="text-sm opacity-50 px-3">Get more visitors by sharing your Linktree everywhere.</p>
+                        <p className="text-sm opacity-50 px-3">{t('shareCard.subtitle')}</p>
                         <div className="grid my-3">
                             {homePage.map((page) => (
                                 <ShareLiElement nextPage={page.nextPage} key={page.nextPage}>

@@ -862,5 +862,85 @@
       "processing_both_sides": "Processing both sides",
       "single_card_scan": "Single card scan"
     }
+  },
+  "shareCard": {
+    "title": "Share your Linktree",
+    "subtitle": "Get more visitors by sharing your Linktree everywhere.",
+    "homePage": {
+      "addSocials": {
+        "title": "Add to your socials",
+        "topText": "Add Linktree to your socials",
+        "description": "Add your Linktree URL to your social profiles for the world to easily find your Linktree."
+      },
+      "shareTo": {
+        "title": "Share my Linktree to...",
+        "topText": "Share to...",
+        "description": "Share your Linktree to all your connections so everyone knows about it."
+      },
+      "qrCode": {
+        "title": "My Linktree QR code",
+        "topText": "QR Code",
+        "description": "Here is your unique Linktree QR code that will direct people to your Linktree when scanned."
+      },
+      "openLinktree": {
+        "title": "Open my Linktree"
+      }
+    },
+    "socials": {
+      "snapchat": "Snapchat",
+      "instagram": "Instagram",
+      "facebookProfile": "Facebook Profile",
+      "tiktokProfile": "Tiktok Profile",
+      "twitchProfile": "Twitch Profile",
+      "facebookPage": "Facebook Page",
+      "youtube": "Youtube",
+      "linkedin": "Linkedin",
+      "pinterest": "Pinterest",
+      "twitter": "Twitter",
+      "tiktok": "Tiktok",
+      "twitch": "Twitch",
+      "facebook": "Facebook"
+    },
+    "shareTo": {
+      "snapchat": "Share on Snapchat",
+      "facebook": "Share on Facebook",
+      "linkedin": "Share on Linkedin",
+      "twitter": "Share on Twitter",
+      "whatsapp": "Share via WhatsApp",
+      "messenger": "Share via Messenger",
+      "email": "Share via Email"
+    },
+    "socialPage": {
+      "snapchat": {
+        "description": "Add your Linktree to your Snapchat Public Profile. Simply copy your Linktree URL, open Snapchat, go to My Public Profile, tap Edit, then select Linktree or Website, then Add Your Linktree and paste your Linktree URL into the Add Linktree field."
+      },
+      "instagram": {
+        "description": "Add your Linktree to your Instagram profile. Simply copy your Linktree URL, go to Edit Profile, and paste it into the Website field."
+      },
+      "facebook": {
+        "description": "Add your Linktree to your Facebook profile. Simply copy your Linktree URL, go to the About page on your profile, click on Contact and basic info, then click on + Add a website, paste your Linktree URL into the Website address field, and click Save."
+      },
+      "tiktok": {
+        "description": "Add your Linktree to your TikTok profile. Simply copy your Linktree URL, go your TikTok profile, click on Manage Account, click on Edit profile, and paste your Linktree URL into the Website field, then click Save. (Note you may need to switch to a TikTok business account to activate this)."
+      },
+      "twitch": {
+        "description": "Add your Linktree to your Twitch channel. Simply copy your Linktree URL, go your Twitch channel, click About, then click Edit about & links settings, scroll down to Social Links, add Linktree in the first text field, and paste your Linktree URL into the second text field, then click Add."
+      },
+      "facebookPage": {
+        "description": "Add your Linktree to your Facebook page. Simply copy your Linktree URL, go to the About page, scroll to Additional Contact Info, click on Enter website, and paste your Linktree URL into the Website field."
+      },
+      "youtube": {
+        "description": "Add your Linktree to your YouTube channel. Simply copy your Linktree URL, go to your YouTube channel, click on Customize Channel, then click on Basic info, and under Links, add a link title and paste your Linktree URL into the URL field, then click Publish."
+      },
+      "linkedin": {
+        "description": "Add your Linktree to your LinkedIn profile. Simply copy your Linktree URL, go your LinkedIn profile, click on pencil icon, scroll down to Contact info, paste your Linktree URL into the Website URL field, then click Apply."
+      },
+      "pinterest": {
+        "description": "Add your Linktree to your Pinterest profile. Simply copy your Linktree URL, go your Pinterest settings, paste your Linktree URL into the Website URL field, then click Save."
+      },
+      "twitter": {
+        "description": "Add your Linktree to your Twitter profile. Simply copy your Linktree URL, go to your profile, click on Edit Profile, and paste your Linktree URL into the Website field."
+      }
+    }
   }
 }

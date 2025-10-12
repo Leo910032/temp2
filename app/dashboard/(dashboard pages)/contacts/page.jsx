@@ -78,8 +78,9 @@ function ContactsPage() {
 
     // Update map visibility in context
     useEffect(() => {
-        setIsMapOpen(showMap);
-    }, [showMap, setIsMapOpen]);
+        // Set the context to true if either the map OR the scanner is open
+        setIsMapOpen(showMap || showScanner);
+    }, [showMap, showScanner, setIsMapOpen]);
 
     // Translations
     const translations = useMemo(() => {

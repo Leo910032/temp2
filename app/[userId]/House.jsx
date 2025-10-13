@@ -1,3 +1,4 @@
+//app/[userId]/House.jsx
 "use client"
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { fireApp } from "@/important/firebase";

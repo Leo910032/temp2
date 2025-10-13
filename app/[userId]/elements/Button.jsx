@@ -11,7 +11,7 @@ import Link from "next/link";
 import Image from "next/image";
 import IconDiv from "./IconDiv";
 import ButtonText from "./ButtonText";
-import { trackClick } from '@/lib/services/analyticsService';
+import { TrackAnalyticsService } from '@/lib/services/serviceUser/client/services/TrackAnalyticsService';
 import "./style/3d.css";
 
 
@@ -305,13 +305,36 @@ export default function Button({ linkData, content }) {
         });
     };
 
-    const handleLinkClick = () => {
+    const handleLinkClick = (e) => {
+        console.log('🔍 Button: handleLinkClick fired', { userId: userData?.uid, linkId, url });
+
         if (userData?.uid && linkId) {
-            trackClick(userData.uid, {
+            console.log('🔍 Button: Calling TrackAnalyticsService.trackClick');
+
+            // Extract text content if content is a React element
+            const linkTitle = typeof content === 'string'
+                ? content
+                : (linkData?.title || linkData?.name || url);
+
+            // Track the click - don't prevent default, let the link open
+            TrackAnalyticsService.trackClick(userData.uid, {
                 linkId: linkId,
-                linkTitle: content,
+                linkTitle: linkTitle,
                 linkUrl: url,
                 linkType: linkType || 'custom',
+            });
+
+            console.log('🔍 Button: TrackAnalyticsService.trackClick called with', {
+                linkId,
+                linkTitle,
+                linkUrl: url
+            });
+        } else {
+            console.warn('⚠️ Button: Missing data for tracking', {
+                hasUserId: !!userData?.uid,
+                hasLinkId: !!linkId,
+                userData: userData?.uid,
+                linkData
             });
         }
     };
@@ -333,10 +356,11 @@ export default function Button({ linkData, content }) {
                         onMouseLeave={() => setIsHovered(false)} 
                     />
                 ))}
-                <Link 
-                    ref={urlRef} 
-                    href={makeValidUrl(url)} 
-                    target="_blank" 
+                <Link
+                    ref={urlRef}
+                    href={makeValidUrl(url)}
+                    target="_blank"
+                    onClick={handleLinkClick}
                     className="absolute top-0 left-0 z-30 pointer-events-none cursor-pointer flex gap-3 items-center min-h-10 py-3 px-3 flex-1"
                 >
                     <div className="grid place-items-center">

@@ -16,7 +16,30 @@ export default function CVManager() {
 
     // Derive CV state from appearance
     const cvEnabled = appearance?.cvEnabled || false;
-const cvItems = useMemo(() => appearance?.cvItems || [], [appearance]);
+    const cvItems = useMemo(() => appearance?.cvItems || [], [appearance]);
+
+    // Pre-compute translations
+    const translations = useMemo(() => {
+        if (!isInitialized) return {};
+        return {
+            title: t('dashboard.appearance.cv.title') || 'Curriculum / Documents',
+            enabled: t('dashboard.appearance.cv.enabled') || 'Enabled',
+            disabled: t('dashboard.appearance.cv.disabled') || 'Disabled',
+            description: t('dashboard.appearance.cv.description') || 'Manage multiple CV documents and resumes.',
+            addItem: t('dashboard.appearance.cv.add_item') || 'Add CV Item',
+            noItems: t('dashboard.appearance.cv.no_items') || 'No CV items yet. Add your first document to get started!',
+            cvItems: t('dashboard.appearance.cv.cv_items') || 'CV Items',
+            enabledToast: t('dashboard.appearance.cv.enabled_toast') || 'CV enabled',
+            disabledToast: t('dashboard.appearance.cv.disabled_toast') || 'CV disabled',
+            missingLinksCreated: t('dashboard.appearance.cv.missing_links_created') || 'Created {{count}} missing link(s) for existing CV items',
+            itemAndLinkAdded: t('dashboard.appearance.cv.item_and_link_added') || 'CV item and link added successfully',
+            itemAddedLinkFailed: t('dashboard.appearance.cv.item_added_link_failed') || 'CV item added but failed to create link',
+            itemAndLinkDeleted: t('dashboard.appearance.cv.item_and_link_deleted') || 'CV item and link deleted',
+            itemDeleted: t('dashboard.appearance.cv.item_deleted') || 'CV item deleted',
+            itemDeletedLinkMayExist: t('dashboard.appearance.cv.item_deleted_link_may_exist') || 'CV item deleted (link may still exist)',
+            enableFeatureMessage: t('dashboard.appearance.cv.enable_feature_message') || 'Enable the CV feature to start managing your documents.',
+        };
+    }, [t, isInitialized]);
 
     // Migration: Create missing links for existing CV items (runs once on mount)
     const [hasMigrated, setHasMigrated] = React.useState(false);
@@ -60,30 +83,7 @@ const cvItems = useMemo(() => appearance?.cvItems || [], [appearance]);
         };
 
         migrateExistingCvItems();
-    }, [cvItems, hasMigrated]);
-
-    // Pre-compute translations
-    const translations = useMemo(() => {
-        if (!isInitialized) return {};
-        return {
-            title: t('dashboard.appearance.cv.title') || 'Curriculum / Documents',
-            enabled: t('dashboard.appearance.cv.enabled') || 'Enabled',
-            disabled: t('dashboard.appearance.cv.disabled') || 'Disabled',
-            description: t('dashboard.appearance.cv.description') || 'Manage multiple CV documents and resumes.',
-            addItem: t('dashboard.appearance.cv.add_item') || 'Add CV Item',
-            noItems: t('dashboard.appearance.cv.no_items') || 'No CV items yet. Add your first document to get started!',
-            cvItems: t('dashboard.appearance.cv.cv_items') || 'CV Items',
-            enabledToast: t('dashboard.appearance.cv.enabled_toast') || 'CV enabled',
-            disabledToast: t('dashboard.appearance.cv.disabled_toast') || 'CV disabled',
-            missingLinksCreated: t('dashboard.appearance.cv.missing_links_created') || 'Created {{count}} missing link(s) for existing CV items',
-            itemAndLinkAdded: t('dashboard.appearance.cv.item_and_link_added') || 'CV item and link added successfully',
-            itemAddedLinkFailed: t('dashboard.appearance.cv.item_added_link_failed') || 'CV item added but failed to create link',
-            itemAndLinkDeleted: t('dashboard.appearance.cv.item_and_link_deleted') || 'CV item and link deleted',
-            itemDeleted: t('dashboard.appearance.cv.item_deleted') || 'CV item deleted',
-            itemDeletedLinkMayExist: t('dashboard.appearance.cv.item_deleted_link_may_exist') || 'CV item deleted (link may still exist)',
-            enableFeatureMessage: t('dashboard.appearance.cv.enable_feature_message') || 'Enable the CV feature to start managing your documents.',
-        };
-    }, [t, isInitialized]);
+    }, [cvItems, hasMigrated, t, translations.missingLinksCreated]);
 
     // Toggle CV enabled/disabled
     const handleToggleCV = () => {

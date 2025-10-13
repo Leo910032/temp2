@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Pinecone } from '@pinecone-database/pinecone';
-import { CostTrackingService } from '@/lib/services/serviceContact/server/costTrackingService';
+import { CostTrackingService } from '@/lib/services/serviceContact/server/costTracking/costTrackingService';
 
 // Initialize services
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);

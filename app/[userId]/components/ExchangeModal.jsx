@@ -149,43 +149,9 @@ export default function ExchangeModal({
     }, []);
 
     /**
-     * Handle save from ContactReviewModal - populate the form with reviewed data
-     */
-    const handleReviewSave = useCallback(async (reviewedData) => {
-        console.log('Review complete, populating form with:', reviewedData);
-
-        // Combine standard and dynamic fields
-        const allFields = [
-            ...(reviewedData.standardFields || []),
-            ...(reviewedData.dynamicFields || [])
-        ];
-
-        // Process the reviewed fields
-        const processedFields = processEnhancedScanResults(allFields, []);
-
-        // Populate form with reviewed data
-        populateFormFromEnhancedScan(processedFields.standardFields, processedFields.dynamicFields);
-
-        // Handle phone numbers separately
-        if (reviewedData.phoneNumbers && reviewedData.phoneNumbers.length > 0) {
-            // Use the first phone number for the main phone field
-            setFormData(prev => ({
-                ...prev,
-                phone: reviewedData.phoneNumbers[0]
-            }));
-        }
-
-        const totalFieldCount = allFields.length;
-        toast.success(`Form populated with ${totalFieldCount} fields from scan!`, { duration: 3000 });
-
-        // Close the review modal
-        setShowReviewModal(false);
-    }, []);
-
-    /**
      * Process enhanced scan results that include both standard and dynamic fields
      */
-    const processEnhancedScanResults = (standardFields = [], dynamicFields = []) => {
+    const processEnhancedScanResults = useCallback((standardFields = [], dynamicFields = []) => {
         const processedStandardFields = {
             name: '',
             email: '',
@@ -235,9 +201,43 @@ export default function ExchangeModal({
                 });
             }
         });
-        
+
         return { standardFields: processedStandardFields, dynamicFields: processedDynamicFields };
-    };
+    }, []);
+
+    /**
+     * Handle save from ContactReviewModal - populate the form with reviewed data
+     */
+    const handleReviewSave = useCallback(async (reviewedData) => {
+        console.log('Review complete, populating form with:', reviewedData);
+
+        // Combine standard and dynamic fields
+        const allFields = [
+            ...(reviewedData.standardFields || []),
+            ...(reviewedData.dynamicFields || [])
+        ];
+
+        // Process the reviewed fields
+        const processedFields = processEnhancedScanResults(allFields, []);
+
+        // Populate form with reviewed data
+        populateFormFromEnhancedScan(processedFields.standardFields, processedFields.dynamicFields);
+
+        // Handle phone numbers separately
+        if (reviewedData.phoneNumbers && reviewedData.phoneNumbers.length > 0) {
+            // Use the first phone number for the main phone field
+            setFormData(prev => ({
+                ...prev,
+                phone: reviewedData.phoneNumbers[0]
+            }));
+        }
+
+        const totalFieldCount = allFields.length;
+        toast.success(`Form populated with ${totalFieldCount} fields from scan!`, { duration: 3000 });
+
+        // Close the review modal
+        setShowReviewModal(false);
+    }, [processEnhancedScanResults]);
 
     /**
      * Normalize website URL to include protocol

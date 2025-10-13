@@ -4,6 +4,7 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useTranslation } from "@/lib/translation/useTranslation";
 import { useContacts } from '../ContactsContext';
+import { useDashboard } from '@/app/dashboard/DashboardContext';
 import { CONTACT_FEATURES } from '@/lib/services/constants';
 import { GroupService } from '@/lib/services/serviceContact/client/services/GroupService';
 
@@ -12,7 +13,7 @@ import OverviewTab from './GroupModalComponents/OverviewTab.jsx';
 import GroupsTab from './GroupModalComponents/GroupsTab';
 import CreateGroupTab from './GroupModalComponents/CreateGroupTab';
 // import AIGenerateTab from './GroupModalComponents/AIGenerateTab';
-// import RulesGenerateTab from './GroupModalComponents/RulesGenerateTab';
+import RulesGenerateTab from './GroupModalComponents/rulesGenerate/RulesGenerateTab';
 // import AIGroupsTab from './GroupModalComponents/AIGroupsTab';
 // import GroupEditModal from './GroupModalComponents/GroupEditModal';
 // import { BackgroundJobToast } from './BackgroundJobToast';
@@ -60,6 +61,9 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
         hasFeature,
         isLoading
     } = useContacts();
+
+    // Get subscription level from DashboardContext
+    const { subscriptionLevel } = useDashboard();
 
     const [activeTab, setActiveTab] = useState('overview');
 
@@ -257,14 +261,14 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
                         />
                     )}
 
-                    {/* {hasRulesBasedGroups && (
+                    {hasRulesBasedGroups && (
                         <TabButton
                             id="rules-generate"
                             label="Rules Generator"
                             activeTab={activeTab}
                             setActiveTab={setActiveTab}
                         />
-                    )} */}
+                    )}
 
                     {/* {hasAIGroups && (
                         <>
@@ -318,6 +322,15 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
                             updateFormState={updateFormState}
                             onCreateGroup={handleCreateGroup}
                             isSubmitting={isSubmitting}
+                        />
+                    )}
+
+                    {activeTab === 'rules-generate' && (
+                        <RulesGenerateTab
+                            contacts={contacts}
+                            subscriptionLevel={subscriptionLevel}
+                            onRefreshData={onRefreshData}
+                            onRefreshUsage={onRefreshUsage}
                         />
                     )}
 

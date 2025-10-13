@@ -135,14 +135,7 @@ export default function ContacctsMap({
                 styles: isDarkTheme ? darkMapStyles : lightMapStyles
             });
         }
-    }, [isDarkTheme]);
-
-    // Update map type when changed
-    useEffect(() => {
-        if (mapInstanceRef.current) {
-            mapInstanceRef.current.setMapTypeId(mapType);
-        }
-    }, [mapType]);
+    }, [isDarkTheme, mapType]);
 
     // Filter contacts with valid location data (MUST be defined before filteredContactsBySearch)
     const contactsWithLocation = useMemo(() => {
@@ -383,7 +376,7 @@ export default function ContacctsMap({
             setIsMapReady(false);
             console.log('🧹 Cleaned up map resources');
         };
-    }, [isOpen, selectedContactId, contactsWithLocation]);
+    }, [isOpen, selectedContactId, contactsWithLocation, isDarkTheme, mapType]);
 
     // Initialize and update GroupClusterManager
     useEffect(() => {

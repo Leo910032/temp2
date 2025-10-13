@@ -1,4 +1,4 @@
-  
+  //app/dashboard/DashboardContext.js
   /**
  * THIS FILE HAS BEEN REFRACTORED 
  */
@@ -22,10 +22,12 @@
 
   export function DashboardProvider({ children }) {
     const { currentUser } = useAuth();
-    
+
     const [subscriptionData, setSubscriptionData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [budgetInfo, setBudgetInfo] = useState(null);
+    const [budgetLoading, setBudgetLoading] = useState(false);
   const didFetch = useRef(false);
 
     const fetchDashboardData = useCallback(async (forceRefresh = false) => {
@@ -65,6 +67,44 @@
       }
     }, [currentUser]);
 
+    const fetchBudgetInfo = useCallback(async () => {
+      // Guard: Don't run if there's no user
+      if (!currentUser) {
+        setBudgetInfo(null);
+        return;
+      }
+
+      setBudgetLoading(true);
+
+      try {
+        console.log('💰 DashboardProvider: Fetching budget information...');
+
+        const idToken = await currentUser.getIdToken();
+        const response = await fetch('/api/user/budget/status', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${idToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch budget information');
+        }
+
+        const data = await response.json();
+        setBudgetInfo(data);
+        console.log('✅ DashboardProvider: Budget info loaded successfully');
+
+      } catch (error) {
+        console.error('❌ DashboardProvider: Error loading budget info:', error);
+        // Don't set error state - budget is optional information
+        setBudgetInfo(null);
+      } finally {
+        setBudgetLoading(false);
+      }
+    }, [currentUser]);
+
    // In DashboardProvider...
 
   useEffect(() => {
@@ -86,6 +126,14 @@
     }
 
   }, [currentUser, fetchDashboardData]); // ✅ ADD fetchDashboardData BACK HERE
+
+  // Fetch budget info whenever subscription data is loaded (once)
+  useEffect(() => {
+    if (subscriptionData && currentUser) {
+      fetchBudgetInfo();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subscriptionData?.subscriptionLevel, currentUser?.uid]);
 
   // 🆕 Real-time listener for subscription changes
   useEffect(() => {
@@ -175,7 +223,12 @@
       hasContactFeature,
       hasEnterprisePermission,
       refreshData: () => fetchDashboardData(true),
-      permissions: subscriptionData?.permissions || {}
+      permissions: subscriptionData?.permissions || {},
+
+      // Budget information
+      budgetInfo,
+      budgetLoading,
+      refreshBudget: fetchBudgetInfo
     };
 
     return (

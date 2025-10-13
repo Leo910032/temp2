@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createApiSession } from '@/lib/server/session';
-import { PlacesService } from '@/lib/services/serviceContact/server/placesService';
+import { PlacesService } from '@/lib/services/serviceContact/server/GroupService/placesService';
 
 export async function POST(request) {
   try {

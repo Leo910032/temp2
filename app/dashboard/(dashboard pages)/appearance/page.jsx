@@ -228,7 +228,7 @@ function AppearanceContent() {
     }
 
     return (
-<div className="flex-1 py-2 flex flex-col overflow-y-auto">
+        <div className="flex-1 py-2 flex flex-col overflow-y-auto">
             {/* Saving indicator */}
             {isSaving && (
                 <div className="fixed top-20 right-6 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2">
@@ -285,13 +285,15 @@ function AppearanceContent() {
                         {translations.newBadge}
                     </span>
                 </h2>
-                {canUseCarousel ? (
+                {canUseCarousel && (
                     <CarouselManager />
-                ) : appearance?.carousels?.length > 0 ? (
+                )}
+                {!canUseCarousel && appearance?.carousels?.length > 0 && (
                     <LockedFeature feature="Content Carousel" requiredTier="Pro">
                         <CarouselManager />
                     </LockedFeature>
-                ) : (
+                )}
+                {!canUseCarousel && (!appearance?.carousels || appearance?.carousels?.length === 0) && (
                     <UpgradePrompt feature="Content Carousel" requiredTier="Pro" />
                 )}
             </div>
@@ -304,13 +306,15 @@ function AppearanceContent() {
                         {translations.newBadge}
                     </span>
                 </h2>
-                {canUseVideoEmbed ? (
+                {canUseVideoEmbed && (
                     <MediaManager />
-                ) : appearance?.mediaItems?.length > 0 || appearance?.mediaEnabled ? (
+                )}
+                {!canUseVideoEmbed && (appearance?.mediaItems?.length > 0 || appearance?.mediaEnabled) && (
                     <LockedFeature feature="Media" requiredTier="Pro">
                         <MediaManager />
                     </LockedFeature>
-                ) : (
+                )}
+                {!canUseVideoEmbed && (!appearance?.mediaItems || appearance?.mediaItems?.length === 0) && !appearance?.mediaEnabled && (
                     <UpgradePrompt feature="Media" requiredTier="Pro" />
                 )}
             </div>

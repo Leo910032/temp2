@@ -39,7 +39,7 @@ export default function EventLocationSearch({ onLocationSelect, selectedLocation
     else if (selectedLocation && searchQuery !== selectedLocation.name) {
         setSearchQuery(selectedLocation.name);
     }
-  }, [selectedLocation]); // The dependency array is now correct.
+  }, [selectedLocation, searchQuery, setSearchQuery]); // The dependency array is now correct.
 
   return (
     <div className="relative">

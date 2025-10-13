@@ -1,17 +1,17 @@
 // app/dashboard/(dashboard pages)/appearance/components/CarouselManager.jsx
 "use client"
 
-import React, { useContext, useMemo } from "react";
+import React, { useMemo } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "@/lib/translation/useTranslation";
-import { AppearanceContext } from "../AppearanceContext";
+import { useAppearance } from "../AppearanceContext";
 import CarouselContainerCard from "../elements/CarouselContainerCard";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LinksService } from "@/lib/services/serviceLinks/client/LinksService.js";
 
 export default function CarouselManager() {
     const { t, isInitialized } = useTranslation();
-    const { appearance, updateAppearance, isSaving } = useContext(AppearanceContext);
+    const { appearance, updateAppearance, isSaving } = useAppearance();
     const router = useRouter();
     const searchParams = useSearchParams();
 

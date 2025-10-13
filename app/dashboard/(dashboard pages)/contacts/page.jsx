@@ -16,6 +16,7 @@ import StatsCards from './components/StatsCards';
 import UsageCards from './components/UsageCards';
 import ContactModals from './components/contacts/ContactModals';
 import ContactsMap from './components/ContactsMap';
+import BudgetInfoCard from '../../general components/BudgetInfoCard';
 
 // Wrapper component to provide context
 export default function ContactsPageWrapper() {
@@ -28,7 +29,7 @@ export default function ContactsPageWrapper() {
 
 function ContactsPage() {
     const { t, isInitialized } = useTranslation();
-    const { isLoading: isSessionLoading, subscriptionLevel } = useDashboard();
+    const { isLoading: isSessionLoading, subscriptionLevel, budgetInfo, budgetLoading } = useDashboard();
     const isPremium = subscriptionLevel === 'premium' || subscriptionLevel === 'business' || subscriptionLevel === 'enterprise';
     const { setIsMapOpen } = useMapVisibility();
 
@@ -212,8 +213,8 @@ function ContactsPage() {
 
     // Main render
     return (
-        <div className="flex-1 py-3 sm:py-4 px-3 sm:px-4 max-h-full overflow-y-auto">
-            <div className="max-w-7xl mx-auto">
+        <div className="flex-1 w-full py-3 sm:py-4 max-h-full overflow-y-auto">
+            <div className="w-full">
                 {/* Header */}
                 <div className="mb-4 sm:mb-6">
                     <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">
@@ -221,6 +222,13 @@ function ContactsPage() {
                     </h1>
                     <p className="text-sm sm:text-base text-gray-600">{translations.subtitle}</p>
                 </div>
+
+                {/* Budget Information Card */}
+                <BudgetInfoCard
+                    budgetInfo={budgetInfo}
+                    budgetLoading={budgetLoading}
+                    compact={false}
+                />
 
                 {/* Stats Cards */}
                 <StatsCards stats={stats} translations={translations} />

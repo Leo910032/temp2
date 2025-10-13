@@ -1,13 +1,19 @@
-// app/admin/page.jsx - Updated with Vector Contact Generation Panel
+// app/admin/page.jsx - REFACTORED TO USE SERVICE ARCHITECTURE
 "use client"
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 
+// ✅ Import admin services (separated for clarity)
+import { AdminService } from '@/lib/services/serviceAdmin/client/adminService';
+import { AdminServiceAnalytics } from '@/lib/services/serviceAdmin/client/adminServiceAnalytics';
+import { ADMIN_PERMISSIONS } from '@/lib/services/serviceAdmin/constants/adminConstants';
+
 // Import components
 import AdminContactTestPanel from './components/AdminContactTestPanel';
-import AdminVectorContactTestPanel from './components/AdminVectorContactTestPanel'; // NEW
-import PlatformUsageOverview from './components/PlatformUsageOverview';
+import AdminVectorContactTestPanel from './components/AdminVectorContactTestPanel';
+// import PlatformUsageOverview from './components/PlatformUsageOverview'; // Legacy - replaced by ApiUsageStats
+import ApiUsageStats from './components/ApiUsageStats';
 import UserUsageOverview from './components/UserUsageOverview';
 import UserList from './components/UserList';
 import UserDetails from './components/UserDetails';
@@ -23,8 +29,12 @@ export default function AdminDashboard() {
     const [userDetailLoading, setUserDetailLoading] = useState(false);
     const [authToken, setAuthToken] = useState(null);
 
+    // Admin role and permissions
+    const [adminPermissions, setAdminPermissions] = useState({});
+
     // Global and user-specific analytics data
     const [globalAnalytics, setGlobalAnalytics] = useState(null);
+    const [apiUsageData, setApiUsageData] = useState(null);
     const [userUsageLogs, setUserUsageLogs] = useState([]);
     
     // Panel state
@@ -67,133 +77,96 @@ useEffect(() => {
         const fetchAllData = async () => {
             if (!currentUser) return;
             setLoading(true);
+
             try {
-                const token = await currentUser.getIdToken();
-                
-                const [usersResponse, analyticsResponse] = await Promise.all([
-                    fetch('/api/admin/users', { 
-                        headers: { 
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json',
-                        } 
-                    }),
-                    fetch('/api/admin/analytics', { 
-                        headers: { 
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json',
-                        } 
-                    })
+                console.log('📊 [AdminPage] Fetching data using AdminService...');
+
+                // ✅ REFACTORED: Use separated services for better organization
+                const [usersData, analyticsData] = await Promise.all([
+                    AdminService.fetchUsers(),
+                    AdminServiceAnalytics.fetchPlatformAnalytics()
                 ]);
 
-                if (usersResponse.ok) {
-                    const data = await usersResponse.json();
-                    console.log('Users data received:', data);
-                    setUsers(data.users);
-                    setStats(data.stats);
-                } else {
-                    const errorData = await usersResponse.json();
-                    console.error('Users API Error:', usersResponse.status, errorData);
-                    
-                    if (usersResponse.status === 401) {
-                        alert('Authentication failed. Please log out and log back in.');
-                    } else if (usersResponse.status === 403) {
-                        alert('Access denied. You need admin privileges.');
-                    } else {
-                        alert(`Error: ${errorData.error || 'Unknown error'}`);
-                    }
+                // Process users data
+                console.log('✅ [AdminPage] Users data received:', usersData);
+                setUsers(usersData.users);
+                setStats(usersData.stats);
+
+                // Store admin permissions from API response
+                if (usersData.adminPermissions) {
+                    console.log('✅ [AdminPage] Admin permissions received:', usersData.adminPermissions);
+                    setAdminPermissions(usersData.adminPermissions);
                 }
 
-                if (analyticsResponse.ok) {
-                    const data = await analyticsResponse.json();
-                    console.log('Analytics data received:', data);
-                    setGlobalAnalytics(data.summary);
-                    const logsByUser = data.recentRuns?.reduce((acc, log) => {
-                        acc[log.userId] = acc[log.userId] || [];
-                        acc[log.userId].push(log);
-                        return acc;
-                    }, {}) || {};
-                    setUserUsageLogs(logsByUser);
-                } else {
-                    console.error('Failed to fetch analytics:', await analyticsResponse.json());
-                    console.error("Failed to load analytics data.");
-                }
+                // Process analytics data
+                console.log('✅ [AdminPage] Analytics data received:', analyticsData);
+                setGlobalAnalytics(analyticsData.summary);
+                setApiUsageData(analyticsData.apiUsage); // Set API usage data
+
+                const logsByUser = analyticsData.recentRuns?.reduce((acc, log) => {
+                    acc[log.userId] = acc[log.userId] || [];
+                    acc[log.userId].push(log);
+                    return acc;
+                }, {}) || {};
+                setUserUsageLogs(logsByUser);
+
             } catch (error) {
-                console.error('Fetch error:', error);
-                alert('Failed to load data. Check console for details.');
+                console.error('❌ [AdminPage] Error fetching data:', error);
+
+                // Enhanced error handling using the error object properties
+                if (error.isAuthError) {
+                    alert('Authentication failed. Please log out and log back in.');
+                } else if (error.status === 403) {
+                    alert('Access denied. You need admin privileges.');
+                } else {
+                    alert(`Failed to load data: ${error.message}`);
+                }
             } finally {
                 setLoading(false);
             }
         };
-        
+
         fetchAllData();
     }, [currentUser]);
 
     const fetchUserDetail = async (userId) => {
-        console.log('=== FETCH USER DETAIL START ===');
-        console.log('User ID received:', userId);
-        
+        console.log('📋 [AdminPage] === FETCH USER DETAIL START ===');
+        console.log('📋 [AdminPage] User ID received:', userId);
+
         if (!userId) {
-            console.error('No userId provided to fetchUserDetail');
+            console.error('❌ [AdminPage] No userId provided to fetchUserDetail');
             alert('Error: No user ID provided');
             return;
         }
 
         setUserDetailLoading(true);
         setSelectedUser(null);
-        
+
         try {
-            if (!currentUser) {
-                console.error("No currentUser available");
-                throw new Error("Authentication context is not available.");
-            }
-            
-            const token = await currentUser.getIdToken();
-            console.log('Token obtained for user detail:', token ? 'Yes' : 'No');
-            
-            const apiUrl = `/api/admin/user/${userId}`;
-            console.log('Making request to:', apiUrl);
-            
-            const response = await fetch(apiUrl, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-            });
+            // ✅ REFACTORED: Use AdminService instead of direct fetch
+            console.log('📋 [AdminPage] Fetching user detail using AdminService...');
+            const userData = await AdminService.fetchUserDetail(userId);
 
-            console.log('User detail response status:', response.status);
+            console.log('✅ [AdminPage] User detail data received:', userData);
+            setSelectedUser(userData);
 
-            if (response.ok) {
-                const userData = await response.json();
-                console.log('User detail data received:', userData);
-                setSelectedUser(userData);
-            } else {
-                const errorText = await response.text();
-                console.error(`Failed to fetch user ${userId}:`, {
-                    status: response.status,
-                    statusText: response.statusText,
-                    rawResponse: errorText
-                });
-                
-                let errorMessage = errorText;
-                try {
-                    const errorData = JSON.parse(errorText);
-                    errorMessage = errorData.error || errorMessage;
-                } catch (e) {
-                    console.warn('Response is not valid JSON');
-                }
-                
-                alert(`Error loading user details: ${errorMessage}`);
-            }
         } catch (error) {
-            console.error('Client-side error in fetchUserDetail:', {
+            console.error('❌ [AdminPage] Error in fetchUserDetail:', {
                 message: error.message,
-                stack: error.stack,
+                status: error.status,
                 userId: userId
             });
-            alert(`An unexpected error occurred: ${error.message}`);
+
+            // Enhanced error handling
+            if (error.isAuthError) {
+                alert('Authentication failed. Please log out and log back in.');
+            } else if (error.status === 404) {
+                alert(`User not found: ${userId}`);
+            } else {
+                alert(`Error loading user details: ${error.message}`);
+            }
         } finally {
-            console.log('fetchUserDetail completed');
+            console.log('✅ [AdminPage] fetchUserDetail completed');
             setUserDetailLoading(false);
         }
     };
@@ -403,52 +376,68 @@ useEffect(() => {
         );
     }
 
+    // Check if user can perform actions (not view-only)
+    const canPerformActions = adminPermissions[ADMIN_PERMISSIONS.CAN_PERFORM_ACTIONS] === true;
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900">Admin Dashboard</h2>
+                <h2 className="text-2xl font-bold text-gray-900">
+                    Admin Dashboard
+                    {!canPerformActions && (
+                        <span className="ml-3 text-sm font-normal text-gray-500 bg-yellow-100 px-3 py-1 rounded-full border border-yellow-300">
+                            👁️ View Only
+                        </span>
+                    )}
+                </h2>
                 <div className="flex items-center gap-3">
-                    {/* Enterprise Panel Toggle */}
-                    <button
-                        onClick={() => setShowEnterprisePanel(!showEnterprisePanel)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors font-medium ${
-                            showEnterprisePanel 
-                                ? 'bg-purple-100 border border-purple-300 text-purple-800 hover:bg-purple-200' 
-                                : 'bg-purple-600 text-white hover:bg-purple-700'
-                        }`}
-                    >
-                        <span>🏢</span>
-                        {showEnterprisePanel ? 'Hide Enterprise Panel' : 'Show Enterprise Panel'}
-                    </button>
+                    {/* Enterprise Panel Toggle - Only for full admins */}
+                    {canPerformActions && (
+                        <button
+                            onClick={() => setShowEnterprisePanel(!showEnterprisePanel)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors font-medium ${
+                                showEnterprisePanel
+                                    ? 'bg-purple-100 border border-purple-300 text-purple-800 hover:bg-purple-200'
+                                    : 'bg-purple-600 text-white hover:bg-purple-700'
+                            }`}
+                        >
+                            <span>🏢</span>
+                            {showEnterprisePanel ? 'Hide Enterprise Panel' : 'Show Enterprise Panel'}
+                        </button>
+                    )}
 
-                    {/* NEW: Vector Panel Toggle */}
-                    <button
-                        onClick={() => setShowVectorPanel(!showVectorPanel)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors font-medium ${
-                            showVectorPanel 
-                                ? 'bg-blue-100 border border-blue-300 text-blue-800 hover:bg-blue-200' 
-                                : 'bg-blue-600 text-white hover:bg-blue-700'
-                        }`}
-                    >
-                        <span>🔮</span>
-                        {showVectorPanel ? 'Hide Vector Panel' : 'Show Vector Panel'}
-                    </button>
+                    {/* Vector Panel Toggle - Only for full admins */}
+                    {canPerformActions && (
+                        <button
+                            onClick={() => setShowVectorPanel(!showVectorPanel)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors font-medium ${
+                                showVectorPanel
+                                    ? 'bg-blue-100 border border-blue-300 text-blue-800 hover:bg-blue-200'
+                                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                            }`}
+                        >
+                            <span>🔮</span>
+                            {showVectorPanel ? 'Hide Vector Panel' : 'Show Vector Panel'}
+                        </button>
+                    )}
 
-                    {/* Regular Test Panel Toggle */}
-                    <button
-                        onClick={() => setShowTestPanel(!showTestPanel)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors font-medium ${
-                            showTestPanel 
-                                ? 'bg-orange-100 border border-orange-300 text-orange-800 hover:bg-orange-200' 
-                                : 'bg-orange-600 text-white hover:bg-orange-700'
-                        }`}
-                    >
-                        <span>🧪</span>
-                        {showTestPanel ? 'Hide Test Panel' : 'Show Test Panel'}
-                    </button>
+                    {/* Regular Test Panel Toggle - Only for full admins */}
+                    {canPerformActions && (
+                        <button
+                            onClick={() => setShowTestPanel(!showTestPanel)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors font-medium ${
+                                showTestPanel
+                                    ? 'bg-orange-100 border border-orange-300 text-orange-800 hover:bg-orange-200'
+                                    : 'bg-orange-600 text-white hover:bg-orange-700'
+                            }`}
+                        >
+                            <span>🧪</span>
+                            {showTestPanel ? 'Hide Test Panel' : 'Show Test Panel'}
+                        </button>
+                    )}
 
-                    <Link 
-                        href="/dashboard" 
+                    <Link
+                        href="/dashboard"
                         className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
                     >
                         Back to Dashboard
@@ -536,11 +525,14 @@ useEffect(() => {
                 </div>
             )}
 
-            {/* Platform Usage Overview */}
-            <PlatformUsageOverview stats={globalAnalytics} />
+            {/* API Usage Statistics - NEW */}
+            <ApiUsageStats apiUsage={apiUsageData} />
 
-            {/* Enhanced Stats Cards with API Data */}
-            <StatsCards stats={stats} apiStats={globalAnalytics} />
+            {/* Platform Usage Overview - Legacy - REMOVED (replaced by ApiUsageStats) */}
+            {/* <PlatformUsageOverview stats={globalAnalytics} /> */}
+
+            {/* User Stats Cards */}
+            <StatsCards stats={stats} />
 
             {/* Account Types Breakdown */}
             <AccountTypesBreakdown stats={stats} />

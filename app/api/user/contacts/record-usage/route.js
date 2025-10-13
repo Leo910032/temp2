@@ -1,7 +1,7 @@
 // app/api/user/contacts/record-usage/route.js
 import { NextResponse } from 'next/server';
 import { adminAuth } from '@/lib/firebaseAdmin';
-import { CostTrackingService } from '../../../../../lib/services/serviceContact/server/costTrackingService';
+import { CostTrackingService } from '../../../../../lib/services/serviceContact/server/costTracking/costTrackingService';
 
 export async function POST(request) {
   try {

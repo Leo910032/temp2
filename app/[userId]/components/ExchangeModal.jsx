@@ -8,7 +8,7 @@ import { toast } from 'react-hot-toast';
 // Import the enhanced service (instead of the old mixed approach)
 import { EnhancedExchangeService } from '@/lib/services/serviceContact/client/services/EnhancedExchangeService';
 
-// Import the working BusinessCardScanner component from contacts
+// Import the working usinessCardScanner component from contacts
 import BusinessCardScanner from '@/app/dashboard/(dashboard pages)/contacts/components/BusinessCardScanner';
 import ContactReviewModal from '@/app/dashboard/(dashboard pages)/contacts/components/ContactReviewModal';
 

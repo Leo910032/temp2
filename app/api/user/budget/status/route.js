@@ -4,6 +4,10 @@
 import { createApiSession, SessionManager } from '@/lib/server/session';
 import { NextResponse } from 'next/server';
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 /**
  * GET /api/user/budget/status
  * Returns the current user's budget status including:

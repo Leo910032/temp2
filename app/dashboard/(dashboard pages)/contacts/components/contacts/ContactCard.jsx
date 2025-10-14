@@ -1,7 +1,7 @@
 //app/dashboard/(dashboard pages)/contacts/components/contacts/ContactCard.jsx
 "use client";
 
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { useTranslation } from "@/lib/translation/useTranslation";
 
 // Country flag emoji mapping
@@ -43,7 +43,7 @@ function getCountryFromPhone(phoneNumber) {
     return null;
 }
 
-export default function ContactCard({ contact, onEdit, onStatusUpdate, onDelete, onContactAction, onMapView, groups = [], isPremium = false }) {
+const ContactCard = memo(function ContactCard({ contact, onEdit, onStatusUpdate, onDelete, onContactAction, onMapView, onShowGroups, groups = [], isPremium = false }) {
     const { t } = useTranslation();
     const [expanded, setExpanded] = useState(false);
     const contactGroups = groups.filter(group => group.contactIds && group.contactIds.includes(contact.id));
@@ -380,8 +380,8 @@ export default function ContactCard({ contact, onEdit, onStatusUpdate, onDelete,
                                 </button>
                             )}
                             {contact.location?.latitude && (
-                                <button 
-                                    onClick={() => onMapView?.(contact)} 
+                                <button
+                                    onClick={() => onMapView?.(contact)}
                                     className="flex items-center justify-center gap-1 px-2 py-2 text-xs text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
                                 >
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -393,9 +393,22 @@ export default function ContactCard({ contact, onEdit, onStatusUpdate, onDelete,
                                 </button>
                             )}
                         </div>
+                        {onShowGroups && contactGroups.length > 0 && (
+                            <button
+                                onClick={() => onShowGroups(contact.id)}
+                                className="flex items-center justify-center gap-1 px-2 py-2 text-xs text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors mt-2 w-full"
+                            >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                                <span>Show Groups ({contactGroups.length})</span>
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
         </div>
     );
-}
+});
+
+export default ContactCard;

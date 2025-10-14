@@ -682,7 +682,7 @@ export default function RulesReviewTabEnhanced({
                             <div key={idx} className="bg-white rounded p-3 flex items-center justify-between text-sm">
                                 <div className="flex-1">
                                     <div className="font-medium text-gray-900">
-                                        Merge "{merge.group1.name}" + "{merge.group2.name}"
+                                        Merge &quot;{merge.group1.name}&quot; + &quot;{merge.group2.name}&quot;
                                     </div>
                                     <div className="text-xs text-gray-600">
                                         {merge.reason} ({merge.similarity}% similar)
@@ -702,7 +702,7 @@ export default function RulesReviewTabEnhanced({
                             <div key={`issue-${idx}`} className="bg-white rounded p-3 flex items-center justify-between text-sm">
                                 <div className="flex-1">
                                     <div className="font-medium text-gray-900">
-                                        "{issue.group.name}": {issue.issue}
+                                        &quot;{issue.group.name}&quot;: {issue.issue}
                                     </div>
                                     <div className="text-xs text-gray-600">
                                         {issue.severity === 'high' ? '⚠️ High priority' : '⚡ Medium priority'}
@@ -722,7 +722,7 @@ export default function RulesReviewTabEnhanced({
                             <div key={`dup-${idx}`} className="bg-white rounded p-3 flex items-center justify-between text-sm">
                                 <div className="flex-1">
                                     <div className="font-medium text-gray-900">
-                                        Duplicate group names: "{dup.name}"
+                                        Duplicate group names: &quot;{dup.name}&quot;
                                     </div>
                                     <div className="text-xs text-gray-600">
                                         {dup.groups.length} groups with similar names

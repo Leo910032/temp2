@@ -28,6 +28,7 @@
     "eslint-config-next": "13.4.8",
     "firebase": "^9.23.0",
     "firebase-admin": "^13.4.0",
+    "framer-motion": "^12.23.24",
     "js-cookie": "^3.0.5",
     "jsqr": "^1.4.0",
     "lodash": "^4.17.21",

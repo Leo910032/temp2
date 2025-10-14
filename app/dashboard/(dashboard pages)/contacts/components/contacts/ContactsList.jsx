@@ -1,10 +1,12 @@
 // app/dashboard/(dashboard pages)/contacts/components/ContactsList.jsx
 "use client";
 
+import { memo } from 'react';
 import { useTranslation } from "@/lib/translation/useTranslation";
 import ContactCard from './ContactCard';
+import { motion } from 'framer-motion';
 
-export default function ContactsList({
+const ContactsList = memo(function ContactsList({
     contacts,
     isPremium,
     selectionMode,
@@ -13,6 +15,7 @@ export default function ContactsList({
     onEdit,
     onAction,
     onMapView,
+    onShowGroups,
     hasMore,
     onLoadMore,
     loading,
@@ -92,7 +95,13 @@ export default function ContactsList({
     };
 
     return (
-        <div className="space-y-4 pb-24 sm:pb-6">
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-4 pb-24 sm:pb-6"
+        >
             {renderSearchHeader()}
 
             <div className="space-y-3">
@@ -120,6 +129,7 @@ export default function ContactsList({
                             onEdit={onEdit}
                             onContactAction={onAction}
                             onMapView={onMapView}
+                            onShowGroups={onShowGroups}
                             groups={groups}
                             isAiResult={isAiSearch}
                         />
@@ -145,6 +155,8 @@ export default function ContactsList({
                     </button>
                 </div>
             )}
-        </div>
+        </motion.div>
     );
-}
+});
+
+export default ContactsList;

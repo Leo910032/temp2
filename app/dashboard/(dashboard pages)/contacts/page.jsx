@@ -11,12 +11,14 @@ import { useMapVisibility } from '../../MapVisibilityContext';
 
 // Import child components
 import ContactsList from './components/contacts/ContactsList';
+import GroupList from './components/contacts/GroupList';
 import SearchBar from './components/SearchBar';
 import StatsCards from './components/StatsCards';
 import UsageCards from './components/UsageCards';
 import ContactModals from './components/contacts/ContactModals';
 import ContactsMap from './components/ContactsMap';
 import BudgetInfoCard from '../../general components/BudgetInfoCard';
+import { AnimatePresence } from 'framer-motion';
 
 // Wrapper component to provide context
 export default function ContactsPageWrapper() {
@@ -77,6 +79,10 @@ function ContactsPage() {
     const [showMap, setShowMap] = useState(false);
     const [selectedContactForMap, setSelectedContactForMap] = useState(null);
     const [focusLocation, setFocusLocation] = useState(null);
+
+    // View mode and focus state for interactive filtering
+    const [viewMode, setViewMode] = useState('contacts'); // 'contacts' | 'groups'
+    const [focus, setFocus] = useState(null); // null | { type: 'contact', id: string } | { type: 'group', id: string }
 
     // Update map visibility in context
     useEffect(() => {
@@ -144,8 +150,42 @@ function ContactsPage() {
         handleContactAction('map', contact);
     }, [handleContactAction]);
 
+    // Focus mode handlers
+    const handleShowGroups = useCallback((contactId) => {
+        setFocus({ type: 'contact', id: contactId });
+        setViewMode('groups');
+    }, []);
+
+    const handleShowMembers = useCallback((groupId) => {
+        setFocus({ type: 'group', id: groupId });
+        setViewMode('contacts');
+    }, []);
+
+    const handleBackToAll = useCallback(() => {
+        setFocus(null);
+    }, []);
+
+    // Filtered data based on focus mode
+    const filteredContacts = useMemo(() => {
+        if (!focus) return aiSearchResults || contacts;
+        if (focus.type === 'group') {
+            const group = groups.find(g => g.id === focus.id);
+            if (!group) return [];
+            return (aiSearchResults || contacts).filter(c => group.contactIds?.includes(c.id));
+        }
+        return aiSearchResults || contacts;
+    }, [focus, contacts, groups, aiSearchResults]);
+
+    const filteredGroups = useMemo(() => {
+        if (!focus) return groups;
+        if (focus.type === 'contact') {
+            return groups.filter(g => g.contactIds?.includes(focus.id));
+        }
+        return groups;
+    }, [focus, groups]);
+
     console.log(
-        'FEATURE CHECK: Business Card Scanner ->', 
+        'FEATURE CHECK: Business Card Scanner ->',
         hasFeature(CONTACT_FEATURES.BUSINESS_CARD_SCANNER)
     );
 
@@ -367,51 +407,140 @@ function ContactsPage() {
                     </div>
                 </div>
 
-                {/* Contacts List */}
-                <ContactsList
-                    contacts={aiSearchResults || contacts}
-                    isPremium={isPremium}
-                    selectionMode={selectionMode}
-                    selectedContacts={selectedContacts}
-                    onToggleSelection={(id) => setSelectedContacts(prev =>
-                        prev.includes(id) ? prev.filter(cid => cid !== id) : [...prev, id]
-                    )}
-                    onEdit={(contact) => {
-                        setEditingContact(contact);
-                        setShowEditModal(true);
-                    }}
-                    onAction={handleContactAction}
-                    onMapView={handleMapView}
-                    hasMore={pagination.hasMore}
-                    onLoadMore={() => refreshData({ append: true })}
-                    loading={isLoading}
-                    groups={groups}
-                    isAiSearch={!!aiSearchResults}
-                    searchMode={searchMode}
-                    onClearSearch={clearSearch}
-                />
-
-                {/* Groups Preview */}
-                {groups.length > 0 && (
-                    <div className="mt-6 bg-white p-4 rounded-lg shadow">
-                        <h3 className="text-lg font-medium text-gray-900 mb-3">{t('contacts.groups.title') || 'Contact Groups'}</h3>
-                        <div className="flex flex-wrap gap-2">
-                            {groups.slice(0, 5).map((group) => (
-                                <div key={group.id} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                                    {group.name} ({group.contactIds?.length || 0})
-                                </div>
-                            ))}
-                            {groups.length > 5 && (
+                {/* View Toggle */}
+                {!focus && (
+                    <div className="bg-white p-3 sm:p-4 rounded-lg shadow mb-4 sm:mb-6">
+                        <div className="flex items-center justify-center">
+                            <div className="inline-flex rounded-lg border border-gray-200 p-1 bg-gray-50">
                                 <button
-                                    onClick={() => setShowGroupManager(true)}
-                                    className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm hover:bg-gray-200"
+                                    onClick={() => setViewMode('contacts')}
+                                    className={`px-6 py-2 rounded-md text-sm font-medium transition-all ${
+                                        viewMode === 'contacts'
+                                            ? 'bg-blue-600 text-white shadow-sm'
+                                            : 'text-gray-600 hover:text-gray-900'
+                                    }`}
                                 >
-                                    {t('contacts.groups.more', { count: groups.length - 5 }) || `+${groups.length - 5} more`}
+                                    <span className="flex items-center gap-2">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                        <span>Contacts ({contacts.length})</span>
+                                    </span>
                                 </button>
-                            )}
+                                <button
+                                    onClick={() => setViewMode('groups')}
+                                    className={`px-6 py-2 rounded-md text-sm font-medium transition-all ${
+                                        viewMode === 'groups'
+                                            ? 'bg-blue-600 text-white shadow-sm'
+                                            : 'text-gray-600 hover:text-gray-900'
+                                    }`}
+                                >
+                                    <span className="flex items-center gap-2">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                        <span>Groups ({groups.length})</span>
+                                    </span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
+
+                {/* Back Button for Focus Mode */}
+                {focus && (
+                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-3 sm:p-4 rounded-lg shadow mb-4 sm:mb-6 border border-blue-200">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-blue-900">
+                                        {focus.type === 'contact' ? 'Showing Groups for Contact' : 'Showing Members of Group'}
+                                    </h3>
+                                    <p className="text-sm text-blue-700">
+                                        {focus.type === 'contact'
+                                            ? `${filteredGroups.length} group${filteredGroups.length !== 1 ? 's' : ''} found`
+                                            : `${filteredContacts.length} member${filteredContacts.length !== 1 ? 's' : ''} found`
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={handleBackToAll}
+                                className="px-4 py-2 bg-white text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors text-sm font-medium flex items-center gap-2"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                </svg>
+                                Back to All {focus.type === 'contact' ? 'Groups' : 'Contacts'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Contacts List */}
+                <div className="relative">
+                    <AnimatePresence mode="wait">
+                        {viewMode === 'contacts' ? (
+                            <ContactsList
+                                key="contacts"
+                                contacts={filteredContacts}
+                            isPremium={isPremium}
+                            selectionMode={selectionMode}
+                            selectedContacts={selectedContacts}
+                            onToggleSelection={(id) => setSelectedContacts(prev =>
+                                prev.includes(id) ? prev.filter(cid => cid !== id) : [...prev, id]
+                            )}
+                            onEdit={(contact) => {
+                                setEditingContact(contact);
+                                setShowEditModal(true);
+                            }}
+                            onAction={handleContactAction}
+                            onMapView={handleMapView}
+                            onShowGroups={handleShowGroups}
+                            hasMore={!focus && pagination.hasMore}
+                            onLoadMore={() => refreshData({ append: true })}
+                            loading={isLoading}
+                            groups={groups}
+                            isAiSearch={!!aiSearchResults}
+                            searchMode={searchMode}
+                            onClearSearch={clearSearch}
+                            />
+                        ) : (
+                            <GroupList
+                                key="groups"
+                                groups={filteredGroups}
+                            contacts={contacts}
+                            onShowMembers={handleShowMembers}
+                            onEdit={(group) => {
+                                // Open group manager with this group selected for editing
+                                setShowGroupManager(true);
+                            }}
+                            onDelete={async (groupId) => {
+                                // Handle group deletion
+                                try {
+                                    const groupsService = await import('@/lib/services/serviceContact/client/services/GroupService');
+                                    await groupsService.GroupService.deleteGroup(currentUser.uid, groupId);
+                                    refreshData();
+                                    toast.success('Group deleted successfully');
+                                } catch (error) {
+                                    console.error('Failed to delete group:', error);
+                                    toast.error('Failed to delete group');
+                                }
+                            }}
+                            onShowLocation={(location) => {
+                                setFocusLocation(location);
+                                setShowMap(true);
+                            }}
+                            loading={isLoading}
+                            />
+                        )}
+                    </AnimatePresence>
+                </div>
             </div>
 
             {/* All Modals */}

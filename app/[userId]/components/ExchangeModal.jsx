@@ -150,6 +150,8 @@ export default function ExchangeModal({
 
     /**
      * Process enhanced scan results that include both standard and dynamic fields
+     * IMPORTANT: Standard fields (name, email, phone, company, jobTitle, website, message)
+     * should NEVER be in dynamicFields. Only truly custom fields belong there.
      */
     const processEnhancedScanResults = useCallback((standardFields = [], dynamicFields = []) => {
         const processedStandardFields = {
@@ -161,17 +163,20 @@ export default function ExchangeModal({
             website: '',
             message: ''
         };
-        
+
         const processedDynamicFields = [];
-        
-        // Process standard fields
+
+        // Define standard field names to exclude from dynamic fields
+        const standardFieldNames = ['name', 'email', 'phone', 'company', 'jobtitle', 'job title', 'website', 'message', 'address'];
+
+        // Process standard fields - only map standard field names
         standardFields.forEach(field => {
             const label = field.label.toLowerCase();
             const value = field.value.trim();
-            
+
             if (!value) return;
-            
-            if (label.includes('name') && !processedStandardFields.name) {
+
+            if (label.includes('name') && !label.includes('company') && !processedStandardFields.name) {
                 processedStandardFields.name = value;
             } else if (label.includes('email') && !processedStandardFields.email) {
                 processedStandardFields.email = value;
@@ -185,9 +190,18 @@ export default function ExchangeModal({
                 processedStandardFields.website = normalizeWebsiteUrl(value);
             }
         });
-        
-        // Process dynamic fields
+
+        // Process dynamic fields - EXCLUDE any field that is a standard field
         dynamicFields.forEach(field => {
+            const label = field.label.toLowerCase();
+
+            // Skip if this is actually a standard field
+            const isStandardField = standardFieldNames.some(stdField => label.includes(stdField));
+            if (isStandardField) {
+                console.warn(`⚠️ Skipping "${field.label}" from dynamicFields - it's a standard field`);
+                return;
+            }
+
             if (field.value && field.value.trim()) {
                 processedDynamicFields.push({
                     id: field.id || `dynamic_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
@@ -211,14 +225,12 @@ export default function ExchangeModal({
     const handleReviewSave = useCallback(async (reviewedData) => {
         console.log('Review complete, populating form with:', reviewedData);
 
-        // Combine standard and dynamic fields
-        const allFields = [
-            ...(reviewedData.standardFields || []),
-            ...(reviewedData.dynamicFields || [])
-        ];
+        // Keep standard and dynamic fields separated (DO NOT combine them!)
+        const standardFields = reviewedData.standardFields || [];
+        const dynamicFields = reviewedData.dynamicFields || [];
 
-        // Process the reviewed fields
-        const processedFields = processEnhancedScanResults(allFields, []);
+        // Process the reviewed fields - pass them separately to maintain distinction
+        const processedFields = processEnhancedScanResults(standardFields, dynamicFields);
 
         // Populate form with reviewed data
         populateFormFromEnhancedScan(processedFields.standardFields, processedFields.dynamicFields);
@@ -232,7 +244,7 @@ export default function ExchangeModal({
             }));
         }
 
-        const totalFieldCount = allFields.length;
+        const totalFieldCount = standardFields.length + dynamicFields.length;
         toast.success(`Form populated with ${totalFieldCount} fields from scan!`, { duration: 3000 });
 
         // Close the review modal
@@ -365,12 +377,25 @@ export default function ExchangeModal({
         });
 
         try {
+            // Filter out any standard fields from dynamicFields before submission
+            // Standard fields should ONLY be in the root formData, never in dynamicFields
+            const standardFieldNames = ['name', 'email', 'phone', 'company', 'jobtitle', 'job title', 'website', 'message', 'address'];
+            const filteredDynamicFields = dynamicFields.filter(field => {
+                const label = field.label?.toLowerCase() || '';
+                const isStandardField = standardFieldNames.some(stdField => label.includes(stdField));
+                if (isStandardField) {
+                    console.warn(`⚠️ Filtered out standard field "${field.label}" from dynamicFields during submission`);
+                }
+                return !isStandardField;
+            });
+
             const exchangeData = {
                 targetUserId: profileOwnerId,
                 targetUsername: profileOwnerUsername,
                 contact: {
                     ...formData,
-                    dynamicFields: dynamicFields,
+                    // Only include non-standard dynamic fields (like taglines, social media, etc.)
+                    dynamicFields: filteredDynamicFields,
                     location: location
                 },
                 metadata: {
@@ -379,7 +404,7 @@ export default function ExchangeModal({
                     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                     language: navigator.language || 'en',
                     scannedCard: !!scanResult,
-                    dynamicFieldCount: dynamicFields.length,
+                    dynamicFieldCount: filteredDynamicFields.length,
                     enhancedExchange: true,
                     hasPersonalizedMessage: !!personalizedMessage
                 }

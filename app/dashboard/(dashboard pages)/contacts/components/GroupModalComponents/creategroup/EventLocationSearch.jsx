@@ -55,7 +55,7 @@ export default function EventLocationSearch({ onLocationSelect, selectedLocation
             <div className="flex-1">
               <p className="text-sm font-medium text-amber-900">Monthly API Limit Reached</p>
               <p className="text-xs text-amber-700 mt-1">
-                You've reached your monthly limit for location searches.
+                You&apos;ve reached your monthly limit for location searches.
                 {budgetInfo && (
                   <span> ({budgetInfo.currentRunsAPI}/{budgetInfo.maxRunsAPI} API operations used)</span>
                 )}

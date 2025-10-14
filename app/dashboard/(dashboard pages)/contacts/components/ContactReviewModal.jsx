@@ -1,10 +1,11 @@
 // app/dashboard/(dashboard pages)/contacts/components/ContactReviewModal.jsx
 "use client"
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from "@/lib/translation/useTranslation";
 import { toast } from 'react-hot-toast';
 import PhoneNumberField from './cardScanner/PhoneNumberField';
 import { CONTACT_FEATURES } from '@/lib/services/constants';
+import { EnhancedExchangeService } from '@/lib/services/serviceContact/client/services/EnhancedExchangeService';
 
 // Enhanced field icon component with more categories
 const FieldIcon = ({ label, category }) => {
@@ -44,13 +45,28 @@ const FieldIcon = ({ label, category }) => {
     return <span className="text-gray-400">📄</span>;
 };
 
-export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSave, hasFeature }) {
+export default function ContactReviewModal({
+    isOpen,
+    onClose,
+    parsedFields,
+    onSave,
+    hasFeature,
+    // New props for direct save from public profile
+    directSave = false,
+    profileOwnerId = null,
+    profileOwnerUsername = null,
+    location = null,
+    onDirectSaveComplete = null // Callback to close parent modal after direct save
+}) {
     const { t } = useTranslation();
     const [fields, setFields] = useState([]);
     const [phoneNumbers, setPhoneNumbers] = useState(['']);
     const [isSaving, setIsSaving] = useState(false);
     const [fieldCategories, setFieldCategories] = useState({});
     const [activeCategory, setActiveCategory] = useState('all');
+
+    // Enhanced service instance for direct save
+    const exchangeService = useRef(new EnhancedExchangeService());
 
     // Check if user has premium features for phone country detection
     const isPremium = hasFeature && (
@@ -94,16 +110,31 @@ export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSa
             }
             
             // Process remaining fields and categorize them
-            const processedFields = allFields.map((field, index) => ({
-                id: field.id || `field_${index}`,
-                label: field.label || '',
-                value: field.value || '',
-                category: field.category || inferCategory(field.label, field.value),
-                type: field.type || 'custom',
-                confidence: field.confidence || 0.5,
-                isDynamic: field.isDynamic || false,
-                source: field.source || 'scan'
-            }));
+            // IMPORTANT: Infer isDynamic from type if not explicitly set
+            const processedFields = allFields.map((field, index) => {
+                // Determine isDynamic: prioritize explicit isDynamic, then infer from type
+                let isDynamic;
+                if (typeof field.isDynamic === 'boolean') {
+                    isDynamic = field.isDynamic;
+                } else if (field.type === 'standard') {
+                    isDynamic = false; // Standard fields are NEVER dynamic
+                } else if (field.type === 'custom' || field.type === 'dynamic') {
+                    isDynamic = true; // Custom/dynamic fields are ALWAYS dynamic
+                } else {
+                    isDynamic = false; // Default to false for safety
+                }
+
+                return {
+                    id: field.id || `field_${index}`,
+                    label: field.label || '',
+                    value: field.value || '',
+                    category: field.category || inferCategory(field.label, field.value),
+                    type: field.type || 'custom',
+                    confidence: field.confidence || 0.5,
+                    isDynamic: isDynamic,
+                    source: field.source || 'scan'
+                };
+            });
 
             setFields(processedFields);
             
@@ -206,15 +237,108 @@ export default function ContactReviewModal({ isOpen, onClose, parsedFields, onSa
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            // Pass the raw, user-edited fields and phone numbers back to the parent
-            await onSave({
-                standardFields: fields.filter(f => !f.isDynamic),
-                dynamicFields: fields.filter(f => f.isDynamic),
-                phoneNumbers: phoneNumbers.filter(p => p && p.trim()),
-                metadata: parsedFields.metadata
-            });
-            toast.success(t('contacts.modals.review.save_success'));
-            onClose();
+            const standardFields = fields.filter(f => !f.isDynamic);
+            const dynamicFields = fields.filter(f => f.isDynamic);
+            const cleanedPhoneNumbers = phoneNumbers.filter(p => p && p.trim());
+
+            if (directSave) {
+                // Direct save mode: Submit contact immediately to the API
+                console.log('📝 ContactReviewModal: Direct save mode - submitting contact directly');
+
+                // Build standard form data object
+                const formData = {
+                    name: '',
+                    email: '',
+                    phone: '',
+                    company: '',
+                    jobTitle: '',
+                    website: '',
+                    message: ''
+                };
+
+                // Map standard fields to form data
+                standardFields.forEach(field => {
+                    const label = field.label.toLowerCase();
+                    const value = field.value.trim();
+
+                    if (!value) return;
+
+                    if (label.includes('name') && !label.includes('company') && !formData.name) {
+                        formData.name = value;
+                    } else if (label.includes('email') && !formData.email) {
+                        formData.email = value;
+                    } else if ((label.includes('phone') || label.includes('tel')) && !formData.phone) {
+                        formData.phone = value;
+                    } else if (label.includes('company') && !formData.company) {
+                        formData.company = value;
+                    } else if ((label.includes('job title') || label.includes('title') || label.includes('position')) && !formData.jobTitle) {
+                        formData.jobTitle = value;
+                    } else if ((label.includes('website') || label.includes('url')) && !formData.website) {
+                        formData.website = value;
+                    }
+                });
+
+                // Use the first phone number from phoneNumbers array if we have one
+                if (cleanedPhoneNumbers.length > 0 && !formData.phone) {
+                    formData.phone = cleanedPhoneNumbers[0];
+                }
+
+                // Prepare exchange data for submission
+                const exchangeData = {
+                    targetUserId: profileOwnerId,
+                    targetUsername: profileOwnerUsername,
+                    contact: {
+                        ...formData,
+                        dynamicFields: dynamicFields,
+                        location: location
+                    },
+                    metadata: {
+                        userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : '',
+                        referrer: typeof window !== 'undefined' ? document.referrer : '',
+                        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                        language: navigator.language || 'en',
+                        scannedCard: true,
+                        dynamicFieldCount: dynamicFields.length,
+                        enhancedExchange: true,
+                        directSaveFromReview: true
+                    }
+                };
+
+                console.log('📤 Submitting contact directly:', {
+                    targetUserId: exchangeData.targetUserId,
+                    targetUsername: exchangeData.targetUsername,
+                    contactName: exchangeData.contact?.name,
+                    dynamicFieldsCount: dynamicFields.length,
+                    dynamicFieldsContent: dynamicFields
+                });
+                console.log('🔍 Full exchange data being sent:', JSON.stringify(exchangeData, null, 2));
+
+                // Submit directly using EnhancedExchangeService
+                const result = await exchangeService.current.submitExchangeContact(exchangeData);
+
+                console.log('✅ Contact submitted successfully:', result.contactId);
+                toast.success(t('contacts.modals.review.save_success') || 'Contact saved successfully!', { duration: 4000 });
+
+                // Close this modal
+                onClose();
+
+                // Notify parent to close the ExchangeModal too
+                if (onDirectSaveComplete) {
+                    onDirectSaveComplete();
+                }
+
+            } else {
+                // Dashboard mode: Return data to parent component via callback
+                console.log('📝 ContactReviewModal: Dashboard mode - returning data to parent');
+                await onSave({
+                    standardFields: standardFields,
+                    dynamicFields: dynamicFields,
+                    phoneNumbers: cleanedPhoneNumbers,
+                    metadata: parsedFields.metadata
+                });
+                toast.success(t('contacts.modals.review.save_success'));
+                onClose();
+            }
         } catch (error) {
             console.error('Error saving enhanced contact:', error);
             toast.error(error.message || t('contacts.modals.review.save_error'));

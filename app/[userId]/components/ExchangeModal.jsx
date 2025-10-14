@@ -78,6 +78,35 @@ export default function ExchangeModal({
 
             toast.success(t('exchange.location_obtained') || 'Location obtained successfully!');
 
+            // Perform reverse geocoding to get address details
+            try {
+                console.log("🌍 Performing reverse geocoding...");
+                const geocodeResponse = await fetch(
+                    `/api/user/contacts/geocode?lat=${userLocation.latitude}&lng=${userLocation.longitude}`
+                );
+
+                if (geocodeResponse.ok) {
+                    const geocodeData = await geocodeResponse.json();
+                    if (geocodeData.success && geocodeData.address) {
+                        // Enrich location with address details
+                        const enrichedLocation = {
+                            ...userLocation,
+                            ...geocodeData.address
+                        };
+                        setLocation(enrichedLocation);
+                        console.log("✅ Location enriched with address:", {
+                            city: geocodeData.address.city,
+                            country: geocodeData.address.country
+                        });
+                    }
+                } else {
+                    console.warn("⚠️ Reverse geocoding failed, continuing with coordinates only");
+                }
+            } catch (geocodeError) {
+                console.warn("⚠️ Reverse geocoding error:", geocodeError);
+                // Continue with just coordinates if geocoding fails
+            }
+
             return userLocation;
 
         } catch (error) {
@@ -166,8 +195,8 @@ export default function ExchangeModal({
 
         const processedDynamicFields = [];
 
-        // Define standard field names to exclude from dynamic fields
-        const standardFieldNames = ['name', 'email', 'phone', 'company', 'jobtitle', 'job title', 'website', 'message', 'address'];
+        // Define standard field names to exclude from dynamic fields using EXACT matches
+        const standardFieldExactMatches = ['name', 'email', 'phone', 'company', 'jobtitle', 'job title', 'website', 'message', 'address', 'id', 'lastmodified', 'submittedat'];
 
         // Process standard fields - only map standard field names
         standardFields.forEach(field => {
@@ -182,7 +211,7 @@ export default function ExchangeModal({
                 processedStandardFields.email = value;
             } else if ((label.includes('phone') || label.includes('tel')) && !processedStandardFields.phone) {
                 processedStandardFields.phone = value;
-            } else if (label.includes('company') && !processedStandardFields.company) {
+            } else if (label.includes('company') && !label.includes('tagline') && !processedStandardFields.company) {
                 processedStandardFields.company = value;
             } else if ((label.includes('job title') || label.includes('title') || label.includes('position')) && !processedStandardFields.jobTitle) {
                 processedStandardFields.jobTitle = value;
@@ -192,13 +221,29 @@ export default function ExchangeModal({
         });
 
         // Process dynamic fields - EXCLUDE any field that is a standard field
+        // Use multiple validation layers for maximum safety with EXACT matches
         dynamicFields.forEach(field => {
-            const label = field.label.toLowerCase();
+            const label = field.label.toLowerCase().trim();
 
-            // Skip if this is actually a standard field
-            const isStandardField = standardFieldNames.some(stdField => label.includes(stdField));
+            // Skip if explicitly marked as NOT dynamic
+            if (field.isDynamic === false) {
+                console.warn(`⚠️ Skipping "${field.label}" from dynamicFields - isDynamic=false`);
+                return;
+            }
+
+            // Skip if marked as standard type
+            if (field.type === 'standard') {
+                console.warn(`⚠️ Skipping "${field.label}" from dynamicFields - type=standard`);
+                return;
+            }
+
+            // Skip if label matches a standard field name using EXACT match
+            const isStandardField = standardFieldExactMatches.some(stdField => {
+                // Exact match only - "company" should not match "company tagline"
+                return label === stdField || label === stdField.replace(' ', '');
+            });
             if (isStandardField) {
-                console.warn(`⚠️ Skipping "${field.label}" from dynamicFields - it's a standard field`);
+                console.warn(`⚠️ Skipping "${field.label}" from dynamicFields - exact name match with standard field`);
                 return;
             }
 
@@ -379,14 +424,35 @@ export default function ExchangeModal({
         try {
             // Filter out any standard fields from dynamicFields before submission
             // Standard fields should ONLY be in the root formData, never in dynamicFields
-            const standardFieldNames = ['name', 'email', 'phone', 'company', 'jobtitle', 'job title', 'website', 'message', 'address'];
+            // This is a defense-in-depth approach with multiple layers of validation
+            // Use EXACT matches to avoid false positives (e.g., "Company tagline" should not match "Company")
+            const standardFieldExactMatches = ['name', 'email', 'phone', 'company', 'jobtitle', 'job title', 'website', 'message', 'address', 'id', 'lastmodified', 'submittedat'];
             const filteredDynamicFields = dynamicFields.filter(field => {
-                const label = field.label?.toLowerCase() || '';
-                const isStandardField = standardFieldNames.some(stdField => label.includes(stdField));
-                if (isStandardField) {
-                    console.warn(`⚠️ Filtered out standard field "${field.label}" from dynamicFields during submission`);
+                const label = field.label?.toLowerCase().trim() || '';
+
+                // Layer 1: Check if explicitly marked as NOT dynamic
+                if (field.isDynamic === false) {
+                    console.warn(`⚠️ Filtered out field "${field.label}" (isDynamic=false) from dynamicFields`);
+                    return false;
                 }
-                return !isStandardField;
+
+                // Layer 2: Check if marked as standard type
+                if (field.type === 'standard') {
+                    console.warn(`⚠️ Filtered out standard field "${field.label}" (type=standard) from dynamicFields`);
+                    return false;
+                }
+
+                // Layer 3: Check label against known standard field names using EXACT match
+                const isStandardField = standardFieldExactMatches.some(stdField => {
+                    // Exact match only - "company" should not match "company tagline"
+                    return label === stdField || label === stdField.replace(' ', '');
+                });
+                if (isStandardField) {
+                    console.warn(`⚠️ Filtered out standard field "${field.label}" (exact name match) from dynamicFields`);
+                    return false;
+                }
+
+                return true; // Keep this field in dynamicFields
             });
 
             const exchangeData = {
@@ -569,6 +635,13 @@ useEffect(() => {
                     parsedFields={reviewData}
                     onSave={handleReviewSave}
                     hasFeature={() => false} // Public users don't have premium features
+                    // Enable direct save mode for public profile
+                    directSave={true}
+                    profileOwnerId={profileOwnerId}
+                    profileOwnerUsername={profileOwnerUsername}
+                    location={location}
+                    // Close the ExchangeModal when direct save is complete
+                    onDirectSaveComplete={onClose}
                 />
             )}
 

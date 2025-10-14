@@ -1,6 +1,7 @@
 // components/admin/AdminContactTestPanel.jsx - Enhanced with Notes Testing
 "use client"
 import { useState, useEffect, useCallback } from 'react';
+import { AdminServiceContacts } from '@/lib/services/serviceAdmin/client/adminServiceContacts';
 
 export default function AdminContactTestPanel({ targetUser, onGenerate, onCleanup, loading }) {
     const [isGenerating, setIsGenerating] = useState(false);
@@ -196,27 +197,26 @@ export default function AdminContactTestPanel({ targetUser, onGenerate, onCleanu
             }
         }
     };
-useEffect(() => {
-    if (targetUser) {
-        loadGenerationInfo();
-    }
-}, [targetUser, loadGenerationInfo]);
 
-     const loadGenerationInfo = useCallback(async () => {
-    if (!targetUser) return;
+    const loadGenerationInfo = useCallback(async () => {
+        if (!targetUser) return;
 
-    try {
-        setIsLoadingInfo(true);
-        const response = await fetch(`/api/admin/generate-contacts?userId=${targetUser.id}`);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const info = await response.json();
-        setGenerationInfo(info);
-    } catch (error) {
-        console.error('Error loading generation info:', error);
-    } finally {
-        setIsLoadingInfo(false);
-    }
-}, [targetUser]);
+        try {
+            setIsLoadingInfo(true);
+            const info = await AdminServiceContacts.getGenerationInfo(targetUser.id);
+            setGenerationInfo(info);
+        } catch (error) {
+            console.error('Error loading generation info:', error);
+        } finally {
+            setIsLoadingInfo(false);
+        }
+    }, [targetUser]);
+
+    useEffect(() => {
+        if (targetUser) {
+            loadGenerationInfo();
+        }
+    }, [targetUser, loadGenerationInfo]);
 const handleQuickGenerate = async (scenario, customCount = null) => {
         setIsGenerating(true);
 

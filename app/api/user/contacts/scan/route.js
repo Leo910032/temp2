@@ -1,6 +1,6 @@
 // app/api/user/contacts/scan/route.js
 import { NextResponse } from 'next/server';
-import { createApiSession } from '@/lib/server/session';
+import { createApiSession, SessionManager } from '@/lib/server/session';
 import { BusinessCardService } from '@/lib/services/serviceContact/server/businessCardService';
 import { CONTACT_FEATURES } from '@/lib/services/constants';
 
@@ -11,20 +11,50 @@ import { CONTACT_FEATURES } from '@/lib/services/constants';
 export async function POST(request) {
     try {
         const session = await createApiSession(request);
+        const sessionManager = new SessionManager(session);
 
-        const hasScannerAccess = session.permissions[CONTACT_FEATURES.BASIC_CARD_SCANNER] || 
+        const hasScannerAccess = session.permissions[CONTACT_FEATURES.BASIC_CARD_SCANNER] ||
                                  session.permissions[CONTACT_FEATURES.AI_ENHANCED_CARD_SCANNER];
 
         if (!hasScannerAccess) {
             console.warn(`[API /scan] Permission denied for user ${session.userId}.`);
             return NextResponse.json(
-                { success: false, error: 'This feature requires a Pro subscription or higher.' }, 
+                { success: false, error: 'This feature requires a Pro subscription or higher.' },
                 { status: 403 }
             );
         }
 
         const body = await request.json();
         const { imageBase64, side, frontImage, backImage, scanMode } = body;
+
+        // ✅ Pre-flight affordability check using specialized scan method
+        // This handles AI vs API operation checking with intelligent fallback logic
+        const isDoubleSided = scanMode === 'double' && frontImage && backImage;
+        const affordabilityCheck = await sessionManager.canAffordScan(isDoubleSided);
+
+        if (!affordabilityCheck.allowed) {
+            console.warn(`[API /scan] User ${session.userId} cannot afford scan: ${affordabilityCheck.reason}`);
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: affordabilityCheck.message || 'Monthly limit reached',
+                    reason: affordabilityCheck.reason,
+                    budget: affordabilityCheck.budget,
+                    upgradeRequired: affordabilityCheck.upgradeRequired,
+                    nextTier: affordabilityCheck.nextTier
+                },
+                { status: 402 } // Payment Required
+            );
+        }
+
+        // Log if using fallback to basic scan
+        if (affordabilityCheck.fallbackMessage) {
+            console.log(`[API /scan] ${affordabilityCheck.fallbackMessage}`);
+        }
+
+        console.log(`[API /scan] Affordability check passed - proceeding with ${affordabilityCheck.scanType} scan`);
+
+        // Continue with scan processing
 
         let result;
 

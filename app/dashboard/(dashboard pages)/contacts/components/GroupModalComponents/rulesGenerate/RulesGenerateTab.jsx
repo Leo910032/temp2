@@ -2,7 +2,7 @@
 // Rules-based group generation tab (fast, no cost tracking)
 
 "use client"
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { RulesGroupService } from '@/lib/services/serviceContact/client/services/RulesGroupService';
 
 export default function RulesGenerateTab({
@@ -41,7 +41,7 @@ export default function RulesGenerateTab({
                 groupByLocation: false,
                 groupByEvents: false,
                 minGroupSize: 2,
-                maxGroups: 15
+                maxGroups: 30
             });
         }
     }, [formState.rulesOptions, updateRulesOptions]); // Dependency array ensures this runs only when needed

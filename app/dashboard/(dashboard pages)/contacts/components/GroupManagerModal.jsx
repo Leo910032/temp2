@@ -7,6 +7,7 @@ import { useContacts } from '../ContactsContext';
 import { useDashboard } from '@/app/dashboard/DashboardContext';
 import { CONTACT_FEATURES } from '@/lib/services/constants';
 import { GroupService } from '@/lib/services/serviceContact/client/services/GroupService';
+import { RulesGroupService } from '@/lib/services/serviceContact/client/services/RulesGroupService';
 
 // Import tab components
 import OverviewTab from './GroupModalComponents/OverviewTab.jsx';
@@ -14,6 +15,7 @@ import GroupsTab from './GroupModalComponents/GroupsTab';
 import CreateGroupTab from './GroupModalComponents/CreateGroupTab';
 // import AIGenerateTab from './GroupModalComponents/AIGenerateTab';
 import RulesGenerateTab from './GroupModalComponents/rulesGenerate/RulesGenerateTab';
+import RulesReviewTabEnhanced from './GroupModalComponents/rulesGenerate/RulesReviewTabEnhanced';
 // import AIGroupsTab from './GroupModalComponents/AIGroupsTab';
 // import GroupEditModal from './GroupModalComponents/GroupEditModal';
 // import { BackgroundJobToast } from './BackgroundJobToast';
@@ -78,10 +80,14 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
         endDate: '',
         timeFramePreset: '',
         eventLocation: null,
-        showCreateModal: false
+        showCreateModal: false,
+        rulesOptions: {}
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isGeneratingRules, setIsGeneratingRules] = useState(false);
+    const [generatedRulesGroups, setGeneratedRulesGroups] = useState(null);
+    const [showRulesReview, setShowRulesReview] = useState(false);
 
     useImperativeHandle(ref, () => ({
         setActiveTab: (tabId) => {
@@ -154,7 +160,8 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
                 endDate: '',
                 timeFramePreset: '',
                 eventLocation: null,
-                showCreateModal: false
+                showCreateModal: false,
+                rulesOptions: {}
             });
 
             // Refresh data
@@ -171,6 +178,81 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleGenerateRulesGroups = async (rulesOptions) => {
+        setIsGeneratingRules(true);
+
+        try {
+            console.log('[GroupManagerModal] Generating rules-based groups with options:', rulesOptions);
+
+            // Call the RulesGroupService to generate groups
+            const result = await RulesGroupService.generateRulesBasedGroups(rulesOptions);
+
+            console.log('✅ Rules-based groups generated successfully:', result);
+
+            // Store the generated groups and show review interface
+            if (result.success && result.groups) {
+                setGeneratedRulesGroups(result.groups);
+                setShowRulesReview(true);
+            } else {
+                throw new Error(result.error || 'No groups were generated');
+            }
+
+            return result;
+        } catch (error) {
+            console.error('Error generating rules-based groups:', error);
+            alert(`Failed to generate groups: ${error.message || 'Unknown error'}`);
+            return { success: false, error: error.message };
+        } finally {
+            setIsGeneratingRules(false);
+        }
+    };
+
+    const handleSaveReviewedGroups = async (reviewedGroups) => {
+        setIsSubmitting(true);
+
+        try {
+            console.log('[GroupManagerModal] Saving reviewed groups:', reviewedGroups);
+
+            // Save each group via the GroupService
+            for (const group of reviewedGroups) {
+                const groupData = {
+                    name: group.name,
+                    type: group.type || 'rules_custom',
+                    description: group.description || `Generated via rules-based grouping`,
+                    contactIds: group.contactIds
+                };
+
+                await GroupService.createGroup({ groupData });
+            }
+
+            console.log('✅ All groups saved successfully');
+
+            // Reset review state
+            setGeneratedRulesGroups(null);
+            setShowRulesReview(false);
+
+            // Refresh data to show the new groups
+            if (onRefreshData) {
+                await onRefreshData();
+            }
+
+            // Switch to groups tab to see the results
+            setActiveTab('groups');
+
+            alert(`Successfully saved ${reviewedGroups.length} group(s)!`);
+        } catch (error) {
+            console.error('Error saving reviewed groups:', error);
+            alert(`Failed to save groups: ${error.message || 'Unknown error'}`);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleBackFromReview = () => {
+        setShowRulesReview(false);
+        setGeneratedRulesGroups(null);
     };
 
     // Feature flags based on permissions
@@ -204,8 +286,12 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
                 endDate: '',
                 timeFramePreset: '',
                 eventLocation: null,
-                showCreateModal: false
+                showCreateModal: false,
+                rulesOptions: {}
             });
+            // Reset rules generation state
+            setGeneratedRulesGroups(null);
+            setShowRulesReview(false);
         }
     }, [isOpen]);
 
@@ -326,12 +412,26 @@ const GroupManagerModal = forwardRef(function GroupManagerModal({
                     )}
 
                     {activeTab === 'rules-generate' && (
-                        <RulesGenerateTab
-                            contacts={contacts}
-                            subscriptionLevel={subscriptionLevel}
-                            onRefreshData={onRefreshData}
-                            onRefreshUsage={onRefreshUsage}
-                        />
+                        <>
+                            {showRulesReview && generatedRulesGroups ? (
+                                <RulesReviewTabEnhanced
+                                    generatedGroups={generatedRulesGroups}
+                                    allContacts={contacts}
+                                    onSaveGroups={handleSaveReviewedGroups}
+                                    onBack={handleBackFromReview}
+                                    isSaving={isSubmitting}
+                                />
+                            ) : (
+                                <RulesGenerateTab
+                                    contacts={contacts}
+                                    formState={formState}
+                                    updateFormState={updateFormState}
+                                    subscriptionLevel={subscriptionLevel}
+                                    onGenerateRulesGroups={handleGenerateRulesGroups}
+                                    isGenerating={isGeneratingRules}
+                                />
+                            )}
+                        </>
                     )}
 
                     {/* Add other tabs back progressively */}

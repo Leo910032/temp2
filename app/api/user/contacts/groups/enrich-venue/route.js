@@ -9,19 +9,19 @@ export async function POST(request) {
     const session = await createApiSession(request);
     const sessionManager = new SessionManager(session);
 
-    // Parse request body (includes: place_id, sessiontoken, sessionId, fields)
+    // Parse request body (includes: latitude, longitude, radius, keywords, sessionId)
     const body = await request.json();
 
-    // Pre-flight budget check for Google Maps API Place Details
-    const estimatedCost = API_COSTS.GOOGLE_MAPS.PLACES_DETAILS.PER_REQUEST;
+    // Pre-flight budget check for Google Maps Nearby Search API
+    const estimatedCost = API_COSTS.GOOGLE_MAPS.PLACES_NEARBY_SEARCH.PER_REQUEST;
     const affordabilityCheck = await sessionManager.canAffordOperation(
       estimatedCost,
-      true, // Place Details counts as a billable API operation
+      true, // Nearby Search counts as a billable API operation
       'ApiUsage'
     );
 
     if (!affordabilityCheck.allowed) {
-      console.warn(`[API Place Details] User ${session.userId} cannot afford: ${affordabilityCheck.reason}`);
+      console.warn(`[API Venue Enrichment] User ${session.userId} cannot afford: ${affordabilityCheck.reason}`);
       return NextResponse.json(
         {
           success: false,
@@ -35,17 +35,16 @@ export async function POST(request) {
       );
     }
 
-    console.log(`[API Place Details] Budget check passed - proceeding with details fetch`);
+    console.log(`[API Venue Enrichment] Budget check passed - proceeding with venue search`);
 
     // Call the server-side PlacesService
     // The body automatically includes sessionId which will be used for cost tracking
-    // This endpoint will also finalize the session after getting place details
-    const result = await PlacesService.getPlaceDetails(session.userId, body);
+    const result = await PlacesService.searchNearbyVenues(session.userId, body);
 
     return NextResponse.json(result);
 
   } catch (error) {
-    console.error('[API Details Error]', error);
+    console.error('[API Venue Enrichment Error]', error);
 
     // Handle authentication errors
     if (error.message === 'Authorization required' || error.message.includes('token')) {
@@ -57,7 +56,7 @@ export async function POST(request) {
 
     // Handle other errors
     return NextResponse.json({
-      error: 'Failed to get place details',
+      error: 'Failed to search for nearby venues',
       details: error.message
     }, { status: 500 });
   }

@@ -7,6 +7,7 @@ import Link from 'next/link';
 // ✅ Import admin services (separated for clarity)
 import { AdminService } from '@/lib/services/serviceAdmin/client/adminService';
 import { AdminServiceAnalytics } from '@/lib/services/serviceAdmin/client/adminServiceAnalytics';
+import { AdminServiceContacts } from '@/lib/services/serviceAdmin/client/adminServiceContacts';
 import { ADMIN_PERMISSIONS } from '@/lib/services/serviceAdmin/constants/adminConstants';
 
 // Import components
@@ -210,38 +211,19 @@ useEffect(() => {
         const confirmCleanup = confirm(`Are you sure you want to delete all test data for ${selectedUser.displayName}? This action cannot be undone.`);
         if (!confirmCleanup) return;
 
-        setTestPanelLoading(true); // ✅ FIXED: Use testPanelLoading, not vectorPanelLoading
+        setTestPanelLoading(true);
         try {
-            const token = await currentUser.getIdToken();
-            const response = await fetch('/api/admin/cleanup-test-data', { // ✅ FIXED: Correct endpoint
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    userId: userId,
-                    cleanupType: 'contacts'
-                })
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                // ✅ FIXED: Use correct response structure
-                alert(`Successfully deleted ${result.deletedCount || result.data?.deletedCount || 0} test contacts for ${selectedUser.displayName}`);
-                await fetchUserDetail(userId);
-            } else {
-                const errorData = await response.json();
-                alert(`Cleanup failed: ${errorData.error}`);
-            }
+            const result = await AdminServiceContacts.cleanupTestContacts(userId);
+            alert(`Successfully deleted ${result.removed || 0} test contacts for ${selectedUser.displayName}`);
+            await fetchUserDetail(userId);
         } catch (error) {
             console.error('Error cleaning up test data:', error);
-            alert('Failed to cleanup test data');
+            alert(`Cleanup failed: ${error.message || 'Unknown error'}`);
         } finally {
-            setTestPanelLoading(false); // ✅ FIXED: Use testPanelLoading
+            setTestPanelLoading(false);
         }
     };
-    // Handle test contact generation (regular)
+    // Handle test contact generation (regular) - REFACTORED to use client service
     const handleTestContactGeneration = async (generationOptions) => {
         if (!selectedUser) {
             alert('Please select a user first');
@@ -250,31 +232,16 @@ useEffect(() => {
 
         setTestPanelLoading(true);
         try {
-            const token = await currentUser.getIdToken();
-            const response = await fetch('/api/admin/generate-contacts', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    ...generationOptions,
-                    targetUserId: selectedUser.id
-                })
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                alert(`Successfully generated ${result.data.generated} test contacts for ${selectedUser.displayName}`);
-                await fetchUserDetail(selectedUser.id);
-                return result;
-            } else {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Generation failed');
-            }
+            const result = await AdminServiceContacts.generateContacts(
+                selectedUser.id,
+                generationOptions
+            );
+            alert(`Successfully generated ${result.data.generated} test contacts for ${selectedUser.displayName}`);
+            await fetchUserDetail(selectedUser.id);
+            return result;
         } catch (error) {
             console.error('Error generating test contacts:', error);
-            alert(`Generation failed: ${error.message}`);
+            alert(`Generation failed: ${error.message || 'Unknown error'}`);
             throw error;
         } finally {
             setTestPanelLoading(false);

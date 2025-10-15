@@ -4,6 +4,9 @@
 import { NextResponse } from 'next/server';
 import { createOptimizedPlacesApiClient } from '@/lib/services/placesApiClient';
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
 /**
  * PUBLIC endpoint for reverse geocoding
  * Converts latitude/longitude to human-readable address

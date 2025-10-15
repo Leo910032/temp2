@@ -942,24 +942,40 @@
   },
   "login": {
     "title": "Connectez-vous à votre compte",
-    "username_placeholder": "Entrez votre nom d'utilisateur",
+    "username_placeholder": "nom-utilisateur",
     "password_placeholder": "Mot de passe",
     "forgot_password": "Mot de passe oublié ?",
-    "submit": "Envoyer",
+    "sign_in": "Se connecter",
+    "continue_with": "Ou continuer avec",
+    "google": "Google",
     "no_account": "Vous n'avez pas de compte ?",
     "sign_up": "S'inscrire",
-    "invalid_credentials": "Identifiants de connexion invalides !",
+    "login_successful": "Connexion réussie !",
+    "google_signin_successful": "Connecté avec Google !",
+    "invalid_credentials": "Nom d'utilisateur ou mot de passe invalide",
+    "google_signin_failed": "Échec de la connexion Google. Veuillez réessayer.",
+    "username_not_registered": "Ce nom d'utilisateur n'est pas enregistré",
+    "validation_error": "Impossible de valider le nom d'utilisateur",
+    "rate_limited": "Trop de tentatives. Veuillez patienter un moment.",
+    "submit": "Envoyer",
     "success": "Connexion réussie",
     "continue_with_google": "Continuer avec Google",
     "validating": "Validation des identifiants...",
-    "incorrect_password": "Vous avez entré un mot de passe incorrect !",
-    "username_not_registered": "Ce nom d'utilisateur n'est enregistré pour aucun utilisateur."
+    "incorrect_password": "Vous avez entré un mot de passe incorrect !"
   },
   "signup": {
     "title": "Créez votre compte",
-    "username_placeholder": "Créez votre pseudonyme",
+    "username_placeholder": "votre-nom",
     "email_placeholder": "E-mail",
     "password_placeholder": "Mot de passe",
+    "create_account": "Créer un compte",
+    "or_continue_with": "Ou continuer avec",
+    "google": "Google",
+    "microsoft": "Microsoft",
+    "apple": "Apple",
+    "already_have_account": "Vous avez déjà un compte ?",
+    "login": "Se connecter",
+    "redirect_message": "Vous serez redirigé pour finaliser votre achat",
     "submit": "Envoyer",
     "have_account": "Vous avez déjà un compte ?",
     "log_in": "Se connecter",
@@ -968,11 +984,21 @@
     "setting_up_account": "Configuration de votre compte.",
     "could_not_complete_registration": "Impossible de finaliser l'inscription",
     "setup_complete": "Configuration terminée",
-    "username_taken": "Ce nom d'utilisateur est déjà pris.",
-    "username_too_short": "Le nom d'utilisateur est trop court.",
-    "invalid_username_format": "Format de nom d'utilisateur invalide",
-    "account_exists": "Vous avez déjà un compte chez nous !",
-    "invalid_email_format": "Format d'e-mail invalide !"
+    "errors": {
+      "username_taken": "Ce nom d'utilisateur est déjà pris",
+      "username_too_short": "Le nom d'utilisateur doit contenir au moins 3 caractères",
+      "invalid_username_format": "Format de nom d'utilisateur invalide",
+      "email_already_in_use": "Vous avez déjà un compte chez nous !",
+      "invalid_email_format": "Format d'e-mail invalide !",
+      "weak_password": "Le mot de passe est trop faible",
+      "error_checking_username": "Erreur lors de la vérification du nom d'utilisateur"
+    },
+    "success": {
+      "account_created": "Compte créé avec succès !",
+      "signed_in_with_google": "Connecté avec Google !",
+      "signed_in_with_microsoft": "Connecté avec Microsoft !",
+      "signed_in_with_apple": "Connecté avec Apple !"
+    }
   },
   "account": {
     "contact_info_desc": "Ces informations seront disponibles lorsque les gens enregistreront votre contact.",
@@ -1194,7 +1220,59 @@
     "headline": "Le Seul Lien Dont Vous Aurez Jamais Besoin",
     "subheadline": "Connectez votre public à tout votre contenu avec un seul lien",
     "placeholder": "Créez votre pseudonyme",
-    "submit": "Créer"
+    "submit": "Créer",
+    "hero": {
+      "main_title": "Transformez chaque poignée de main en connexion digitale",
+      "subtitle": "Fini les cartes perdues. Partagez votre profil professionnel d'un simple tap."
+    },
+    "form": {
+      "placeholder": "votre-nom",
+      "cta": "C'est parti",
+      "get_started": "C'est parti",
+      "errors": {
+        "username_taken": "Ce nom d'utilisateur est déjà pris",
+        "username_too_short": "Le nom d'utilisateur doit contenir au moins 3 caractères",
+        "invalid_format": "Format invalide. Utilisez uniquement des lettres, chiffres, - et _"
+      },
+      "success": {
+        "available": "Disponible !"
+      }
+    },
+    "social_proof": {
+      "title": "Comment ça marche ?",
+      "subtitle": "Un simple tap suffit pour partager votre profil professionnel complet"
+    },
+    "stats": {
+      "entrepreneurs": "Entrepreneurs",
+      "cards_distributed": "Cartes distribuées",
+      "time_to_share": "Pour partager"
+    },
+    "features": {
+      "title": "Pourquoi Tapit ?",
+      "subtitle": "La solution complète pour moderniser votre networking professionnel",
+      "nfc": {
+        "title": "Tap & Share",
+        "description": "Partagez votre profil instantanément via NFC. Fini les cartes perdues et les contacts mal saisis."
+      },
+      "analytics": {
+        "title": "Analytics en temps réel",
+        "description": "Suivez vos connexions, analysez vos statistiques et optimisez votre networking."
+      },
+      "eco": {
+        "title": "100% Eco-Friendly",
+        "description": "Dites adieu aux cartes papier jetables. Une seule carte NFC pour toute votre carrière."
+      }
+    },
+    "testimonial": {
+      "quote": "Depuis que j'utilise Tapit, j'ai multiplié mes connexions par 3 et je ne perds plus jamais un contact.",
+      "author": "Marie D., Entrepreneure Tech, Grenoble",
+      "cta": "Créer mon profil gratuitement"
+    },
+    "trust": {
+      "free": "Gratuit",
+      "rgpd": "RGPD Compliant",
+      "made_in": "Made in Grenoble"
+    }
   },
   "settings": {
     "social_icons": "Icônes sociales",

@@ -779,18 +779,26 @@
     "copied": "已复制！"
   },
   "login": {
-    "title": "登录到您的 Linktree",
-    "username_placeholder": "输入您的用户名",
+    "title": "登录您的账户",
+    "username_placeholder": "用户名",
     "password_placeholder": "密码",
-    "forgot_password": "忘记密码了？",
-    "submit": "提交",
+    "forgot_password": "忘记密码？",
+    "sign_in": "登录",
+    "continue_with": "或继续使用",
+    "google": "Google",
     "no_account": "没有账户？",
     "sign_up": "注册",
-    "invalid_credentials": "登录凭据无效！",
+    "login_successful": "登录成功！",
+    "google_signin_successful": "已使用Google登录！",
+    "invalid_credentials": "用户名或密码无效",
+    "google_signin_failed": "Google登录失败。请重试。",
+    "username_not_registered": "此用户名未注册",
+    "validation_error": "无法验证用户名",
+    "rate_limited": "尝试次数过多。请稍候。",
+    "submit": "提交",
     "success": "登录成功",
     "validating": "正在验证凭据...",
-    "incorrect_password": "您输入的密码不正确！",
-    "username_not_registered": "此用户名未注册任何用户。"
+    "incorrect_password": "您输入的密码不正确！"
   },
   "signup": {
     "title": "创建您的账户",
@@ -860,7 +868,59 @@
     "headline": "您唯一需要的链接",
     "subheadline": "用一个链接将您的观众连接到您的所有内容",
     "placeholder": "创建您的昵称",
-    "submit": "创建"
+    "submit": "创建",
+    "hero": {
+      "main_title": "将每次握手转变为数字连接",
+      "subtitle": "不再丢失名片。只需轻轻一碰即可分享您的专业档案。"
+    },
+    "form": {
+      "placeholder": "您的名字",
+      "cta": "开始",
+      "get_started": "开始",
+      "errors": {
+        "username_taken": "此用户名已被占用",
+        "username_too_short": "用户名必须至少3个字符",
+        "invalid_format": "格式无效。仅使用字母、数字、-和_"
+      },
+      "success": {
+        "available": "可用！"
+      }
+    },
+    "social_proof": {
+      "title": "如何运作？",
+      "subtitle": "只需轻轻一碰即可分享您的完整专业档案"
+    },
+    "stats": {
+      "entrepreneurs": "企业家",
+      "cards_distributed": "已分发名片",
+      "time_to_share": "分享时间"
+    },
+    "features": {
+      "title": "为什么选择Tapit？",
+      "subtitle": "现代化专业社交的完整解决方案",
+      "nfc": {
+        "title": "触碰并分享",
+        "description": "通过NFC即时分享您的档案。不再丢失名片和错误输入的联系人。"
+      },
+      "analytics": {
+        "title": "实时分析",
+        "description": "追踪您的联系人，分析您的统计数据并优化您的社交网络。"
+      },
+      "eco": {
+        "title": "100%环保",
+        "description": "告别一次性纸质名片。一张NFC卡陪伴您的整个职业生涯。"
+      }
+    },
+    "testimonial": {
+      "quote": "自从使用Tapit以来，我的联系人增加了三倍，再也不会丢失联系人。",
+      "author": "Marie D.，科技企业家，格勒诺布尔",
+      "cta": "免费创建我的档案"
+    },
+    "trust": {
+      "free": "免费",
+      "rgpd": "符合GDPR",
+      "made_in": "格勒诺布尔制造"
+    }
   },
   "settings": {
     "social_icons": "社交图标",

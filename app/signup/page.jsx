@@ -1,20 +1,18 @@
 import SignUpForm from "./componets/SignupForm"
-import SideThing from "@/app/components/General Components/SideThing";
 import { Toaster } from "react-hot-toast"
 
 export const generateMetadata = () => {
     return {
-        title: "Link Tree | Create an account",
-        description: "Register your new account with us"
+        title: "Tapit | Créer un compte",
+        description: "Créez votre compte Tapit et commencez à partager votre profil professionnel"
     }
 }
 
-export default function LoginPage() {
+export default function SignupPage() {
 
     return (
         <div className="flex h-screen w-screen">
             <Toaster />
-            <SideThing />
             <SignUpForm />
         </div>
     )

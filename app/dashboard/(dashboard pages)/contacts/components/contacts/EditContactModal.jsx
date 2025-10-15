@@ -15,16 +15,33 @@ export default function EditContactModal({ contact, isOpen, onClose, onSave }) {
 
     useEffect(() => {
         if (contact) {
-            setFormData({ 
-                name: contact.name || '', 
-                email: contact.email || '', 
-                phone: contact.phone || '', 
-                company: contact.company || '', 
+            // Convert dynamicFields from object to array if needed
+            let dynamicFieldsArray = [];
+            if (contact.dynamicFields) {
+                if (Array.isArray(contact.dynamicFields)) {
+                    dynamicFieldsArray = contact.dynamicFields;
+                } else if (typeof contact.dynamicFields === 'object') {
+                    // Convert object to array format: { "CompanyTagline": "value" } -> [{ label: "CompanyTagline", value: "value" }]
+                    dynamicFieldsArray = Object.entries(contact.dynamicFields).map(([key, value], index) => ({
+                        id: `field_${index}`,
+                        label: key,
+                        value: value,
+                        category: 'other',
+                        isDynamic: true
+                    }));
+                }
+            }
+
+            setFormData({
+                name: contact.name || '',
+                email: contact.email || '',
+                phone: contact.phone || '',
+                company: contact.company || '',
                 jobTitle: contact.jobTitle || '',
                 website: contact.website || '',
-                message: contact.message || '', 
+                message: contact.message || '',
                 status: contact.status || 'new',
-                dynamicFields: contact.dynamicFields || []
+                dynamicFields: dynamicFieldsArray
             });
         }
     }, [contact]);
@@ -55,7 +72,20 @@ export default function EditContactModal({ contact, isOpen, onClose, onSave }) {
         e.preventDefault();
         setIsSubmitting(true);
         try {
-            await onSave({ ...contact, ...formData, lastModified: new Date().toISOString() });
+            // Convert dynamicFields array back to object format for storage
+            const dynamicFieldsObject = {};
+            formData.dynamicFields.forEach(field => {
+                if (field.label && field.value) {
+                    dynamicFieldsObject[field.label] = field.value;
+                }
+            });
+
+            await onSave({
+                ...contact,
+                ...formData,
+                dynamicFields: dynamicFieldsObject,
+                lastModified: new Date().toISOString()
+            });
             onClose();
         } catch (error) {
             console.error('Error updating contact:', error);

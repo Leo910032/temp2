@@ -217,8 +217,17 @@ export default function ContactFormModal({
 
         setIsSubmitting(true);
         try {
+            // Convert dynamicFields array to object format for storage
+            const dynamicFieldsObject = {};
+            formData.dynamicFields.forEach(field => {
+                if (field.label && field.value) {
+                    dynamicFieldsObject[field.label] = field.value;
+                }
+            });
+
             const dataToSave = {
                 ...formData,
+                dynamicFields: dynamicFieldsObject,
                 lastModified: new Date().toISOString(),
                 ...(contact && { id: contact.id })
             };

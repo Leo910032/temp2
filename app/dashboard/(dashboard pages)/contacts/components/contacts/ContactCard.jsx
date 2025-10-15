@@ -48,14 +48,24 @@ const ContactCard = memo(function ContactCard({ contact, onEdit, onStatusUpdate,
     const [expanded, setExpanded] = useState(false);
     const contactGroups = groups.filter(group => group.contactIds && group.contactIds.includes(contact.id));
 
-    // Simplified logic: Directly use the top-level dynamicFields array.
-    // We can still look for taglines within it for special display.
-    const allDynamicFields = contact.dynamicFields || [];
-    const taglines = allDynamicFields.filter(field => 
+    // Handle dynamicFields as object (key-value pairs) or array (legacy format)
+    const dynamicFieldsData = contact.dynamicFields || {};
+
+    // Convert to array format for processing
+    const allDynamicFields = Array.isArray(dynamicFieldsData)
+        ? dynamicFieldsData
+        : Object.entries(dynamicFieldsData).map(([key, value]) => ({
+            label: key,
+            value: value
+        }));
+
+    // Look for taglines for special display
+    const taglines = allDynamicFields.filter(field =>
         field.label?.toLowerCase().includes('tagline')
     );
-    // Display all other dynamic fields in the "AI Insights" section.
-    const otherDynamicFields = allDynamicFields.filter(field => 
+
+    // Display all other dynamic fields in the "AI Insights" section
+    const otherDynamicFields = allDynamicFields.filter(field =>
         !field.label?.toLowerCase().includes('tagline')
     );
 

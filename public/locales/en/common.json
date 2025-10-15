@@ -1,16 +1,56 @@
 {
   "landing": {
     "hero": {
-      "main_title": "The Only Link You'll Ever Need",
-      "subtitle": "connect your audience to all of your content with one link"
+      "main_title": "Transform every handshake into a digital connection",
+      "subtitle": "No more lost cards. Share your professional profile with a simple tap."
     },
     "form": {
-      "placeholder": "tapit",
+      "placeholder": "your-name",
+      "cta": "Let's go",
+      "get_started": "Let's go",
       "errors": {
-        "username_taken": "This username is already taken.",
-        "username_too_short": "Username is too short.",
-        "invalid_format": "Invalid username format"
+        "username_taken": "This username is already taken",
+        "username_too_short": "Username must be at least 3 characters",
+        "invalid_format": "Invalid format. Use only letters, numbers, - and _"
+      },
+      "success": {
+        "available": "Available!"
       }
+    },
+    "social_proof": {
+      "title": "How it works?",
+      "subtitle": "A simple tap is all it takes to share your complete professional profile"
+    },
+    "stats": {
+      "entrepreneurs": "Entrepreneurs",
+      "cards_distributed": "Cards distributed",
+      "time_to_share": "To share"
+    },
+    "features": {
+      "title": "Why Tapit?",
+      "subtitle": "The complete solution to modernize your professional networking",
+      "nfc": {
+        "title": "Tap & Share",
+        "description": "Share your profile instantly via NFC. No more lost cards and incorrectly entered contacts."
+      },
+      "analytics": {
+        "title": "Real-time Analytics",
+        "description": "Track your connections, analyze your statistics and optimize your networking."
+      },
+      "eco": {
+        "title": "100% Eco-Friendly",
+        "description": "Say goodbye to disposable paper cards. One NFC card for your entire career."
+      }
+    },
+    "testimonial": {
+      "quote": "Since I've been using Tapit, I've tripled my connections and never lose a contact anymore.",
+      "author": "Marie D., Tech Entrepreneur, Grenoble",
+      "cta": "Create my free profile"
+    },
+    "trust": {
+      "free": "Free",
+      "rgpd": "GDPR Compliant",
+      "made_in": "Made in Grenoble"
     }
   },
   "common": {

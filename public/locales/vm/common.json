@@ -810,19 +810,27 @@
     "copied": "Đã sao chép!"
   },
   "login": {
-    "title": "Đăng nhập vào Linktree của bạn",
-    "username_placeholder": "Nhập tên người dùng của bạn",
+    "title": "Đăng nhập vào tài khoản của bạn",
+    "username_placeholder": "tên-người-dùng",
     "password_placeholder": "Mật khẩu",
     "forgot_password": "Quên mật khẩu?",
-    "submit": "Gửi",
+    "sign_in": "Đăng nhập",
+    "continue_with": "Hoặc tiếp tục với",
+    "google": "Google",
     "no_account": "Chưa có tài khoản?",
     "sign_up": "Đăng ký",
-    "invalid_credentials": "Thông tin đăng nhập không hợp lệ!",
+    "login_successful": "Đăng nhập thành công!",
+    "google_signin_successful": "Đã đăng nhập bằng Google!",
+    "invalid_credentials": "Tên người dùng hoặc mật khẩu không hợp lệ",
+    "google_signin_failed": "Đăng nhập Google thất bại. Vui lòng thử lại.",
+    "username_not_registered": "Tên người dùng này chưa được đăng ký",
+    "validation_error": "Không thể xác thực tên người dùng",
+    "rate_limited": "Quá nhiều lần thử. Vui lòng đợi một chút.",
+    "submit": "Gửi",
     "success": "Đăng nhập thành công",
     "continue_with_google": "Tiếp tục với Google",
     "validating": "Đang xác thực thông tin...",
-    "incorrect_password": "Bạn đã nhập sai mật khẩu!",
-    "username_not_registered": "Tên người dùng này chưa được đăng ký cho bất kỳ người dùng nào."
+    "incorrect_password": "Bạn đã nhập sai mật khẩu!"
   },
   "signup": {
     "title": "Tạo tài khoản của bạn",
@@ -1023,7 +1031,59 @@
     "headline": "Liên kết duy nhất bạn cần",
     "subheadline": "Kết nối khán giả của bạn với tất cả nội dung của bạn chỉ bằng một liên kết",
     "placeholder": "Tạo biệt danh của bạn",
-    "submit": "Tạo"
+    "submit": "Tạo",
+    "hero": {
+      "main_title": "Biến mỗi cái bắt tay thành kết nối kỹ thuật số",
+      "subtitle": "Không còn mất danh thiếp. Chia sẻ hồ sơ chuyên nghiệp của bạn chỉ bằng một chạm."
+    },
+    "form": {
+      "placeholder": "tên-của-bạn",
+      "cta": "Bắt đầu",
+      "get_started": "Bắt đầu",
+      "errors": {
+        "username_taken": "Tên người dùng này đã được sử dụng",
+        "username_too_short": "Tên người dùng phải có ít nhất 3 ký tự",
+        "invalid_format": "Định dạng không hợp lệ. Chỉ sử dụng chữ cái, số, - và _"
+      },
+      "success": {
+        "available": "Có sẵn!"
+      }
+    },
+    "social_proof": {
+      "title": "Nó hoạt động như thế nào?",
+      "subtitle": "Chỉ cần một chạm đơn giản để chia sẻ hồ sơ chuyên nghiệp hoàn chỉnh của bạn"
+    },
+    "stats": {
+      "entrepreneurs": "Doanh nhân",
+      "cards_distributed": "Thẻ đã phân phối",
+      "time_to_share": "Để chia sẻ"
+    },
+    "features": {
+      "title": "Tại sao chọn Tapit?",
+      "subtitle": "Giải pháp hoàn chỉnh để hiện đại hóa mạng lưới chuyên nghiệp của bạn",
+      "nfc": {
+        "title": "Chạm & Chia sẻ",
+        "description": "Chia sẻ hồ sơ của bạn ngay lập tức qua NFC. Không còn mất danh thiếp và nhập sai liên hệ."
+      },
+      "analytics": {
+        "title": "Phân tích thời gian thực",
+        "description": "Theo dõi kết nối của bạn, phân tích thống kê và tối ưu hóa mạng lưới của bạn."
+      },
+      "eco": {
+        "title": "100% Thân thiện với môi trường",
+        "description": "Tạm biệt thẻ giấy dùng một lần. Một thẻ NFC cho cả sự nghiệp của bạn."
+      }
+    },
+    "testimonial": {
+      "quote": "Kể từ khi tôi sử dụng Tapit, tôi đã tăng gấp ba lần số lượng kết nối và không bao giờ mất một liên hệ nữa.",
+      "author": "Marie D., Doanh nhân Công nghệ, Grenoble",
+      "cta": "Tạo hồ sơ miễn phí của tôi"
+    },
+    "trust": {
+      "free": "Miễn phí",
+      "rgpd": "Tuân thủ GDPR",
+      "made_in": "Sản xuất tại Grenoble"
+    }
   },
   "settings": {
     "social_icons": "Biểu tượng xã hội",

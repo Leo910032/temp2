@@ -810,25 +810,41 @@
     "copied": "¡Copiado!"
   },
   "login": {
-    "title": "Inicia sesión en tu Linktree",
-    "username_placeholder": "Introduce tu nombre de usuario",
+    "title": "Inicia sesión en tu cuenta",
+    "username_placeholder": "nombre-usuario",
     "password_placeholder": "Contraseña",
     "forgot_password": "¿Olvidaste tu contraseña?",
-    "submit": "Iniciar sesión",
+    "sign_in": "Iniciar sesión",
+    "continue_with": "O continuar con",
+    "google": "Google",
     "no_account": "¿No tienes una cuenta?",
     "sign_up": "Regístrate",
-    "invalid_credentials": "¡Credenciales de inicio de sesión inválidas!",
+    "login_successful": "¡Inicio de sesión exitoso!",
+    "google_signin_successful": "¡Conectado con Google!",
+    "invalid_credentials": "Nombre de usuario o contraseña inválidos",
+    "google_signin_failed": "Fallo al iniciar sesión con Google. Inténtalo de nuevo.",
+    "username_not_registered": "Este nombre de usuario no está registrado",
+    "validation_error": "No se pudo validar el nombre de usuario",
+    "rate_limited": "Demasiados intentos. Por favor, espera un momento.",
+    "submit": "Iniciar sesión",
     "success": "Inicio de sesión exitoso",
     "continue_with_google": "Continuar con Google",
     "validating": "Validando credenciales...",
-    "incorrect_password": "¡Has introducido una contraseña incorrecta!",
-    "username_not_registered": "Este nombre de usuario no está registrado."
+    "incorrect_password": "¡Has introducido una contraseña incorrecta!"
   },
   "signup": {
     "title": "Crea tu cuenta",
-    "username_placeholder": "Crea tu apodo",
+    "username_placeholder": "tu-nombre",
     "email_placeholder": "Correo electrónico",
     "password_placeholder": "Contraseña",
+    "create_account": "Crear cuenta",
+    "or_continue_with": "O continuar con",
+    "google": "Google",
+    "microsoft": "Microsoft",
+    "apple": "Apple",
+    "already_have_account": "¿Ya tienes una cuenta?",
+    "login": "Iniciar sesión",
+    "redirect_message": "Serás redirigido para completar tu compra",
     "submit": "Crear cuenta",
     "have_account": "¿Ya tienes una cuenta?",
     "log_in": "Iniciar sesión",
@@ -837,11 +853,21 @@
     "setting_up_account": "Configurando tu cuenta.",
     "could_not_complete_registration": "No se pudo completar el registro",
     "setup_complete": "Configuración completa",
-    "username_taken": "Este nombre de usuario ya está en uso.",
-    "username_too_short": "El nombre de usuario es demasiado corto.",
-    "invalid_username_format": "Formato de nombre de usuario inválido.",
-    "account_exists": "¡Ya tienes una cuenta con nosotros!",
-    "invalid_email_format": "¡Formato de correo electrónico inválido!"
+    "errors": {
+      "username_taken": "Este nombre de usuario ya está en uso",
+      "username_too_short": "El nombre de usuario debe tener al menos 3 caracteres",
+      "invalid_username_format": "Formato de nombre de usuario inválido",
+      "email_already_in_use": "¡Ya tienes una cuenta con nosotros!",
+      "invalid_email_format": "¡Formato de correo electrónico inválido!",
+      "weak_password": "La contraseña es demasiado débil",
+      "error_checking_username": "Error al verificar la disponibilidad del nombre de usuario"
+    },
+    "success": {
+      "account_created": "¡Cuenta creada con éxito!",
+      "signed_in_with_google": "¡Conectado con Google!",
+      "signed_in_with_microsoft": "¡Conectado con Microsoft!",
+      "signed_in_with_apple": "¡Conectado con Apple!"
+    }
   },
   "account": {
     "contact_info_desc": "Esta información estará disponible cuando la gente guarde tu contacto.",
@@ -1023,7 +1049,59 @@
     "headline": "El único enlace que necesitarás",
     "subheadline": "Conecta a tu audiencia con todo tu contenido con un solo enlace",
     "placeholder": "Crea tu apodo",
-    "submit": "Crear"
+    "submit": "Crear",
+    "hero": {
+      "main_title": "Transforma cada apretón de manos en una conexión digital",
+      "subtitle": "No más tarjetas perdidas. Comparte tu perfil profesional con un simple toque."
+    },
+    "form": {
+      "placeholder": "tu-nombre",
+      "cta": "Vamos",
+      "get_started": "Vamos",
+      "errors": {
+        "username_taken": "Este nombre de usuario ya está en uso",
+        "username_too_short": "El nombre de usuario debe tener al menos 3 caracteres",
+        "invalid_format": "Formato inválido. Usa solo letras, números, - y _"
+      },
+      "success": {
+        "available": "¡Disponible!"
+      }
+    },
+    "social_proof": {
+      "title": "¿Cómo funciona?",
+      "subtitle": "Un simple toque es todo lo que se necesita para compartir tu perfil profesional completo"
+    },
+    "stats": {
+      "entrepreneurs": "Emprendedores",
+      "cards_distributed": "Tarjetas distribuidas",
+      "time_to_share": "Para compartir"
+    },
+    "features": {
+      "title": "¿Por qué Tapit?",
+      "subtitle": "La solución completa para modernizar tu networking profesional",
+      "nfc": {
+        "title": "Toca y Comparte",
+        "description": "Comparte tu perfil instantáneamente vía NFC. No más tarjetas perdidas ni contactos ingresados incorrectamente."
+      },
+      "analytics": {
+        "title": "Analytics en tiempo real",
+        "description": "Rastrea tus conexiones, analiza tus estadísticas y optimiza tu networking."
+      },
+      "eco": {
+        "title": "100% Eco-Friendly",
+        "description": "Despídete de las tarjetas de papel desechables. Una sola tarjeta NFC para toda tu carrera."
+      }
+    },
+    "testimonial": {
+      "quote": "Desde que uso Tapit, he triplicado mis conexiones y nunca pierdo un contacto.",
+      "author": "Marie D., Emprendedora Tech, Grenoble",
+      "cta": "Crear mi perfil gratis"
+    },
+    "trust": {
+      "free": "Gratis",
+      "rgpd": "Cumple con GDPR",
+      "made_in": "Hecho en Grenoble"
+    }
   },
   "settings": {
     "social_icons": "Iconos sociales",

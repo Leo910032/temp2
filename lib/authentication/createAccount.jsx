@@ -2,8 +2,7 @@ import { fireApp } from "@/important/firebase";
 import { generateId, realEscapeString} from "../utilities";
 import { collection, doc, setDoc } from "firebase/firestore";
 import { generateSalt, hashPassword } from "./encryption";
-import { EmailJs } from "../EmailJs";
-import { welcomeEmail } from "../emailTemplate";
+import { EmailService } from "../services/server/emailService";
 import Error from "next/error";
 
 
@@ -23,22 +22,12 @@ export const createAccount = async (data) => {
         const salt = generateSalt();
         const hashedPasword = hashPassword(cleanPassword, salt);
 
-        const emailPayload = {
-            htmlContent: welcomeEmail(cleanEmail, cleanPassword, cleanUsername),
-            email: cleanEmail,
-            name: cleanUsername,
-            password: cleanPassword
-        }
-
-        await EmailJs(
-            emailPayload.name, 
-            emailPayload.email, 
-            "Thanks for creating an account!", 
-            emailPayload.htmlContent
-        ).then((response)=>{
-            if(!response.ok) throw new Error(`Failed to send Email because: ${response.statusText}`);
-        }).catch((error) => {
-            throw new Error(`${error}`);    
+        await EmailService.sendWelcomeEmail(
+            cleanEmail,
+            cleanUsername,
+            cleanPassword
+        ).catch((error) => {
+            throw new Error(`${error}`);
         })
 
 

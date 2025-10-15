@@ -21,6 +21,7 @@ import UserDetails from './components/UserDetails';
 import StatsCards from './components/StatsCards';
 import AccountTypesBreakdown from './components/AccountTypesBreakdown';
 import AdminEnterprisePanel from './components/AdminEnterprisePanel';
+import TopLevelSecurityLogs from './components/TopLevelSecurityLogs';
 
 export default function AdminDashboard() {
     const { currentUser } = useAuth();
@@ -44,6 +45,7 @@ export default function AdminDashboard() {
     const [testPanelLoading, setTestPanelLoading] = useState(false);
     const [vectorPanelLoading, setVectorPanelLoading] = useState(false); // NEW
     const [showEnterprisePanel, setShowEnterprisePanel] = useState(false);
+    const [showSecurityLogs, setShowSecurityLogs] = useState(false);
 
     const [stats, setStats] = useState({
         total: 0,
@@ -358,6 +360,19 @@ useEffect(() => {
                     )}
                 </h2>
                 <div className="flex items-center gap-3">
+                    {/* Security Logs Toggle - Available for all admins */}
+                    <button
+                        onClick={() => setShowSecurityLogs(!showSecurityLogs)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors font-medium ${
+                            showSecurityLogs
+                                ? 'bg-red-100 border border-red-300 text-red-800 hover:bg-red-200'
+                                : 'bg-red-600 text-white hover:bg-red-700'
+                        }`}
+                    >
+                        <span>🔒</span>
+                        {showSecurityLogs ? 'Hide Security Logs' : 'Show Security Logs'}
+                    </button>
+
                     {/* Enterprise Panel Toggle - Only for full admins */}
                     {canPerformActions && (
                         <button
@@ -411,6 +426,11 @@ useEffect(() => {
                     </Link>
                 </div>
             </div>
+
+            {/* Security Logs Panel */}
+            {showSecurityLogs && (
+                <TopLevelSecurityLogs />
+            )}
 
             {/* Enterprise Panel */}
             {showEnterprisePanel && (

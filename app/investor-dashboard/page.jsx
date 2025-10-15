@@ -24,8 +24,19 @@ const TapitDashboard = () => {
     partBois: 22,
     partMetal: 28,
 
-    // SaaS
-    prixSaasMensuel: 29,
+    // SaaS - Prix par tier (en €/mois)
+    prixBase: 0,
+    prixPlus: 14.99,
+    prixPremium: 29.99,
+    prixBusiness: 39.99,
+    prixEnterprise: 50,
+
+    // SaaS - Répartition des abonnés par tier (en %)
+    partBase: 60,
+    partPlus: 20,
+    partPremium: 12,
+    partBusiness: 5,
+    partEnterprise: 3,
 
     // Taux de conversion (%)
     tauxConversionAnnee1: 27.5,
@@ -90,10 +101,23 @@ const TapitDashboard = () => {
     const abonnesY2 = Math.round(ventesCumuléesY2 * params.tauxConversionAnnee2 / 100);
     const abonnesY3 = Math.round(ventesCumuléesY3 * params.tauxConversionAnnee3 / 100);
 
-    // Calcul ARR (fin d'année)
-    const arrY1 = abonnesY1 * params.prixSaasMensuel * 12;
-    const arrY2 = abonnesY2 * params.prixSaasMensuel * 12;
-    const arrY3 = abonnesY3 * params.prixSaasMensuel * 12;
+    // Calcul ARR (fin d'année) avec répartition par tier
+    const calculateARPU = () => {
+      const arpu = (
+        (params.partBase / 100) * params.prixBase +
+        (params.partPlus / 100) * params.prixPlus +
+        (params.partPremium / 100) * params.prixPremium +
+        (params.partBusiness / 100) * params.prixBusiness +
+        (params.partEnterprise / 100) * params.prixEnterprise
+      );
+      return arpu;
+    };
+
+    const arpu = calculateARPU(); // Average Revenue Per User (mensuel)
+
+    const arrY1 = abonnesY1 * arpu * 12;
+    const arrY2 = abonnesY2 * arpu * 12;
+    const arrY3 = abonnesY3 * arpu * 12;
 
     // CA SaaS (moyenne de l'année)
     const caSaasY1 = Math.round(arrY1 * 0.5); // Montée progressive en année 1
@@ -474,18 +498,120 @@ const TapitDashboard = () => {
                 </p>
               </div>
 
-              {/* Section SaaS */}
+              {/* Section SaaS - Prix */}
               <div className="border-l-4 border-indigo-500 pl-4">
-                <h3 className="font-bold text-gray-700 mb-3">💎 SaaS</h3>
+                <h3 className="font-bold text-gray-700 mb-3">💎 SaaS - Prix des Plans</h3>
                 <ControlSlider
-                  label="Prix Abonnement"
-                  value={params.prixSaasMensuel}
-                  onChange={(v) => updateParam('prixSaasMensuel', v)}
-                  min={9}
-                  max={99}
+                  label="Base (Gratuit)"
+                  value={params.prixBase}
+                  onChange={(v) => updateParam('prixBase', v)}
+                  min={0}
+                  max={0}
+                  step={0}
+                  unit="€/mois"
+                />
+                <ControlSlider
+                  label="Plus"
+                  value={params.prixPlus}
+                  onChange={(v) => updateParam('prixPlus', v)}
+                  min={5}
+                  max={30}
+                  step={0.99}
+                  unit="€/mois"
+                />
+                <ControlSlider
+                  label="Premium"
+                  value={params.prixPremium}
+                  onChange={(v) => updateParam('prixPremium', v)}
+                  min={15}
+                  max={50}
+                  step={0.99}
+                  unit="€/mois"
+                />
+                <ControlSlider
+                  label="Business"
+                  value={params.prixBusiness}
+                  onChange={(v) => updateParam('prixBusiness', v)}
+                  min={20}
+                  max={80}
+                  step={0.99}
+                  unit="€/mois"
+                />
+                <ControlSlider
+                  label="Enterprise"
+                  value={params.prixEnterprise}
+                  onChange={(v) => updateParam('prixEnterprise', v)}
+                  min={30}
+                  max={150}
                   step={1}
                   unit="€/mois"
                 />
+                <div className="mt-3 p-2 bg-indigo-50 rounded text-center">
+                  <span className="text-xs text-gray-600">ARPU moyen: </span>
+                  <span className="text-sm font-bold text-indigo-600">
+                    {(
+                      (params.partBase / 100) * params.prixBase +
+                      (params.partPlus / 100) * params.prixPlus +
+                      (params.partPremium / 100) * params.prixPremium +
+                      (params.partBusiness / 100) * params.prixBusiness +
+                      (params.partEnterprise / 100) * params.prixEnterprise
+                    ).toFixed(2)}€/mois
+                  </span>
+                </div>
+              </div>
+
+              {/* Section SaaS - Distribution */}
+              <div className="border-l-4 border-violet-500 pl-4">
+                <h3 className="font-bold text-gray-700 mb-3">📊 SaaS - Répartition Abonnés</h3>
+                <ControlSlider
+                  label="Base (Gratuit)"
+                  value={params.partBase}
+                  onChange={(v) => updateParam('partBase', v)}
+                  min={0}
+                  max={100}
+                  step={1}
+                  unit="%"
+                />
+                <ControlSlider
+                  label="Plus"
+                  value={params.partPlus}
+                  onChange={(v) => updateParam('partPlus', v)}
+                  min={0}
+                  max={100}
+                  step={1}
+                  unit="%"
+                />
+                <ControlSlider
+                  label="Premium"
+                  value={params.partPremium}
+                  onChange={(v) => updateParam('partPremium', v)}
+                  min={0}
+                  max={100}
+                  step={1}
+                  unit="%"
+                />
+                <ControlSlider
+                  label="Business"
+                  value={params.partBusiness}
+                  onChange={(v) => updateParam('partBusiness', v)}
+                  min={0}
+                  max={100}
+                  step={1}
+                  unit="%"
+                />
+                <ControlSlider
+                  label="Enterprise"
+                  value={params.partEnterprise}
+                  onChange={(v) => updateParam('partEnterprise', v)}
+                  min={0}
+                  max={100}
+                  step={1}
+                  unit="%"
+                />
+                <p className="text-xs text-amber-600 mt-2">
+                  Total: {params.partBase + params.partPlus + params.partPremium + params.partBusiness + params.partEnterprise}%
+                  {params.partBase + params.partPlus + params.partPremium + params.partBusiness + params.partEnterprise !== 100 && ' ⚠️ Devrait = 100%'}
+                </p>
               </div>
 
               {/* Section Conversion */}

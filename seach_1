@@ -1,0 +1,378 @@
+👤 [API /semantic-search] [search_1760608283920_oiqi] User authenticated: cznEUooe0bYy4S0FQbTE2KxDAzn2
+✅ [API /semantic-search] [search_1760608283920_oiqi] Feature access granted for premium
+📝 [API /semantic-search] [search_1760608283920_oiqi] Request params: {
+  queryLength: 42,
+  maxResults: 80,
+  trackCosts: true,
+  minVectorScore: 0.2
+}
+💰 [API /semantic-search] [search_1760608283920_oiqi] Checking affordability...
+💰 [API /semantic-search] [search_1760608283920_oiqi] Estimated cost: $0.000101
+💸 [CostTracking] [afford_check_1760608284381_ye44] Checking AI affordability: {
+  userId: 'cznEUooe0bYy4S0FQbTE2KxDAzn2',
+  estimatedCost: 0.0001011,
+  requireRuns: 1
+}
+📊 [CostTracking] [monthly_usage_1760608284382_ssa6] Getting AIUsage for user: cznEUooe0bYy4S0FQbTE2KxDAzn2
+--- DEBUG: Inside hasContactFeature ---
+[SERVER-SIDE CHECK] Subscription Level Received: >>premium<<
+[SERVER-SIDE CHECK] Feature to Check: >>basic_contacts<<
+[SERVER-SIDE CHECK] Config found for this level. Features available: [
+  'basic_contacts',
+  'basic_groups',
+  'advanced_groups',
+  'event_detection',
+  'rules_based_groups',
+  'ai_groups',
+  'team_sharing',
+  'map_visualization',
+  'contact_analytics',
+  'premium_semantic_search',
+  'ai_enhanced_card_scanner',
+  'ai_enhance_results',
+  'rerank'
+]
+[SERVER-SIDE CHECK] Does 'premium' include 'basic_contacts'? --> true
+[SERVER-SIDE CHECK] RESULT: Access GRANTED
+--------------------------------------
+👤 [CostTracking] [monthly_usage_1760608284382_ssa6] User subscription: premium
+📋 [CostTracking] [monthly_usage_1760608284382_ssa6] Monthly usage: { totalCost: 0.0607041, totalRuns: 2, totalApiCalls: 11 }
+✅ [CostTracking] [monthly_usage_1760608284382_ssa6] Result: { cost: '$0.0607', runs: 2, remaining: '$2.9393', percentage: '2.0%' }
+✅ [CostTracking] [afford_check_1760608284381_ye44] User can afford operation
+💰 [API /semantic-search] [search_1760608283920_oiqi] Affordability check: { canAfford: true, reason: 'within_limits' }
+🔍 [API /semantic-search] [search_1760608283920_oiqi] Calling server service...
+🔍 [SemanticSearchService] [search_1760608283920_oiqi] Starting search for user: cznEUooe0bYy4S0FQbTE2KxDAzn2
+🧠 [SemanticSearchService] [search_1760608283920_oiqi] Generating embedding...
+🧠 [EmbeddingService] Generating embedding for text (42 chars)
+📝 [EmbeddingService] Text preview: "Find my contacts who work in cybersecurity..."
+✅ [EmbeddingService] Embedding generated successfully:
+   - Dimension: 768
+   - Duration: 403ms
+   - First 5 values: [0.0157, -0.0187, -0.0421, 0.0178, 0.0313]
+   - Vector magnitude: 1.0000
+🧠 [SemanticSearchService] [search_1760608283920_oiqi] Embedding generated: { dimension: 768, time: '404ms' }
+📊 [SemanticSearchService] [search_1760608283920_oiqi] Querying Pinecone...
+🔍 [IndexManagement] Checking if index exists: weavink
+✅ [IndexManagement] Listed indexes in 817ms
+✅ [IndexManagement] Index exists: weavink
+✅ [IndexManagement] Index ready in 818ms
+📊 [SemanticSearchService] [search_1760608283920_oiqi] Pinecone search complete: { matches: 30, duration: '1440ms', scoreRange: '0.3914 - 0.4928' }
+🎯 [SemanticSearchService] [search_1760608283920_oiqi] Applying vector threshold filter: 0.2 (20% minimum similarity)
+✅ [SemanticSearchService] [search_1760608283920_oiqi] After threshold filter: { kept: 30, removed: 0, scoreRange: '0.3914 - 0.4928' }
+💾 [SemanticSearchService] [search_1760608283920_oiqi] Cost calculation: {
+  tokens: 11,
+  embeddingCost: '0.000001',
+  searchCost: '0.000100',
+  totalCost: '0.000101'
+}
+📋 [SemanticSearchService] [search_1760608283920_oiqi] Fetching contact details...
+📋 [SemanticSearchService] [search_1760608283920_oiqi] Contacts retrieved: 30
+✅ [SemanticSearchService] [search_1760608283920_oiqi] Search complete: { results: 30, cost: '0.000101', totalTime: '1844ms' }
+💰 [CostTracking] [usage_1760608286925_jf09] Recording ApiUsage: {
+  userId: 'cznEUooe0bYy4S0FQbTE2KxDAzn2',
+  feature: 'semantic_search_vector',
+  cost: 0.0001011,
+  isBillableRun: false,
+  provider: 'pinecone+gemini',
+  sessionId: 'session_search_1760608283920_5x16',
+  stepLabel: 'Step 0: Vector Search'
+}
+📋 [CostTracking] [usage_1760608286925_jf09] Session-based operation - DUAL-WRITE to SessionUsage + monthly docs
+📋 [SessionTracking] [session_1760608286926_a28y] Adding step to session: {
+  userId: 'cznEUooe0bYy4S0FQbTE2KxDAzn2',
+  sessionId: 'session_search_1760608283920_5x16',
+  feature: 'semantic_search_vector',
+  stepLabel: 'Step 0: Vector Search',
+  cost: 0.0001011
+}
+🆕 [SessionTracking] [session_1760608286926_a28y] Creating new session: session_search_1760608283920_5x16
+✅ [SessionTracking] [session_1760608286926_a28y] Step added successfully
+✅ [CostTracking] [usage_1760608286925_jf09] Session step recorded in SessionUsage, now updating monthly docs...
+💾 [CostTracking] [usage_1760608286925_jf09] Session-based operation - updating monthly docs in ApiUsage
+✅ [CostTracking] [usage_1760608286925_jf09] Usage recorded: {
+  operationType: 'Session-based',
+  usageType: 'ApiUsage',
+  cost: '$0.000101',
+  feature: 'semantic_search_vector',
+  provider: 'pinecone+gemini',
+  isBillableRun: false,
+  sessionId: 'session_search_1760608283920_5x16',
+  recordedIn: 'SessionUsage + monthly docs'
+}
+✅ [API /semantic-search] [search_1760608283920_oiqi] Vector search step recorded in SessionUsage: $0.000101
+✅ [API /semantic-search] [search_1760608283920_oiqi] Search complete: {
+  resultsFound: 30,
+  cost: '0.000101',
+  countsAsRun: true,
+  totalTime: '1844ms',
+  thresholdUsed: 0.2,
+  rawResults: 30,
+  filteredOut: 0
+}
+ POST /api/user/contacts/semantic-search 200 in 4756ms
+ ○ Compiling /api/user/contacts/rerank ...
+ ✓ Compiled /api/user/contacts/rerank in 1363ms (3094 modules)
+🔄 [API /rerank] [rerank_1760608289321_lwa0] Starting rerank request
+--- DEBUG: Inside hasContactFeature ---
+[SERVER-SIDE CHECK] Subscription Level Received: >>premium<<
+[SERVER-SIDE CHECK] Feature to Check: >>basic_contacts<<
+[SERVER-SIDE CHECK] Config found for this level. Features available: [
+  'basic_contacts',
+  'basic_groups',
+  'advanced_groups',
+  'event_detection',
+  'rules_based_groups',
+  'ai_groups',
+  'team_sharing',
+  'map_visualization',
+  'contact_analytics',
+  'premium_semantic_search',
+  'ai_enhanced_card_scanner',
+  'ai_enhance_results',
+  'rerank'
+]
+[SERVER-SIDE CHECK] Does 'premium' include 'basic_contacts'? --> true
+[SERVER-SIDE CHECK] RESULT: Access GRANTED
+--------------------------------------
+✅ Successfully fetched public profile for: "leozul"
+📋 Profile data keys: [
+  'uid',
+  'username',
+  'email',
+  'displayName',
+  'bio',
+  'avatarUrl',
+  'location',
+  'links',
+  'socials',
+  'selectedTheme',
+  'themeFontColor',
+  'fontType',
+  'backgroundColor',
+  'backgroundType',
+  'btnColor',
+  'btnFontColor',
+  'btnShadowColor',
+  'btnBorderColor',
+  'btnOpacity',
+  'btnLuminanceLevel',
+  'btnLuminanceRange',
+  'isOpacityEnabled',
+  'isLuminanceEnabled',
+  'btnType',
+  'gradientDirection',
+  'gradientColorStart',
+  'gradientColorEnd',
+  'backgroundImage',
+  'gradientSettings',
+  'customCSS',
+  'bannerType',
+  'bannerColor',
+  'bannerGradientStart',
+  'bannerGradientEnd',
+  'bannerGradientDirection',
+  'bannerImage',
+  'bannerVideo',
+  'carousels',
+  'videoEmbedEnabled',
+  'videoEmbedItems',
+  'mediaEnabled',
+  'mediaItems',
+  'cvEnabled',
+  'cvItems',
+  'cvDocument',
+  'subscriptionLevel',
+  'isPublic',
+  'allowMessages',
+  'contactExchangeEnabled',
+  'sensitiveStatus',
+  'profile',
+  'appearance',
+  'settings',
+  'metaData'
+]
+🎨 Theme data in fetch: {
+  selectedTheme: 'Lake White',
+  backgroundType: 'Color',
+  gradientDirection: 0,
+  gradientColorStart: '#FFFFFF',
+  gradientColorEnd: '#000000'
+}
+✅ Successfully fetched public profile for: "leozul"
+📋 Profile data keys: [
+  'uid',
+  'username',
+  'email',
+  'displayName',
+  'bio',
+  'avatarUrl',
+  'location',
+  'links',
+  'socials',
+  'selectedTheme',
+  'themeFontColor',
+  'fontType',
+  'backgroundColor',
+  'backgroundType',
+  'btnColor',
+  'btnFontColor',
+  'btnShadowColor',
+  'btnBorderColor',
+  'btnOpacity',
+  'btnLuminanceLevel',
+  'btnLuminanceRange',
+  'isOpacityEnabled',
+  'isLuminanceEnabled',
+  'btnType',
+  'gradientDirection',
+  'gradientColorStart',
+  'gradientColorEnd',
+  'backgroundImage',
+  'gradientSettings',
+  'customCSS',
+  'bannerType',
+  'bannerColor',
+  'bannerGradientStart',
+  'bannerGradientEnd',
+  'bannerGradientDirection',
+  'bannerImage',
+  'bannerVideo',
+  'carousels',
+  'videoEmbedEnabled',
+  'videoEmbedItems',
+  'mediaEnabled',
+  'mediaItems',
+  'cvEnabled',
+  'cvItems',
+  'cvDocument',
+  'subscriptionLevel',
+  'isPublic',
+  'allowMessages',
+  'contactExchangeEnabled',
+  'sensitiveStatus',
+  'profile',
+  'appearance',
+  'settings',
+  'metaData'
+]
+🎨 Theme data in fetch: {
+  selectedTheme: 'Lake White',
+  backgroundType: 'Color',
+  gradientDirection: 0,
+  gradientColorStart: '#FFFFFF',
+  gradientColorEnd: '#000000'
+}
+--- DEBUG: Inside hasContactFeature ---
+[SERVER-SIDE CHECK] Subscription Level Received: >>premium<<
+[SERVER-SIDE CHECK] Feature to Check: >>basic_contacts<<
+[SERVER-SIDE CHECK] Config found for this level. Features available: [
+  'basic_contacts',
+  'basic_groups',
+  'advanced_groups',
+  'event_detection',
+  'rules_based_groups',
+  'ai_groups',
+  'team_sharing',
+  'map_visualization',
+  'contact_analytics',
+  'premium_semantic_search',
+  'ai_enhanced_card_scanner',
+  'ai_enhance_results',
+  'rerank'
+]
+[SERVER-SIDE CHECK] Does 'premium' include 'basic_contacts'? --> true
+[SERVER-SIDE CHECK] RESULT: Access GRANTED
+--------------------------------------
+👤 [API /rerank] [rerank_1760608289321_lwa0] User authenticated: cznEUooe0bYy4S0FQbTE2KxDAzn2
+✅ [API /rerank] [rerank_1760608289321_lwa0] Feature access granted for premium
+📝 [API /rerank] [rerank_1760608289321_lwa0] Request params: {
+  queryLength: 42,
+  contactsCount: 30,
+  model: 'rerank-multilingual-v3.0',
+  topN: 10,
+  minConfidence: 0.05,
+  trackCosts: true,
+  sessionId: 'session_search_1760608283920_5x16'
+}
+🔍 [API /rerank] [rerank_1760608289321_lwa0] Query analysis: {
+  query: 'Find my contacts who work in cybersecurity',
+  isSimpleQuery: true,
+  testingMode: 'AUTO (intelligent detection)',
+  decision: 'BYPASS reranking (return vector-sorted results)'
+}
+⚡ [API /rerank] [rerank_1760608289321_lwa0] Bypassing rerank for simple query - sorting by vector score
+✅ [API /rerank] [rerank_1760608289321_lwa0] Bypass complete: {
+  originalCount: 30,
+  returnedCount: 10,
+  cost: '$0.00 (saved by bypass)',
+  strategy: 'vector score sorting'
+}
+ POST /api/user/contacts/rerank 200 in 2019ms
+💸 [CostTracking] [afford_check_1760608289863_m4te] Checking AI affordability: {
+  userId: 'cznEUooe0bYy4S0FQbTE2KxDAzn2',
+  estimatedCost: 0.002,
+  requireRuns: 1
+}
+📊 [CostTracking] [monthly_usage_1760608289864_et73] Getting AIUsage for user: cznEUooe0bYy4S0FQbTE2KxDAzn2
+--- DEBUG: Inside hasContactFeature ---
+[SERVER-SIDE CHECK] Subscription Level Received: >>premium<<
+[SERVER-SIDE CHECK] Feature to Check: >>basic_contacts<<
+[SERVER-SIDE CHECK] Config found for this level. Features available: [
+  'basic_contacts',
+  'basic_groups',
+  'advanced_groups',
+  'event_detection',
+  'rules_based_groups',
+  'ai_groups',
+  'team_sharing',
+  'map_visualization',
+  'contact_analytics',
+  'premium_semantic_search',
+  'ai_enhanced_card_scanner',
+  'ai_enhance_results',
+  'rerank'
+]
+[SERVER-SIDE CHECK] Does 'premium' include 'basic_contacts'? --> true
+[SERVER-SIDE CHECK] RESULT: Access GRANTED
+--------------------------------------
+👤 [CostTracking] [monthly_usage_1760608289864_et73] User subscription: premium
+�� [Admin] Fetching all usernames for generateStaticParams...
+📋 [CostTracking] [monthly_usage_1760608289864_et73] Monthly usage: { totalCost: 0.0607041, totalRuns: 2, totalApiCalls: 11 }
+✅ [CostTracking] [monthly_usage_1760608289864_et73] Result: { cost: '$0.0607', runs: 2, remaining: '$2.9393', percentage: '2.0%' }
+✅ [CostTracking] [afford_check_1760608289863_m4te] User can afford operation
+🔐 Generating scan token for profile: cznEUooe0bYy4S0FQbTE2KxDAzn2
+🔐 Generating scan token for profile owner: cznEUooe0bYy4S0FQbTE2KxDAzn2
+💸 [CostTracking] [afford_check_1760608290157_isd6] Checking AI affordability: {
+  userId: 'cznEUooe0bYy4S0FQbTE2KxDAzn2',
+  estimatedCost: 0.002,
+  requireRuns: 1
+}
+📊 [CostTracking] [monthly_usage_1760608290157_zdou] Getting AIUsage for user: cznEUooe0bYy4S0FQbTE2KxDAzn2
+--- DEBUG: Inside hasContactFeature ---
+[SERVER-SIDE CHECK] Subscription Level Received: >>premium<<
+[SERVER-SIDE CHECK] Feature to Check: >>basic_contacts<<
+[SERVER-SIDE CHECK] Config found for this level. Features available: [
+  'basic_contacts',
+  'basic_groups',
+  'advanced_groups',
+  'event_detection',
+  'rules_based_groups',
+  'ai_groups',
+  'team_sharing',
+  'map_visualization',
+  'contact_analytics',
+  'premium_semantic_search',
+  'ai_enhanced_card_scanner',
+  'ai_enhance_results',
+  'rerank'
+]
+[SERVER-SIDE CHECK] Does 'premium' include 'basic_contacts'? --> true
+[SERVER-SIDE CHECK] RESULT: Access GRANTED
+--------------------------------------
+👤 [CostTracking] [monthly_usage_1760608290157_zdou] User subscription: premium
+✅ [Admin] Found 3 usernames to build.
+📋 [CostTracking] [monthly_usage_1760608290157_zdou] Monthly usage: { totalCost: 0.0607041, totalRuns: 2, totalApiCalls: 11 }
+✅ [CostTracking] [monthly_usage_1760608290157_zdou] Result: { cost: '$0.0607', runs: 2, remaining: '$2.9393', percentage: '2.0%' }
+✅ [CostTracking] [afford_check_1760608290157_isd6] User can afford operation
+✅ Scan token generated successfully: scan_1760608290468_sd42fhk9l
+✅ Scan token generated successfully for: leozul

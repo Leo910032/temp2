@@ -1,0 +1,142 @@
+👤 [CostTracking] [monthly_usage_1760606996387_440m] User subscription: premium
+📋 [CostTracking] [monthly_usage_1760606996387_440m] Monthly usage: { totalCost: 0.0607041, totalRuns: 2, totalApiCalls: 11 }
+✅ [CostTracking] [monthly_usage_1760606996387_440m] Result: { cost: '$0.0607', runs: 2, remaining: '$2.9393', percentage: '2.0%' }
+✅ [CostTracking] [afford_check_1760606996386_is7c] User can afford operation
+💰 [API /semantic-search] [search_1760606995647_slw0] Affordability check: { canAfford: true, reason: 'within_limits' }
+🔍 [API /semantic-search] [search_1760606995647_slw0] Calling server service...
+🔍 [SemanticSearchService] [search_1760606995647_slw0] Starting search for user: cznEUooe0bYy4S0FQbTE2KxDAzn2
+🧠 [SemanticSearchService] [search_1760606995647_slw0] Generating embedding...
+🧠 [EmbeddingService] Generating embedding for text (18 chars)
+📝 [EmbeddingService] Text preview: "DoorDash employees..."
+✅ [EmbeddingService] Embedding generated successfully:
+   - Dimension: 768
+   - Duration: 361ms
+   - First 5 values: [0.0212, 0.0040, -0.0397, -0.0061, 0.0113]
+   - Vector magnitude: 1.0000
+🧠 [SemanticSearchService] [search_1760606995647_slw0] Embedding generated: { dimension: 768, time: '361ms' }
+📊 [SemanticSearchService] [search_1760606995647_slw0] Querying Pinecone...
+🔍 [IndexManagement] Checking if index exists: weavink
+✅ [IndexManagement] Listed indexes in 354ms
+✅ [IndexManagement] Index exists: weavink
+✅ [IndexManagement] Index ready in 356ms
+📊 [SemanticSearchService] [search_1760606995647_slw0] Pinecone search complete: { matches: 30, duration: '960ms', scoreRange: '0.2573 - 0.6584' }
+🎯 [SemanticSearchService] [search_1760606995647_slw0] Applying vector threshold filter: 0.2 (20% minimum similarity)
+✅ [SemanticSearchService] [search_1760606995647_slw0] After threshold filter: { kept: 30, removed: 0, scoreRange: '0.2573 - 0.6584' }
+💾 [SemanticSearchService] [search_1760606995647_slw0] Cost calculation: {
+  tokens: 5,
+  embeddingCost: '0.000001',
+  searchCost: '0.000100',
+  totalCost: '0.000101'
+}
+📋 [SemanticSearchService] [search_1760606995647_slw0] Fetching contact details...
+📋 [SemanticSearchService] [search_1760606995647_slw0] Contacts retrieved: 30
+✅ [SemanticSearchService] [search_1760606995647_slw0] Search complete: { results: 30, cost: '0.000101', totalTime: '1321ms' }
+💰 [CostTracking] [usage_1760606998762_cmm4] Recording ApiUsage: {
+  userId: 'cznEUooe0bYy4S0FQbTE2KxDAzn2',
+  feature: 'semantic_search_vector',
+  cost: 0.0001005,
+  isBillableRun: false,
+  provider: 'pinecone+gemini',
+  sessionId: 'session_search_1760606995647_8v81',
+  stepLabel: 'Step 0: Vector Search'
+}
+📋 [CostTracking] [usage_1760606998762_cmm4] Session-based operation - DUAL-WRITE to SessionUsage + monthly docs
+📋 [SessionTracking] [session_1760606998762_nbqz] Adding step to session: {
+  userId: 'cznEUooe0bYy4S0FQbTE2KxDAzn2',
+  sessionId: 'session_search_1760606995647_8v81',
+  feature: 'semantic_search_vector',
+  stepLabel: 'Step 0: Vector Search',
+  cost: 0.0001005
+}
+🆕 [SessionTracking] [session_1760606998762_nbqz] Creating new session: session_search_1760606995647_8v81
+✅ [SessionTracking] [session_1760606998762_nbqz] Step added successfully
+✅ [CostTracking] [usage_1760606998762_cmm4] Session step recorded in SessionUsage, now updating monthly docs...
+💾 [CostTracking] [usage_1760606998762_cmm4] Session-based operation - updating monthly docs in ApiUsage
+✅ [CostTracking] [usage_1760606998762_cmm4] Usage recorded: {
+  operationType: 'Session-based',
+  usageType: 'ApiUsage',
+  cost: '$0.000101',
+  feature: 'semantic_search_vector',
+  provider: 'pinecone+gemini',
+  isBillableRun: false,
+  sessionId: 'session_search_1760606995647_8v81',
+  recordedIn: 'SessionUsage + monthly docs'
+}
+✅ [API /semantic-search] [search_1760606995647_slw0] Vector search step recorded in SessionUsage: $0.000101
+✅ [API /semantic-search] [search_1760606995647_slw0] Search complete: {
+  resultsFound: 30,
+  cost: '0.000101',
+  countsAsRun: true,
+  totalTime: '1321ms',
+  thresholdUsed: 0.2,
+  rawResults: 30,
+  filteredOut: 0
+}
+ POST /api/user/contacts/semantic-search 200 in 4602ms
+🔄 [API /rerank] [rerank_1760607000230_qhaj] Starting rerank request
+--- DEBUG: Inside hasContactFeature ---
+[SERVER-SIDE CHECK] Subscription Level Received: >>premium<<
+[SERVER-SIDE CHECK] Feature to Check: >>basic_contacts<<
+[SERVER-SIDE CHECK] Config found for this level. Features available: [
+  'basic_contacts',
+  'basic_groups',
+  'advanced_groups',
+  'event_detection',
+  'rules_based_groups',
+  'ai_groups',
+  'team_sharing',
+  'map_visualization',
+  'contact_analytics',
+  'premium_semantic_search',
+  'ai_enhanced_card_scanner',
+  'ai_enhance_results',
+  'rerank'
+]
+[SERVER-SIDE CHECK] Does 'premium' include 'basic_contacts'? --> true
+[SERVER-SIDE CHECK] RESULT: Access GRANTED
+--------------------------------------
+--- DEBUG: Inside hasContactFeature ---
+[SERVER-SIDE CHECK] Subscription Level Received: >>premium<<
+[SERVER-SIDE CHECK] Feature to Check: >>basic_contacts<<
+[SERVER-SIDE CHECK] Config found for this level. Features available: [
+  'basic_contacts',
+  'basic_groups',
+  'advanced_groups',
+  'event_detection',
+  'rules_based_groups',
+  'ai_groups',
+  'team_sharing',
+  'map_visualization',
+  'contact_analytics',
+  'premium_semantic_search',
+  'ai_enhanced_card_scanner',
+  'ai_enhance_results',
+  'rerank'
+]
+[SERVER-SIDE CHECK] Does 'premium' include 'basic_contacts'? --> true
+[SERVER-SIDE CHECK] RESULT: Access GRANTED
+--------------------------------------
+👤 [API /rerank] [rerank_1760607000230_qhaj] User authenticated: cznEUooe0bYy4S0FQbTE2KxDAzn2
+✅ [API /rerank] [rerank_1760607000230_qhaj] Feature access granted for premium
+📝 [API /rerank] [rerank_1760607000230_qhaj] Request params: {
+  queryLength: 18,
+  contactsCount: 30,
+  model: 'rerank-multilingual-v3.0',
+  topN: 10,
+  minConfidence: 0.05,
+  trackCosts: true,
+  sessionId: 'session_search_1760606995647_8v81'
+}
+🔍 [API /rerank] [rerank_1760607000230_qhaj] Query analysis: {
+  query: 'DoorDash employees',
+  isSimpleQuery: true,
+  decision: 'BYPASS reranking (return vector-sorted results)'
+}
+⚡ [API /rerank] [rerank_1760607000230_qhaj] Bypassing rerank for simple query - sorting by vector score
+✅ [API /rerank] [rerank_1760607000230_qhaj] Bypass complete: {
+  originalCount: 30,
+  returnedCount: 10,
+  cost: '$0.00 (saved by bypass)',
+  strategy: 'vector score sorting'
+}
+ POST /api/user/contacts/rerank 200 in 808ms

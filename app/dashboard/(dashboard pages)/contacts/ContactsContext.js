@@ -43,6 +43,7 @@ const [stats, setStats] = useState({
     const [searchMode, setSearchMode] = useState('standard');
     const [aiSearchQuery, setAiSearchQuery] = useState('');
     const [aiSearchResults, setAiSearchResults] = useState(null);
+    const [searchSessionId, setSearchSessionId] = useState(null); // Store sessionId for feedback
     const [isAiSearching, setIsAiSearching] = useState(false);
     const [searchStage, setSearchStage] = useState('idle');
     
@@ -152,10 +153,11 @@ const [stats, setStats] = useState({
                     enhanceResults: hasFeature(CONTACT_FEATURES.BUSINESS_AI_SEARCH),
                     useCache: true
                 });
-                
+
                 setAiSearchResults(result.results || []);
+                setSearchSessionId(result.sessionId || null); // Store sessionId for feedback
                 setSearchStage('complete');
-                
+
                 toast.success(`Found ${result.results?.length || 0} relevant contacts!`);
                 
             } catch (error) {
@@ -181,6 +183,7 @@ const [stats, setStats] = useState({
         setSearchMode('standard');
         setSearchStage('idle');
         setSearchTerm('');
+        setSearchSessionId(null); // Clear sessionId when clearing search
     }, []);
     
     // Create contact
@@ -371,6 +374,7 @@ const [stats, setStats] = useState({
         aiSearchQuery,
         setAiSearchQuery,
         aiSearchResults,
+        searchSessionId, // Expose sessionId for feedback button
         searchStage,
         
         // Pagination
@@ -404,6 +408,7 @@ const [stats, setStats] = useState({
         searchMode,
         aiSearchQuery,
         aiSearchResults,
+        searchSessionId, // Add sessionId to dependencies
         searchStage,
         pagination,
         createContact,

@@ -48,6 +48,35 @@ const ContactCard = memo(function ContactCard({ contact, onEdit, onStatusUpdate,
     const [expanded, setExpanded] = useState(false);
     const contactGroups = groups.filter(group => group.contactIds && group.contactIds.includes(contact.id));
 
+    // Extract job title from details array or direct field
+    const extractJobTitle = () => {
+        if (contact.jobTitle) return contact.jobTitle;
+        if (contact.details && Array.isArray(contact.details)) {
+            const jobTitleDetail = contact.details.find(d =>
+                d.label?.toLowerCase().includes('job') ||
+                d.label?.toLowerCase().includes('title') ||
+                d.label?.toLowerCase().includes('position')
+            );
+            return jobTitleDetail?.value || null;
+        }
+        return null;
+    };
+
+    // Extract specific fields from details array
+    const extractDetailsField = (fieldName) => {
+        if (!contact.details || !Array.isArray(contact.details)) return null;
+        const field = contact.details.find(d =>
+            d.label?.toLowerCase().includes(fieldName.toLowerCase())
+        );
+        return field?.value || null;
+    };
+
+    const jobTitle = extractJobTitle();
+    const department = extractDetailsField('department');
+    const linkedin = extractDetailsField('linkedin');
+    const website = extractDetailsField('website');
+    const industry = extractDetailsField('industry');
+
     // Handle dynamicFields as object (key-value pairs) or array (legacy format)
     const dynamicFieldsData = contact.dynamicFields || {};
 
@@ -77,16 +106,16 @@ const ContactCard = memo(function ContactCard({ contact, onEdit, onStatusUpdate,
             default: return 'bg-gray-100 text-gray-800';
         }
     };
-    
+
     const formatDate = (dateString) => {
         if (!dateString) return '';
-        return new Date(dateString).toLocaleDateString('en-US', { 
-            day: '2-digit', 
-            month: 'short', 
+        return new Date(dateString).toLocaleDateString('en-US', {
+            day: '2-digit',
+            month: 'short',
             year: 'numeric'
         });
     };
-    
+
     const getCategoryIcon = (category) => {
         switch (category) {
             case 'professional': return '💼';
@@ -104,7 +133,31 @@ const ContactCard = memo(function ContactCard({ contact, onEdit, onStatusUpdate,
         return 'text-orange-600';
     };
 
+    // Match confidence helpers for rerank scores
+    const getMatchConfidenceLabel = (score) => {
+        if (score >= 0.8) return '🎯 Excellent Match';
+        if (score >= 0.6) return '✅ Good Match';
+        if (score >= 0.4) return '⚠️ Fair Match';
+        return '🔍 Weak Match';
+    };
+
+    const getMatchConfidenceBadgeColor = (score) => {
+        if (score >= 0.8) return 'bg-green-100 text-green-800 border-green-300';
+        if (score >= 0.6) return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+        if (score >= 0.4) return 'bg-orange-100 text-orange-800 border-orange-300';
+        return 'bg-red-100 text-red-800 border-red-300';
+    };
+
+    const getMatchConfidenceGradient = (score) => {
+        if (score >= 0.8) return 'from-green-50 to-emerald-50 border-green-200';
+        if (score >= 0.6) return 'from-yellow-50 to-amber-50 border-yellow-200';
+        if (score >= 0.4) return 'from-orange-50 to-red-50 border-orange-200';
+        return 'from-red-50 to-pink-50 border-red-200';
+    };
+
     const isFromTeamMember = contact.sharedBy || contact.teamMemberSource;
+    const isTestData = contact.testData || contact.source === 'admin_test';
+    const hasRerankScore = contact.searchMetadata?.rerankScore !== undefined;
 
     return (
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
@@ -120,22 +173,31 @@ const ContactCard = memo(function ContactCard({ contact, onEdit, onStatusUpdate,
                             <div className="flex-1 min-w-0">
                                 <h3 className="font-semibold text-gray-900 text-sm truncate">{contact.name || 'No Name'}</h3>
                                 <p className="text-xs text-gray-500 truncate">
-                                    {contact.jobTitle ? `${contact.jobTitle}` : contact.email || 'No Email'}
-                                    {contact.jobTitle && contact.company ? ` at ${contact.company}` : (!contact.jobTitle && contact.company ? contact.company : '')}
+                                    {jobTitle ? `${jobTitle}` : contact.email || 'No Email'}
+                                    {jobTitle && contact.company ? ` at ${contact.company}` : (!jobTitle && contact.company ? contact.company : '')}
                                 </p>
-                                
+
                                 {taglines.length > 0 && (
                                     <p className="text-xs text-blue-600 italic mt-1 truncate">
                                         &quot;{taglines[0].value}&quot;
                                     </p>
                                 )}
-                                
+
                                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                                     <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(contact.status)}`}>
                                         {t(`contacts.status_${contact.status}`) || contact.status}
                                     </span>
+                                    {hasRerankScore && (
+                                        <span
+                                            className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full border ${getMatchConfidenceBadgeColor(contact.searchMetadata.rerankScore)}`}
+                                            title={`Match confidence: ${getMatchConfidenceLabel(contact.searchMetadata.rerankScore)}`}
+                                        >
+                                            {(contact.searchMetadata.rerankScore * 100).toFixed(1)}%
+                                        </span>
+                                    )}
                                     {contact.location && <span className="text-xs text-green-600">📍</span>}
                                     {isFromTeamMember && <span className="text-xs text-purple-600">👥</span>}
+                                    {isTestData && <span className="text-xs text-orange-600" title="Test Data">🧪</span>}
                                     {allDynamicFields.length > 0 && (
                                         <span className="text-xs text-purple-500" title={`${allDynamicFields.length} AI-detected fields`}>
                                             ✨{allDynamicFields.length}
@@ -155,7 +217,7 @@ const ContactCard = memo(function ContactCard({ contact, onEdit, onStatusUpdate,
             {expanded && (
                 <div className="border-t border-gray-100">
                     <div className="p-3 sm:p-4 space-y-4">
-                        {/* Standard contact information */}
+                        {/* Basic Contact Information */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                             {contact.email && (
                                 <div className="flex items-center gap-2">
@@ -163,19 +225,153 @@ const ContactCard = memo(function ContactCard({ contact, onEdit, onStatusUpdate,
                                     <a href={`mailto:${contact.email}`} className="text-blue-600 hover:underline break-all">{contact.email}</a>
                                 </div>
                             )}
-                            {contact.website && (
+                            {contact.phone && (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-gray-400 w-4 h-4 flex-shrink-0">📞</span>
+                                    <a href={`tel:${contact.phone}`} className="text-blue-600 hover:underline">{contact.phone}</a>
+                                </div>
+                            )}
+                            {contact.company && (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-gray-400 w-4 h-4 flex-shrink-0">🏢</span>
+                                    <span className="text-gray-700 truncate">{contact.company}</span>
+                                </div>
+                            )}
+                            {jobTitle && (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-gray-400 w-4 h-4 flex-shrink-0">💼</span>
+                                    <span className="text-gray-700 truncate">{jobTitle}</span>
+                                </div>
+                            )}
+                            {department && (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-gray-400 w-4 h-4 flex-shrink-0">🏛️</span>
+                                    <span className="text-gray-700 truncate">{department}</span>
+                                </div>
+                            )}
+                            {industry && (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-gray-400 w-4 h-4 flex-shrink-0">🏭</span>
+                                    <span className="text-gray-700 truncate">{industry}</span>
+                                </div>
+                            )}
+                            {website && (
                                 <div className="flex items-center gap-2">
                                     <span className="text-gray-400 w-4 h-4 flex-shrink-0">🌐</span>
-                                    <a href={contact.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate">{contact.website}</a>
+                                    <a href={website.startsWith('http') ? website : `https://${website}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate">{website}</a>
+                                </div>
+                            )}
+                            {linkedin && (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-gray-400 w-4 h-4 flex-shrink-0">💼</span>
+                                    <a href={linkedin.startsWith('http') ? linkedin : `https://${linkedin}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate">LinkedIn Profile</a>
                                 </div>
                             )}
                             {contact.address && (
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 col-span-full">
                                     <span className="text-gray-400 w-4 h-4 flex-shrink-0">📍</span>
-                                    <span className="text-gray-700 truncate">{contact.address}</span>
+                                    <span className="text-gray-700">{contact.address}</span>
                                 </div>
                             )}
                         </div>
+
+                        {/* Notes Section */}
+                        {contact.notes && (
+                            <div className="pt-3 border-t border-gray-100">
+                                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-2">
+                                    📝 Notes
+                                </h4>
+                                <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{contact.notes}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Message Section */}
+                        {contact.message && (
+                            <div className="pt-3 border-t border-gray-100">
+                                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-2">
+                                    💬 Message
+                                </h4>
+                                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{contact.message}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Event Information */}
+                        {contact.eventInfo && (contact.eventInfo.eventName || contact.eventInfo.eventType || contact.eventInfo.venue) && (
+                            <div className="pt-3 border-t border-gray-100">
+                                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-2">
+                                    🎯 Event Information
+                                </h4>
+                                <div className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                                    <div className="space-y-2">
+                                        {contact.eventInfo.eventName && (
+                                            <div>
+                                                <span className="text-xs text-gray-500 block mb-1">Event Name:</span>
+                                                <p className="text-sm font-semibold text-gray-900">{contact.eventInfo.eventName}</p>
+                                            </div>
+                                        )}
+                                        {contact.eventInfo.eventType && (
+                                            <div>
+                                                <span className="text-xs text-gray-500 block mb-1">Event Type:</span>
+                                                <span className="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                                                    {contact.eventInfo.eventType.replace(/_/g, ' ')}
+                                                </span>
+                                            </div>
+                                        )}
+                                        {contact.eventInfo.venue && (
+                                            <div>
+                                                <span className="text-xs text-gray-500 block mb-1">Venue:</span>
+                                                <p className="text-sm text-gray-700">{contact.eventInfo.venue}</p>
+                                            </div>
+                                        )}
+                                        {contact.eventInfo.eventDates && (
+                                            <div>
+                                                <span className="text-xs text-gray-500 block mb-1">Event Dates:</span>
+                                                <p className="text-sm text-gray-700">{contact.eventInfo.eventDates}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Location Information */}
+                        {contact.location && (contact.location.latitude || contact.location.longitude) && (
+                            <div className="pt-3 border-t border-gray-100">
+                                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-2">
+                                    🗺️ Location Data
+                                </h4>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                    {contact.location.latitude && (
+                                        <div className="p-2 bg-gray-50 rounded">
+                                            <span className="text-gray-500 text-xs">Latitude:</span>
+                                            <p className="font-mono text-gray-700">{contact.location.latitude.toFixed(6)}</p>
+                                        </div>
+                                    )}
+                                    {contact.location.longitude && (
+                                        <div className="p-2 bg-gray-50 rounded">
+                                            <span className="text-gray-500 text-xs">Longitude:</span>
+                                            <p className="font-mono text-gray-700">{contact.location.longitude.toFixed(6)}</p>
+                                        </div>
+                                    )}
+                                    {contact.location.accuracy && (
+                                        <div className="p-2 bg-gray-50 rounded">
+                                            <span className="text-gray-500 text-xs">Accuracy:</span>
+                                            <p className="text-gray-700">{contact.location.accuracy}m</p>
+                                        </div>
+                                    )}
+                                    {contact.location.timestamp && (
+                                        <div className="p-2 bg-gray-50 rounded">
+                                            <span className="text-gray-500 text-xs">Captured:</span>
+                                            <p className="text-gray-700">{formatDate(contact.location.timestamp)}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Phone Numbers Section */}
                         {((contact.phoneNumbers && contact.phoneNumbers.length > 0) || contact.phone) && (
@@ -238,7 +434,47 @@ const ContactCard = memo(function ContactCard({ contact, onEdit, onStatusUpdate,
                             </div>
                         )}
 
-                        {/* AI-Detected Dynamic Fields Section (includes taglines and others) */}
+                        {/* Details Array - All Fields */}
+                        {contact.details && contact.details.length > 0 && (
+                            <div className="pt-3 border-t border-gray-100">
+                                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-2">
+                                    📋 All Details
+                                </h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {contact.details.map((detail, index) => (
+                                        detail.value && (
+                                            <div key={index} className="p-2 bg-gray-50 rounded-lg">
+                                                <span className="text-xs text-gray-500 block mb-1">{detail.label}</span>
+                                                {detail.label?.toLowerCase().includes('linkedin') ||
+                                                 detail.label?.toLowerCase().includes('website') ||
+                                                 detail.label?.toLowerCase().includes('url') ? (
+                                                    <a
+                                                        href={detail.value.startsWith('http') ? detail.value : `https://${detail.value}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-blue-600 hover:underline text-sm break-all"
+                                                    >
+                                                        {detail.value}
+                                                    </a>
+                                                ) : detail.label?.toLowerCase().includes('email') ? (
+                                                    <a href={`mailto:${detail.value}`} className="text-blue-600 hover:underline text-sm break-all">
+                                                        {detail.value}
+                                                    </a>
+                                                ) : detail.label?.toLowerCase().includes('phone') ? (
+                                                    <a href={`tel:${detail.value}`} className="text-blue-600 hover:underline text-sm">
+                                                        {detail.value}
+                                                    </a>
+                                                ) : (
+                                                    <p className="text-sm text-gray-700 break-words">{detail.value}</p>
+                                                )}
+                                            </div>
+                                        )
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* AI-Detected Dynamic Fields Section */}
                         {allDynamicFields.length > 0 && (
                             <div className="pt-3 border-t border-gray-100">
                                 <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1">
@@ -257,9 +493,11 @@ const ContactCard = memo(function ContactCard({ contact, onEdit, onStatusUpdate,
                                                         <span className="bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded-full">
                                                             {field.category || 'other'}
                                                         </span>
-                                                        <span className={getConfidenceColor(field.confidence)}>
-                                                            {Math.round((field.confidence || 0) * 100)}%
-                                                        </span>
+                                                        {field.confidence && (
+                                                            <span className={getConfidenceColor(field.confidence)}>
+                                                                {Math.round((field.confidence || 0) * 100)}%
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <div className="text-purple-800 break-words">{field.value}</div>
@@ -289,27 +527,110 @@ const ContactCard = memo(function ContactCard({ contact, onEdit, onStatusUpdate,
                             </div>
                         )}
 
+                        {/* Match Confidence Section */}
+                        {hasRerankScore && (
+                            <div className="pt-3 border-t border-gray-100">
+                                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-2">
+                                    🎯 Search Match Quality
+                                </h4>
+                                <div className={`p-3 bg-gradient-to-br ${getMatchConfidenceGradient(contact.searchMetadata.rerankScore)} rounded-lg border`}>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-xs text-gray-600 font-medium">Match Confidence:</span>
+                                        <span className={`text-2xl font-bold ${contact.searchMetadata.rerankScore >= 0.8 ? 'text-green-700' : contact.searchMetadata.rerankScore >= 0.6 ? 'text-yellow-700' : contact.searchMetadata.rerankScore >= 0.4 ? 'text-orange-700' : 'text-red-700'}`}>
+                                            {(contact.searchMetadata.rerankScore * 100).toFixed(1)}%
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <span className="text-sm font-semibold text-gray-700">
+                                            {getMatchConfidenceLabel(contact.searchMetadata.rerankScore)}
+                                        </span>
+                                    </div>
+                                    {contact.searchMetadata.hybridScore && (
+                                        <div className="text-xs text-gray-600 mt-2 pt-2 border-t border-gray-300">
+                                            <div className="flex justify-between">
+                                                <span>Vector Similarity:</span>
+                                                <span className="font-mono">{(contact._vectorScore || 0).toFixed(3)}</span>
+                                            </div>
+                                            <div className="flex justify-between mt-1">
+                                                <span>Hybrid Score:</span>
+                                                <span className="font-mono">{contact.searchMetadata.hybridScore.toFixed(3)}</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Metadata section */}
-                        <div className="flex items-center gap-2 text-xs text-gray-500 pt-3 border-t border-gray-100 mt-3">
-                            {contact.source === 'business_card_scan' ? (
-                                <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full flex items-center gap-1">
-                                    📇 Business Card Scan
-                                </span>
-                            ) : (
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            )}
-                            <span>{t('contacts.added') || 'Added'} {formatDate(contact.submittedAt)}</span>
+                        <div className="pt-3 border-t border-gray-100">
+                            <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Metadata</h4>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                {contact.originalSource && (
+                                    <div className="p-2 bg-gradient-to-br from-green-50 to-emerald-50 rounded border border-green-200">
+                                        <span className="text-gray-500 block mb-1">How We Met:</span>
+                                        <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
+                                            contact.originalSource === 'business_card_scan' ? 'bg-green-100 text-green-700' :
+                                            contact.originalSource === 'exchange_form' ? 'bg-blue-100 text-blue-700' :
+                                            contact.originalSource === 'admin_test' ? 'bg-orange-100 text-orange-700' :
+                                            'bg-gray-100 text-gray-700'
+                                        }`}>
+                                            {contact.originalSource === 'business_card_scan' && '📇 '}
+                                            {contact.originalSource === 'exchange_form' && '📋 '}
+                                            {contact.originalSource === 'manual' && '✍️ '}
+                                            {contact.originalSource.replace(/_/g, ' ')}
+                                        </span>
+                                    </div>
+                                )}
+                                {contact.source && !contact.originalSource && (
+                                    <div className="p-2 bg-gray-50 rounded">
+                                        <span className="text-gray-500 block mb-1">Source:</span>
+                                        <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
+                                            contact.source === 'business_card_scan' ? 'bg-green-100 text-green-700' :
+                                            contact.source === 'exchange_form' ? 'bg-blue-100 text-blue-700' :
+                                            contact.source === 'admin_test' ? 'bg-orange-100 text-orange-700' :
+                                            'bg-gray-100 text-gray-700'
+                                        }`}>
+                                            {contact.source === 'business_card_scan' && '📇'}
+                                            {contact.source === 'exchange_form' && '📋'}
+                                            {contact.source === 'admin_test' && '🧪'}
+                                            {contact.source.replace(/_/g, ' ')}
+                                        </span>
+                                    </div>
+                                )}
+                                {contact.submittedAt && (
+                                    <div className="p-2 bg-gray-50 rounded">
+                                        <span className="text-gray-500 block mb-1">Submitted:</span>
+                                        <span className="text-gray-700">{formatDate(contact.submittedAt)}</span>
+                                    </div>
+                                )}
+                                {contact.lastModified && (
+                                    <div className="p-2 bg-gray-50 rounded">
+                                        <span className="text-gray-500 block mb-1">Modified:</span>
+                                        <span className="text-gray-700">{formatDate(contact.lastModified)}</span>
+                                    </div>
+                                )}
+                                {contact.generatedAt && (
+                                    <div className="p-2 bg-gray-50 rounded">
+                                        <span className="text-gray-500 block mb-1">Generated:</span>
+                                        <span className="text-gray-700">{formatDate(contact.generatedAt)}</span>
+                                    </div>
+                                )}
+                                {contact.generatedBy && (
+                                    <div className="p-2 bg-gray-50 rounded">
+                                        <span className="text-gray-500 block mb-1">Generated By:</span>
+                                        <span className="text-gray-700">{contact.generatedBy}</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                    
+
                     {/* Action buttons section */}
                     <div className="p-3 sm:p-4 border-t border-gray-100 bg-gray-50/50">
                          <div className="grid grid-cols-2 gap-2 mb-3">
                             {(!isFromTeamMember || contact.canEdit) && (
-                                <button 
-                                    onClick={() => onEdit(contact)} 
+                                <button
+                                    onClick={() => onEdit(contact)}
                                     className="flex items-center justify-center gap-1.5 px-2 sm:px-3 py-2 text-xs bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
                                 >
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -319,8 +640,8 @@ const ContactCard = memo(function ContactCard({ contact, onEdit, onStatusUpdate,
                                 </button>
                             )}
                             {contact.status === 'new' && (
-                                <button 
-                                    onClick={() => onStatusUpdate(contact.id, 'viewed')} 
+                                <button
+                                    onClick={() => onStatusUpdate(contact.id, 'viewed')}
                                     className="flex items-center justify-center gap-1.5 px-2 sm:px-3 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                                 >
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -331,8 +652,8 @@ const ContactCard = memo(function ContactCard({ contact, onEdit, onStatusUpdate,
                                 </button>
                             )}
                             {contact.status !== 'archived' && (
-                                <button 
-                                    onClick={() => onStatusUpdate(contact.id, 'archived')} 
+                                <button
+                                    onClick={() => onStatusUpdate(contact.id, 'archived')}
                                     className="flex items-center justify-center gap-1.5 px-2 sm:px-3 py-2 text-xs bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                                 >
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -342,8 +663,8 @@ const ContactCard = memo(function ContactCard({ contact, onEdit, onStatusUpdate,
                                 </button>
                             )}
                             {contact.status === 'archived' && (
-                                <button 
-                                    onClick={() => onStatusUpdate(contact.id, 'viewed')} 
+                                <button
+                                    onClick={() => onStatusUpdate(contact.id, 'viewed')}
                                     className="flex items-center justify-center gap-1.5 px-2 sm:px-3 py-2 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                                 >
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -353,8 +674,8 @@ const ContactCard = memo(function ContactCard({ contact, onEdit, onStatusUpdate,
                                 </button>
                             )}
                             {(!isFromTeamMember || contact.canEdit) && (
-                                <button 
-                                    onClick={() => onDelete(contact.id)} 
+                                <button
+                                    onClick={() => onDelete(contact.id)}
                                     className="flex items-center justify-center gap-1.5 px-2 sm:px-3 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors col-span-2"
                                 >
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

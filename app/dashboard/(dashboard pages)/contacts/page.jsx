@@ -49,6 +49,7 @@ function ContactsPage() {
         setFilter,
         searchTerm,
         aiSearchResults,
+        searchSessionId, // Get sessionId from context
         searchMode,
         setSearchMode,
         aiSearchQuery,
@@ -508,6 +509,7 @@ function ContactsPage() {
                             groups={groups}
                             isAiSearch={!!aiSearchResults}
                             searchMode={searchMode}
+                            searchSessionId={searchSessionId} // Pass sessionId for feedback button
                             onClearSearch={clearSearch}
                             />
                         ) : (

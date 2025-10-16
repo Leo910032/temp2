@@ -1,8 +1,10 @@
 // app/dashboard/(dashboard pages)/contacts/components/SearchBar.jsx
 "use client";
 
+import { useState } from 'react';
 import { CONTACT_FEATURES } from '@/lib/services/constants';
 import { useTranslation } from '@/lib/translation/useTranslation';
+import { SemanticSearchService } from '@/lib/services/serviceContact/client/services/SemanticSearchService';
 
 export default function SearchBar({
     searchMode,
@@ -15,6 +17,19 @@ export default function SearchBar({
     hasFeature
 }) {
     const { t } = useTranslation();
+    const [cacheCleared, setCacheCleared] = useState(false);
+
+    // Handle clearing the semantic search cache
+    const handleClearCache = () => {
+        SemanticSearchService.clearSearchCache();
+        setCacheCleared(true);
+        console.log('🗑️ Semantic search cache cleared');
+
+        // Show confirmation message for 3 seconds
+        setTimeout(() => {
+            setCacheCleared(false);
+        }, 3000);
+    };
 
     const translations = {
         title: t('contacts.search.title') || 'Search Contacts',
@@ -87,6 +102,31 @@ export default function SearchBar({
                             <span className="hidden sm:inline">{translations.aiMode}</span>
                             <span className="sm:hidden">IA</span>
                         </button>
+
+                        {/* Clear Cache Button - Only show in semantic mode */}
+                        {searchMode === 'semantic' && (
+                            <button
+                                onClick={handleClearCache}
+                                className={`px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm rounded-md transition-all flex items-center gap-1 ${
+                                    cacheCleared
+                                        ? 'bg-green-100 text-green-700 font-medium'
+                                        : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+                                }`}
+                                title="Clear cached search results for fresh comparison"
+                            >
+                                {cacheCleared ? (
+                                    <>
+                                        <span>✓</span>
+                                        <span className="hidden sm:inline">Cleared</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span>🗑️</span>
+                                        <span className="hidden sm:inline">Clear Cache</span>
+                                    </>
+                                )}
+                            </button>
+                        )}
                     </div>
                 )}
             </div>

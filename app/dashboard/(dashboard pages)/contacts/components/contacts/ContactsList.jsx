@@ -4,6 +4,7 @@
 import { memo } from 'react';
 import { useTranslation } from "@/lib/translation/useTranslation";
 import ContactCard from './ContactCard';
+import SearchFeedbackButton from '@/app/dashboard/general components/SearchFeedbackButton';
 import { motion } from 'framer-motion';
 
 const ContactsList = memo(function ContactsList({
@@ -22,7 +23,8 @@ const ContactsList = memo(function ContactsList({
     groups = [],
     isAiSearch = false,
     searchMode = 'standard',
-    onClearSearch
+    onClearSearch,
+    searchSessionId = null // Session ID from semantic search API response
 }) {
     const { t } = useTranslation();
 
@@ -79,6 +81,12 @@ const ContactsList = memo(function ContactsList({
                             <p className="text-sm text-purple-700">
                                 {searchMode === 'semantic' ? 'Semantic search powered by AI' : 'Standard search results'}
                             </p>
+                            {/* Feedback Button - only shown for semantic search */}
+                            <SearchFeedbackButton
+                                sessionId={searchSessionId}
+                                searchMode={searchMode}
+                                isAiSearch={isAiSearch}
+                            />
                         </div>
                     </div>
                     {onClearSearch && (

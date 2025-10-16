@@ -1,10 +1,10 @@
-// app/admin/components/AdminVectorContactTestPanel.jsx - FIXED VERSION
+// app/admin/components/AdminVectorContactTestPanel.jsx - REFACTORED VERSION
+// Follows admin service architecture pattern with proper separation of concerns
 "use client"
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/contexts/AuthContext'; // ✅ FIXED: Added missing import
+import { AdminServiceVector } from '@/lib/services/serviceAdmin/client/adminServiceVector';
 
-export default function AdminVectorContactTestPanel({ targetUser, onGenerate, onCleanup, loading }) {
-    const { currentUser } = useAuth(); // ✅ FIXED: Added useAuth hook
+export default function AdminVectorContactTestPanel({ targetUser }) {
     const [isGenerating, setIsGenerating] = useState(false);
     const [generationInfo, setGenerationInfo] = useState(null);
     const [vectorInfo, setVectorInfo] = useState(null);
@@ -151,55 +151,31 @@ export default function AdminVectorContactTestPanel({ targetUser, onGenerate, on
         }
     };
 
-useEffect(() => {
-    if (targetUser && currentUser) {
-        loadGenerationAndVectorInfo();
-    }
-}, [targetUser, currentUser, loadGenerationAndVectorInfo]);
-   // Inside the component, wrap loadGenerationAndVectorInfo in useCallback
+// Load generation and vector info using AdminServiceVector
 const loadGenerationAndVectorInfo = useCallback(async () => {
-    if (!targetUser || !currentUser) return;
+    if (!targetUser) return;
 
     try {
         setIsLoadingInfo(true);
-        
-        const token = await currentUser.getIdToken();
-        
-        const [generationResponse, vectorResponse] = await Promise.all([
-            fetch(`/api/admin/generate-contacts?userId=${targetUser.id}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                }
-            }),
-            fetch(`/api/admin/vector-info?userId=${targetUser.id}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                }
-            })
-        ]);
 
-        if (generationResponse.ok) {
-            const info = await generationResponse.json();
-            setGenerationInfo(info);
-        } else {
-            console.error('Generation info failed:', await generationResponse.text());
-        }
+        // Use AdminServiceVector to fetch both generation and vector info
+        const info = await AdminServiceVector.fetchGenerationAndVectorInfo(targetUser.id);
 
-        if (vectorResponse.ok) {
-            const vInfo = await vectorResponse.json();
-            setVectorInfo(vInfo);
-        } else {
-            console.error('Vector info failed:', await vectorResponse.text());
-        }
+        setGenerationInfo(info.generation);
+        setVectorInfo(info.vector);
 
     } catch (error) {
         console.error('Error loading info:', error);
     } finally {
         setIsLoadingInfo(false);
     }
-}, [targetUser, currentUser]);
+}, [targetUser]);
+
+useEffect(() => {
+    if (targetUser) {
+        loadGenerationAndVectorInfo();
+    }
+}, [targetUser, loadGenerationAndVectorInfo]);
 
 
     const handleQuickGenerate = async (scenario) => {
@@ -207,7 +183,8 @@ const loadGenerationAndVectorInfo = useCallback(async () => {
 
         try {
             const scenarioConfig = VECTOR_GENERATION_SCENARIOS[scenario];
-            const result = await onGenerate(scenarioConfig.params);
+            // Use AdminServiceVector instead of onGenerate prop
+            await AdminServiceVector.generateVectorContacts(targetUser.id, scenarioConfig.params);
             await loadGenerationAndVectorInfo();
         } catch (error) {
             console.error('Generation error:', error);
@@ -220,7 +197,8 @@ const loadGenerationAndVectorInfo = useCallback(async () => {
         setIsGenerating(true);
 
         try {
-            const result = await onGenerate(customOptions);
+            // Use AdminServiceVector instead of onGenerate prop
+            await AdminServiceVector.generateVectorContacts(targetUser.id, customOptions);
             await loadGenerationAndVectorInfo();
         } catch (error) {
             console.error('Generation error:', error);
@@ -231,6 +209,20 @@ const loadGenerationAndVectorInfo = useCallback(async () => {
 
     const handleScenarioGenerate = async () => {
         await handleQuickGenerate(selectedScenario);
+    };
+
+    const handleCleanup = async () => {
+        setIsGenerating(true);
+
+        try {
+            // Use AdminServiceVector for cleanup
+            await AdminServiceVector.cleanupVectorTestData(targetUser.id);
+            await loadGenerationAndVectorInfo();
+        } catch (error) {
+            console.error('Cleanup error:', error);
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
     if (isLoadingInfo) {
@@ -419,11 +411,11 @@ const loadGenerationAndVectorInfo = useCallback(async () => {
                                     </p>
                                 </div>
                                 <button
-                                    onClick={onCleanup}
-                                    disabled={loading || isGenerating}
+                                    onClick={handleCleanup}
+                                    disabled={isGenerating}
                                     className="px-4 py-2 text-sm font-semibold text-red-700 bg-red-100 border border-red-200 rounded-md hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 >
-                                    {loading ? 'Cleaning...' : 'Cleanup All Test Data'}
+                                    {isGenerating ? 'Cleaning...' : 'Cleanup All Test Data'}
                                 </button>
                             </div>
                         </div>
@@ -484,7 +476,7 @@ const loadGenerationAndVectorInfo = useCallback(async () => {
 
                     <button
                         onClick={handleScenarioGenerate}
-                        disabled={loading || isGenerating}
+                        disabled={isGenerating}
                         className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isGenerating ? 'Generating...' : `Generate ${VECTOR_GENERATION_SCENARIOS[selectedScenario].params.count} Vector-Optimized Contacts`}
@@ -709,7 +701,7 @@ Contacts will be created but vectors will be skipped.
 
                             <button
                                 onClick={handleCustomGenerate}
-                                disabled={loading || isGenerating}
+                                disabled={isGenerating}
                                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isGenerating ? 'Generating...' : `Generate ${customOptions.count} Vector-Enhanced Contacts`}

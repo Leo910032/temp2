@@ -302,6 +302,17 @@ const model = SEMANTIC_SEARCH_CONFIG.RERANK_MODELS.MULTILINGUAL; // 'rerank-mult
       }
     }
 
+    // Step 5.5: Finalize session if this is part of semantic search
+    if (sessionId && trackCosts) {
+      try {
+        const { SessionTrackingService } = await import('@/lib/services/serviceContact/server/costTracking/sessionService');
+        await SessionTrackingService.finalizeSession({ userId, sessionId });
+        console.log(`✅ [API /rerank] [${rerankId}] Session finalized: ${sessionId}`);
+      } catch (finalizeError) {
+        console.error(`❌ [API /rerank] [${rerankId}] Failed to finalize session:`, finalizeError);
+      }
+    }
+
     // Step 6: Return response
     const logData = {
       inputCount: contacts.length,

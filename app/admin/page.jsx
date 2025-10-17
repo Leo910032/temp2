@@ -22,6 +22,7 @@ import StatsCards from './components/StatsCards';
 import AccountTypesBreakdown from './components/AccountTypesBreakdown';
 import AdminEnterprisePanel from './components/AdminEnterprisePanel';
 import TopLevelSecurityLogs from './components/TopLevelSecurityLogs';
+import SessionUsageViewer from './components/SessionUsageViewer';
 
 export default function AdminDashboard() {
     const { currentUser } = useAuth();
@@ -46,6 +47,7 @@ export default function AdminDashboard() {
     const [vectorPanelLoading, setVectorPanelLoading] = useState(false); // NEW
     const [showEnterprisePanel, setShowEnterprisePanel] = useState(false);
     const [showSecurityLogs, setShowSecurityLogs] = useState(false);
+    const [showSessionsPanel, setShowSessionsPanel] = useState(false); // NEW - Session Usage Viewer
 
     const [stats, setStats] = useState({
         total: 0,
@@ -373,6 +375,21 @@ useEffect(() => {
                         {showSecurityLogs ? 'Hide Security Logs' : 'Show Security Logs'}
                     </button>
 
+                    {/* Session Usage Viewer Toggle - Available for all admins (read-only) */}
+                    {adminPermissions[ADMIN_PERMISSIONS.CAN_VIEW_ANALYTICS] && (
+                        <button
+                            onClick={() => setShowSessionsPanel(!showSessionsPanel)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors font-medium ${
+                                showSessionsPanel
+                                    ? 'bg-purple-100 border border-purple-300 text-purple-800 hover:bg-purple-200'
+                                    : 'bg-purple-600 text-white hover:bg-purple-700'
+                            }`}
+                        >
+                            <span>📊</span>
+                            {showSessionsPanel ? 'Hide Sessions' : 'Show Sessions'}
+                        </button>
+                    )}
+
                     {/* Enterprise Panel Toggle - Only for full admins */}
                     {canPerformActions && (
                         <button
@@ -430,6 +447,27 @@ useEffect(() => {
             {/* Security Logs Panel */}
             {showSecurityLogs && (
                 <TopLevelSecurityLogs />
+            )}
+
+            {/* Session Usage Viewer Panel */}
+            {showSessionsPanel && (
+                <div className="mt-8">
+                    {selectedUser ? (
+                        <SessionUsageViewer userId={selectedUser.id} />
+                    ) : (
+                        <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-8 text-center">
+                            <div className="w-16 h-16 bg-purple-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <span className="text-3xl">📊</span>
+                            </div>
+                            <h3 className="text-lg font-semibold text-purple-900 mb-2">
+                                Select a User to View Sessions
+                            </h3>
+                            <p className="text-purple-700">
+                                Choose a user from the list below to view their session usage and API call history
+                            </p>
+                        </div>
+                    )}
+                </div>
             )}
 
             {/* Enterprise Panel */}

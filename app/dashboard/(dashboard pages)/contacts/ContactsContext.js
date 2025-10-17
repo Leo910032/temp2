@@ -9,6 +9,7 @@ import { SemanticSearchService } from '@/lib/services/serviceContact/client/serv
 import { CONTACT_FEATURES } from '@/lib/services/constants';
 import { getFirestore, doc, onSnapshot } from 'firebase/firestore';
 import { app } from '@/important/firebase';
+import { useTranslation } from '@/lib/translation/useTranslation';
 
 const ContactsContext = createContext(null);
 
@@ -22,7 +23,8 @@ export function useContacts() {
 
 export function ContactsProvider({ children }) {
     const { currentUser, permissions, isLoading: isSessionLoading } = useDashboard();
-    
+    const { locale } = useTranslation(); // NEW: Get UI locale for language-based model selection
+
     // Core data state
     const [contacts, setContacts] = useState([]);
     const [groups, setGroups] = useState([]);
@@ -151,7 +153,8 @@ const [stats, setStats] = useState({
                     userId: currentUser?.uid,
                     maxResults: 10,
                     enhanceResults: hasFeature(CONTACT_FEATURES.BUSINESS_AI_SEARCH),
-                    useCache: true
+                    useCache: true,
+                    locale: locale // NEW: Pass UI locale for language-based rerank model selection
                 });
 
                 setAiSearchResults(result.results || []);

@@ -14,7 +14,7 @@ import { SEMANTIC_SEARCH_CONFIG, CONTACT_FEATURES } from '@/lib/services/service
  * POST /api/user/contacts/semantic-search
  *
  * Architecture:
- * 1. Authenticate user and create session (includes subscription and feature checks)
+ * 1. Authenticate semanticSearchServiceuser and create session (includes subscription and feature checks)
  * 2. Validate input
  * 3. Check affordability
  * 4. Call server service (business logic)
@@ -54,14 +54,16 @@ export async function POST(request) {
       maxResults = SEMANTIC_SEARCH_CONFIG.DEFAULT_MAX_RESULTS,
       includeMetadata = SEMANTIC_SEARCH_CONFIG.DEFAULT_INCLUDE_METADATA,
       trackCosts = true,
-      minVectorScore = null // Optional: minimum vector similarity threshold
+      minVectorScore = null, // Optional: minimum vector similarity threshold
+      locale = 'en' // NEW: UI locale for language-based model selection (default to English)
     } = await request.json();
 
     console.log(`📝 [API /semantic-search] [${searchId}] Request params:`, {
       queryLength: query?.length,
       maxResults,
       trackCosts,
-      minVectorScore: minVectorScore !== null ? minVectorScore : 'not set (no threshold filtering)'
+      minVectorScore: minVectorScore !== null ? minVectorScore : 'not set (no threshold filtering)',
+      locale // NEW: Log UI locale
     });
 
     if (!query || typeof query !== 'string' || query.trim().length === 0) {
@@ -111,7 +113,8 @@ export async function POST(request) {
       includeMetadata,
       searchId,
       minVectorScore, // Pass threshold to service
-      subscriptionLevel // Pass for fallback limit
+      subscriptionLevel,
+      sessionId // ADD THIS
     });
 
     // Step 5: Record usage in SessionUsage (multi-step operation)
@@ -159,7 +162,8 @@ export async function POST(request) {
           sessionTracking: true,
           resultsFound: searchResult.results.length
         } : undefined,
-        subscriptionLevel
+        subscriptionLevel,
+        locale // NEW: Include locale in metadata for transparency
       }
     };
 

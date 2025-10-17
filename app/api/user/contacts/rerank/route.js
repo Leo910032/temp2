@@ -1,6 +1,7 @@
 // app/api/user/contacts/rerank/route.js
-// API route for contact reranking - Uses detectedLanguage from QueryEnhancementService
-// SIMPLIFIED: Direct language check - eng → English model, else → Multilingual model
+// API route for contact reranking
+// SIMPLIFIED: Always uses rerank-v3.5 (best model for all languages)
+// detectedLanguage is passed for analytics/logging only
 
 export const dynamic = 'force-dynamic';
 
@@ -115,19 +116,16 @@ export async function POST(request) {
       sessionId = null
     } = await request.json();
 
-    // Simple model selection: English vs Multilingual
-    const model = detectedLanguage === 'eng' 
-      ? SEMANTIC_SEARCH_CONFIG.RERANK_MODELS.ENGLISH 
-      : SEMANTIC_SEARCH_CONFIG.RERANK_MODELS.MULTILINGUAL_V35;
-
-    const modelCost = model === SEMANTIC_SEARCH_CONFIG.RERANK_MODELS.ENGLISH 
-      ? '$0.001' 
-      : '$0.002';
+    // Always use rerank-v3.5 (best model for all languages)
+    // Testing showed v3.5 outperforms even rerank-english-v3.0 for English queries
+    // v3.5 is Cohere's newest and most accurate model
+const model = SEMANTIC_SEARCH_CONFIG.RERANK_MODELS.MULTILINGUAL; // 'rerank-multilingual-v3.0'
+    const modelCost = '$0.002';
 
     console.log(`📝 [API /rerank] [${rerankId}] Request params:`, {
       queryLength: query?.length,
       contactsCount: contacts?.length,
-      detectedLanguage: detectedLanguage || 'not detected (using multilingual)',
+      detectedLanguage: detectedLanguage || 'not detected',
       model,
       modelCost: `${modelCost}/request`,
       topN,
@@ -136,7 +134,11 @@ export async function POST(request) {
       sessionId: sessionId || 'none'
     });
 
-    console.log(`✅ [API /rerank] [${rerankId}] Model selected: ${model} for language '${detectedLanguage || 'unknown'}' (${modelCost}/request)`);
+    console.log(`✅ [API /rerank] [${rerankId}] Using rerank-v3.5 (best model for all languages)`, {
+      detectedLanguage: detectedLanguage || 'not detected',
+      modelCost: `${modelCost}/request`,
+      note: 'v3.5 outperforms language-specific models'
+    });
 
     // Validation
     if (!query || !contacts || !Array.isArray(contacts)) {

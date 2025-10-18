@@ -107,15 +107,19 @@ export async function POST(request) {
           provider: 'internal',
           cost: 0,
           duration: affordCheckDuration,
-          isBillableRun: true,
+          isBillableRun: false,
           metadata: {
             estimatedCost: costEstimate.totalCost,
-            currentUsage: affordabilityCheck.usage,
-            limits: affordabilityCheck.limits,
+            currentUsage: affordabilityCheck.usage || {},
+            limits: affordabilityCheck.limits || {},
             canAfford: affordabilityCheck.canAfford,
             reason: affordabilityCheck.reason,
-            remainingBudget: affordabilityCheck.limits.maxCost - affordabilityCheck.usage.totalCost,
-            budgetPercentage: `${((affordabilityCheck.usage.totalCost / affordabilityCheck.limits.maxCost) * 100).toFixed(1)}%`
+            remainingBudget: affordabilityCheck.limits?.maxCost
+              ? affordabilityCheck.limits.maxCost - (affordabilityCheck.usage?.totalCost || 0)
+              : null,
+            budgetPercentage: affordabilityCheck.limits?.maxCost && affordabilityCheck.usage?.totalCost
+              ? `${((affordabilityCheck.usage.totalCost / affordabilityCheck.limits.maxCost) * 100).toFixed(1)}%`
+              : 'N/A'
           }
         });
         console.log(`✅ [API /semantic-search] [${searchId}] Step 1 recorded: Cost Affordability Check`);
@@ -148,38 +152,9 @@ export async function POST(request) {
       trackSteps: trackCosts // Enable granular step tracking when cost tracking is enabled
     });
 
-    // Step 5: Record usage in SessionUsage (multi-step operation)
-    if (trackCosts) {
-      const actualCost = searchResult.searchMetadata.costs.total;
-
-      // Record vector search step in SessionUsage
-      try {
-        await CostTrackingService.recordUsage({
-          userId,
-          usageType: 'ApiUsage',
-          feature: 'semantic_search_vector',
-          cost: actualCost,
-          isBillableRun: false, // Only final step counts as billable run
-          provider: 'pinecone+gemini',
-          sessionId, // Multi-step operation
-          stepLabel: 'Step 0: Vector Search', // Human-readable label
-          metadata: {
-            queryLength: query.length,
-            embeddingTime: searchResult.searchMetadata.embeddingTime,
-            searchDuration: searchResult.searchMetadata.searchDuration,
-            tokens: searchResult.searchMetadata.costs.tokens,
-            searchId,
-            namespace: searchResult.searchMetadata.namespace,
-            resultsFound: searchResult.results.length,
-            subscriptionLevel
-          }
-        });
-        console.log(`✅ [API /semantic-search] [${searchId}] Vector search step recorded in SessionUsage: $${actualCost.toFixed(6)}`);
-      } catch (recordError) {
-        console.error(`❌ [API /semantic-search] [${searchId}] Failed to record vector search step:`, recordError);
-        // Don't fail the search if cost recording fails
-      }
-    }
+    // NOTE: Cost recording removed from this location
+    // Steps are tracked automatically via StepTracker.recordStep() calls in service layers
+    // Final aggregated cost will be recorded in ai-enhance-results route after all steps complete
 
     // Step 6: Return formatted response with sessionId
     const responseData = {

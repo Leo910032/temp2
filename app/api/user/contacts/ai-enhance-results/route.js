@@ -176,6 +176,7 @@ export async function POST(request) {
               provider: 'internal',
               cost: 0,
               duration: finalizeDuration,
+              isBillableRun: false,
               metadata: {
                 sessionId,
                 finalStatus: 'completed',
@@ -311,6 +312,7 @@ async function wrapStreamWithCostTracking(originalStream, userId, enhanceId, ses
                         provider: 'internal',
                         cost: 0,
                         duration: finalizeDuration,
+                        isBillableRun: false,
                         metadata: {
                           sessionId,
                           finalStatus: 'completed',

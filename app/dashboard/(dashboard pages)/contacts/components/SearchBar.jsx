@@ -1,7 +1,7 @@
 // app/dashboard/(dashboard pages)/contacts/components/SearchBar.jsx
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { CONTACT_FEATURES } from '@/lib/services/constants';
 import { useTranslation } from '@/lib/translation/useTranslation';
 import { SemanticSearchService } from '@/lib/services/serviceContact/client/services/SemanticSearchService';
@@ -18,6 +18,65 @@ export default function SearchBar({
 }) {
     const { t } = useTranslation();
     const [cacheCleared, setCacheCleared] = useState(false);
+
+    // Search history state
+    const [searchHistory, setSearchHistory] = useState([]);
+    const [showHistory, setShowHistory] = useState(false);
+    const historyRef = useRef(null);
+
+    // Load search history on mount and when switching to semantic mode
+    useEffect(() => {
+        if (searchMode === 'semantic') {
+            const history = SemanticSearchService.getSearchHistory();
+            setSearchHistory(history);
+        }
+    }, [searchMode]);
+
+    // Close history dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (historyRef.current && !historyRef.current.contains(event.target)) {
+                setShowHistory(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // Handle selecting a search from history
+    const handleSelectHistoryItem = (query) => {
+        setAiSearchQuery(query);
+        setShowHistory(false);
+        handleEnhancedSearch(query, true);
+    };
+
+    // Handle clearing entire history
+    const handleClearHistory = () => {
+        SemanticSearchService.clearSearchHistory();
+        setSearchHistory([]);
+        setShowHistory(false);
+    };
+
+    // Handle removing a single item from history
+    const handleRemoveHistoryItem = (query, e) => {
+        e.stopPropagation(); // Prevent triggering the search
+        SemanticSearchService.removeFromHistory(query);
+        const updatedHistory = searchHistory.filter(item => item.query !== query);
+        setSearchHistory(updatedHistory);
+    };
+
+    // Format timestamp for display
+    const formatTimestamp = (timestamp) => {
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diffInHours = (now - date) / (1000 * 60 * 60);
+
+        if (diffInHours < 1) return 'Just now';
+        if (diffInHours < 24) return `${Math.floor(diffInHours)}h ago`;
+        if (diffInHours < 48) return 'Yesterday';
+        return date.toLocaleDateString();
+    };
 
     // Handle clearing the semantic search cache
     const handleClearCache = () => {
@@ -132,7 +191,7 @@ export default function SearchBar({
             </div>
 
             {/* Main Search Input */}
-            <div className="relative">
+            <div className="relative" ref={historyRef}>
                 <input
                     type="text"
                     placeholder={
@@ -147,6 +206,11 @@ export default function SearchBar({
                         }
                     }}
                     onKeyPress={handleKeyPress}
+                    onFocus={() => {
+                        if (searchMode === 'semantic' && searchHistory.length > 0) {
+                            setShowHistory(true);
+                        }
+                    }}
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 pl-10 sm:pl-12 pr-20 sm:pr-24 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow text-sm sm:text-base"
                     disabled={isAiSearching}
                 />
@@ -161,6 +225,19 @@ export default function SearchBar({
                         </svg>
                     )}
                 </div>
+
+                {/* History Icon - Show next to search icon when there's history */}
+                {searchMode === 'semantic' && searchHistory.length > 0 && !aiSearchQuery && (
+                    <button
+                        onClick={() => setShowHistory(!showHistory)}
+                        className="absolute left-10 sm:left-12 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-purple-600 transition-colors"
+                        title="Search history"
+                    >
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </button>
+                )}
 
                 {/* Search Button */}
                 <button
@@ -181,6 +258,63 @@ export default function SearchBar({
                         {isAiSearching ? '...' : '🔍'}
                     </span>
                 </button>
+
+                {/* SEARCH HISTORY DROPDOWN */}
+                {searchMode === 'semantic' && showHistory && searchHistory.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-gray-50">
+                            <div className="flex items-center gap-2">
+                                <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span className="text-sm font-medium text-gray-700">Recent Searches</span>
+                            </div>
+                            <button
+                                onClick={handleClearHistory}
+                                className="text-xs text-red-600 hover:text-red-700 hover:underline"
+                            >
+                                Clear All
+                            </button>
+                        </div>
+
+                        {/* History Items */}
+                        <div className="divide-y divide-gray-100">
+                            {searchHistory.map((item, index) => (
+                                <button
+                                    key={index}
+                                    onClick={() => handleSelectHistoryItem(item.query)}
+                                    className="w-full flex items-center justify-between p-3 hover:bg-purple-50 transition-colors group text-left"
+                                >
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm text-gray-900 truncate">{item.query}</span>
+                                            {item.searchCount > 1 && (
+                                                <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                                                    {item.searchCount}x
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="text-xs text-gray-500">{formatTimestamp(item.timestamp)}</span>
+                                            <span className="text-xs text-gray-400">•</span>
+                                            <span className="text-xs text-gray-500">{item.resultsCount} results</span>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={(e) => handleRemoveHistoryItem(item.query, e)}
+                                        className="ml-2 p-1 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        title="Remove from history"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* AI Search Feature Explanation */}

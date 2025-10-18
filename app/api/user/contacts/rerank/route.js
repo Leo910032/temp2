@@ -11,6 +11,7 @@ import { RerankService } from '@/lib/services/serviceContact/server/rerankServic
 import { CostTrackingService } from '@/lib/services/serviceContact/server/costTrackingService';
 import { SEMANTIC_SEARCH_CONFIG, CONTACT_FEATURES } from '@/lib/services/serviceContact/client/constants/contactConstants';
 import { StepTracker } from '@/lib/services/serviceContact/server/costTracking/stepTracker';
+import { adminDb } from '@/lib/firebaseAdmin';
 
 const FORCE_RERANK_MODE = 'ALWAYS_RERANK';
 
@@ -262,6 +263,7 @@ const model = SEMANTIC_SEARCH_CONFIG.RERANK_MODELS.MULTILINGUAL; // 'rerank-mult
             provider: 'internal',
             cost: 0,
             duration: setupDuration,
+            isBillableRun: false,
             metadata: {
               queryLength: query.length,
               contactsCount: contacts.length,
@@ -312,47 +314,128 @@ const model = SEMANTIC_SEARCH_CONFIG.RERANK_MODELS.MULTILINGUAL; // 'rerank-mult
       trackSteps: trackCosts // Enable granular step tracking when cost tracking is enabled
     });
 
-    // Step 5: Record usage
-    if (trackCosts) {
+    // NOTE: Cost recording removed for session-based operations
+    // Steps are tracked automatically via StepTracker.recordStep() calls in rerankService
+    // Final aggregated cost will be recorded in ai-enhance-results route after all steps complete
+    //
+    // Standalone rerank operations (without sessionId) should still record costs
+    if (trackCosts && !sessionId) {
       const actualCost = rerankResult.metadata.cost;
 
       try {
         await CostTrackingService.recordUsage({
           userId,
           usageType: 'ApiUsage',
-          feature: sessionId ? 'semantic_search_rerank' : 'rerank_operation',
+          feature: 'rerank_operation',
           cost: actualCost,
           isBillableRun: false,
           provider: model,
-          sessionId,
-          stepLabel: sessionId ? 'Step 1: Rerank' : null,
           metadata: {
             documentsReranked: contacts.length,
             detectedLanguage: rerankResult.metadata.detectedLanguage,
             subscriptionLevel,
             rerankId,
             topN: Math.min(topN, contacts.length),
-            isPartOfSemanticSearch: !!sessionId
+            isPartOfSemanticSearch: false
           }
         });
 
-        const recordLocation = sessionId ? 'SessionUsage' : 'ApiUsage';
-        console.log(`✅ [API /rerank] [${rerankId}] Recorded in ${recordLocation}: $${actualCost.toFixed(6)}`);
+        console.log(`✅ [API /rerank] [${rerankId}] Standalone rerank recorded in ApiUsage: $${actualCost.toFixed(6)}`);
       } catch (recordError) {
         console.error(`❌ [API /rerank] [${rerankId}] Failed to record cost:`, recordError);
       }
     }
 
-    // Step 5.5: Finalize session if this is part of semantic search
+    // Step 5.5: Finalize session and record aggregated costs if this is part of semantic search
+    console.log('🔍 [DEBUG] Before finalization check');
+    console.log('🔍 [DEBUG] sessionId:', sessionId);
+    console.log('🔍 [DEBUG] trackCosts:', trackCosts);
+    console.log('🔍 [DEBUG] Condition check (sessionId && trackCosts):', sessionId && trackCosts);
+
     if (sessionId && trackCosts) {
+      console.log('✅ [DEBUG] Entering finalization block');
+
       try {
+        console.log('🔍 [DEBUG] Importing SessionTrackingService...');
         const { SessionTrackingService } = await import('@/lib/services/serviceContact/server/costTracking/sessionService');
+        console.log('✅ [DEBUG] SessionTrackingService imported');
+
+        console.log('🔍 [DEBUG] Reading SessionUsage document...');
+        // Get session totals before finalizing
+        const sessionRef = adminDb
+          .collection('SessionUsage')
+          .doc(userId)
+          .collection('sessions')
+          .doc(sessionId);
+
+        const sessionDoc = await sessionRef.get();
+        console.log('🔍 [DEBUG] sessionDoc.exists:', sessionDoc.exists);
+
+        if (!sessionDoc.exists) {
+          console.error('❌ [DEBUG] SessionUsage document does not exist!');
+          console.error('❌ [DEBUG] Path:', `SessionUsage/${userId}/sessions/${sessionId}`);
+        } else {
+          console.log('✅ [DEBUG] SessionUsage document found');
+          const sessionData = sessionDoc.data();
+          console.log('🔍 [DEBUG] Session data:', {
+            totalCost: sessionData.totalCost,
+            totalRuns: sessionData.totalRuns,
+            status: sessionData.status,
+            stepsCount: sessionData.steps?.length,
+            feature: sessionData.feature
+          });
+
+          const totalCost = sessionData.totalCost || 0;
+          const totalSteps = sessionData.steps?.length || 0;
+          console.log('🔍 [DEBUG] Total cost to record:', totalCost);
+
+          console.log(`📊 [API /rerank] [${rerankId}] Session totals:`, {
+            totalCost: totalCost.toFixed(6),
+            totalSteps,
+            sessionId
+          });
+
+          // Record the complete semantic search operation to update users collection
+          // This is the ONLY call that updates monthly totals and users collection
+          console.log('🔍 [DEBUG] Calling CostTrackingService.recordUsage...');
+          await CostTrackingService.recordUsage({
+            userId,
+            usageType: 'ApiUsage',
+            feature: 'semantic_search_complete',
+            cost: totalCost,
+            isBillableRun: true, // Semantic search counts as 1 billable API operation
+            provider: 'pinecone+cohere',
+            sessionId: null, // CRITICAL: null to prevent duplicate SessionUsage write
+            metadata: {
+              sourceSessionId: sessionId,
+              totalSteps,
+              rerankId,
+              searchCompleted: true
+            }
+          });
+          console.log('✅ [DEBUG] CostTrackingService.recordUsage completed');
+
+          console.log(`✅ [API /rerank] [${rerankId}] Aggregated costs recorded to users collection: $${totalCost.toFixed(6)}`);
+        }
+
+        // Finalize the session
+        console.log('🔍 [DEBUG] Calling SessionTrackingService.finalizeSession...');
         await SessionTrackingService.finalizeSession({ userId, sessionId });
+        console.log('✅ [DEBUG] SessionTrackingService.finalizeSession completed');
         console.log(`✅ [API /rerank] [${rerankId}] Session finalized: ${sessionId}`);
       } catch (finalizeError) {
+        console.error(`❌ [DEBUG] ERROR in finalization block:`, finalizeError);
+        console.error(`❌ [DEBUG] Error message:`, finalizeError.message);
+        console.error(`❌ [DEBUG] Error stack:`, finalizeError.stack);
         console.error(`❌ [API /rerank] [${rerankId}] Failed to finalize session:`, finalizeError);
       }
+    } else {
+      console.log('❌ [DEBUG] Finalization skipped - condition failed');
+      console.log('   [DEBUG] sessionId:', sessionId);
+      console.log('   [DEBUG] trackCosts:', trackCosts);
     }
+
+    console.log('🔍 [DEBUG] After finalization block');
 
     // Step 6: Return response
     const logData = {

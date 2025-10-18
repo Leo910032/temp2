@@ -22,11 +22,15 @@ const StatusBadge = ({ status }) => {
 };
 
 // Step Box Component
-const StepBox = ({ step, isLast, isExpanded, onToggle }) => {
+const StepBox = ({ step, isLast, isExpanded, onToggle, previousStep }) => {
   const getBorderColor = () => {
     if (step.isBillableRun) return 'border-yellow-400 bg-yellow-50';
     return 'border-gray-300 bg-white';
   };
+
+  // Calculate execution time
+  const executionTimeMs = AdminServiceSessions.calculateStepExecutionTime(step, previousStep);
+  const executionTimeFormatted = AdminServiceSessions.formatExecutionTime(executionTimeMs);
 
   return (
     <div className="flex items-center">
@@ -56,6 +60,14 @@ const StepBox = ({ step, isLast, isExpanded, onToggle }) => {
             <span>🕐</span>
             <span>{AdminServiceSessions.formatTime(step.timestamp)}</span>
           </div>
+
+          {/* Execution Time */}
+          {executionTimeMs !== null && (
+            <div className="flex items-center gap-1 text-gray-600">
+              <span>⏱️</span>
+              <span className="font-medium text-blue-600">{executionTimeFormatted}</span>
+            </div>
+          )}
 
           {step.isBillableRun && (
             <div className="mt-1 pt-1 border-t border-yellow-300">
@@ -178,6 +190,7 @@ const SessionCard = ({ session }) => {
             <StepBox
               key={step.operationId}
               step={step}
+              previousStep={index > 0 ? session.steps[index - 1] : null}
               isLast={index === session.steps.length - 1}
               isExpanded={expandedSteps.has(step.operationId)}
               onToggle={() => toggleStep(step.operationId)}
@@ -367,7 +380,7 @@ export default function SessionUsageViewer({ userId, initialLimit = 50, autoRefr
       {/* Legend */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="font-semibold text-blue-900 mb-2">Legend:</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-white border-2 border-gray-300 rounded"></div>
             <span>Standard step</span>
@@ -375,6 +388,10 @@ export default function SessionUsageViewer({ userId, initialLimit = 50, autoRefr
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-yellow-50 border-2 border-yellow-400 rounded"></div>
             <span>Billable step</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span>⏱️</span>
+            <span>Execution time</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-gray-400">▼</span>

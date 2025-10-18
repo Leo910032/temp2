@@ -10,6 +10,7 @@ import { AIEnhanceService } from '@/lib/services/serviceContact/server/aiEnhance
 import { CostTrackingService } from '@/lib/services/serviceContact/server/costTrackingService';
 import { SessionTrackingService } from '@/lib/services/serviceContact/server/costTracking/sessionService';
 import { CONTACT_FEATURES } from '@/lib/services/serviceContact/client/constants/contactConstants';
+import { StepTracker } from '@/lib/services/serviceContact/server/costTracking/stepTracker';
 
 /**
  * POST /api/user/contacts/ai-enhance-results
@@ -159,6 +160,39 @@ export async function POST(request) {
     // Finalize session if this is part of semantic search
     if (sessionId && trackCosts) {
       try {
+        // STEP 12: Record Session Finalization (batch mode)
+        const finalizeStart = Date.now();
+        const sessionStats = await SessionTrackingService.getSessionStatistics(userId, sessionId);
+        const finalizeDuration = Date.now() - finalizeStart;
+
+        if (sessionStats) {
+          try {
+            await StepTracker.recordStep({
+              userId,
+              sessionId,
+              stepNumber: 12,
+              stepLabel: 'Step 12: Session Finalization',
+              feature: 'semantic_search_finalization',
+              provider: 'internal',
+              cost: 0,
+              duration: finalizeDuration,
+              metadata: {
+                sessionId,
+                finalStatus: 'completed',
+                totalSteps: sessionStats.totalSteps + 1, // +1 for this step
+                totalDuration: sessionStats.totalDuration,
+                pipelinePhases: {
+                  vectorSearch: sessionStats.stepsByPhase.vectorSearch,
+                  reranking: sessionStats.stepsByPhase.reranking
+                }
+              }
+            });
+            console.log(`✅ [API /ai-enhance] [${enhanceId}] Step 12 recorded`);
+          } catch (stepError) {
+            console.error(`❌ [API /ai-enhance] [${enhanceId}] Failed to record Step 12:`, stepError);
+          }
+        }
+
         await SessionTrackingService.finalizeSession({ userId, sessionId });
         console.log(`✅ [API /ai-enhance] [${enhanceId}] Session finalized: ${sessionId}`);
       } catch (finalizeError) {
@@ -261,6 +295,40 @@ async function wrapStreamWithCostTracking(originalStream, userId, enhanceId, ses
               if (data.type === 'complete' && sessionId && !sessionFinalized) {
                 sessionFinalized = true;
                 try {
+                  // STEP 12: Record Session Finalization (streaming mode)
+                  const finalizeStart = Date.now();
+                  const sessionStats = await SessionTrackingService.getSessionStatistics(userId, sessionId);
+                  const finalizeDuration = Date.now() - finalizeStart;
+
+                  if (sessionStats) {
+                    try {
+                      await StepTracker.recordStep({
+                        userId,
+                        sessionId,
+                        stepNumber: 12,
+                        stepLabel: 'Step 12: Session Finalization',
+                        feature: 'semantic_search_finalization',
+                        provider: 'internal',
+                        cost: 0,
+                        duration: finalizeDuration,
+                        metadata: {
+                          sessionId,
+                          finalStatus: 'completed',
+                          totalSteps: sessionStats.totalSteps + 1,
+                          totalDuration: sessionStats.totalDuration,
+                          pipelinePhases: {
+                            vectorSearch: sessionStats.stepsByPhase.vectorSearch,
+                            reranking: sessionStats.stepsByPhase.reranking
+                          },
+                          mode: 'streaming'
+                        }
+                      });
+                      console.log(`✅ [API /ai-enhance] [${enhanceId}] Step 12 recorded (streaming)`);
+                    } catch (stepError) {
+                      console.error(`❌ [API /ai-enhance] [${enhanceId}] Failed to record Step 12 (streaming):`, stepError);
+                    }
+                  }
+
                   await SessionTrackingService.finalizeSession({ userId, sessionId });
                   console.log(`✅ [API /ai-enhance] [${enhanceId}] Session finalized (streaming): ${sessionId}`);
                 } catch (finalizeError) {

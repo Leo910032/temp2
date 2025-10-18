@@ -9,6 +9,7 @@ import { createApiSession, SessionManager } from '@/lib/server/session';
 import { SemanticSearchService } from '@/lib/services/serviceContact/server/semanticSearchService';
 import { CostTrackingService } from '@/lib/services/serviceContact/server/costTrackingService';
 import { SEMANTIC_SEARCH_CONFIG, CONTACT_FEATURES } from '@/lib/services/serviceContact/client/constants/contactConstants';
+import { StepTracker } from '@/lib/services/serviceContact/server/costTracking/stepTracker';
 
 /**
  * POST /api/user/contacts/semantic-search
@@ -74,10 +75,11 @@ export async function POST(request) {
     // Get subscription level for cost calculations
     const subscriptionLevel = session.subscriptionLevel;
 
-    // Step 3: Check affordability
+    // Step 3: Check affordability (STEP 1 - Cost Affordability Check)
     if (trackCosts) {
       console.log(`💰 [API /semantic-search] [${searchId}] Checking affordability...`);
 
+      const affordCheckStart = Date.now();
       const costEstimate = SemanticSearchService.estimateCost(query);
 
       console.log(`💰 [API /semantic-search] [${searchId}] Estimated cost: $${costEstimate.totalCost.toFixed(6)}`);
@@ -87,11 +89,39 @@ export async function POST(request) {
         costEstimate.totalCost,
         1 // Semantic search counts as 1 successful run if it returns results
       );
+      const affordCheckDuration = Date.now() - affordCheckStart;
 
       console.log(`💰 [API /semantic-search] [${searchId}] Affordability check:`, {
         canAfford: affordabilityCheck.canAfford,
         reason: affordabilityCheck.reason
       });
+
+      // STEP 1: Record Cost Affordability Check
+      try {
+        await StepTracker.recordStep({
+          userId,
+          sessionId,
+          stepNumber: 1,
+          stepLabel: 'Step 1: Cost Affordability Check',
+          feature: 'semantic_search_affordability',
+          provider: 'internal',
+          cost: 0,
+          duration: affordCheckDuration,
+          isBillableRun: true,
+          metadata: {
+            estimatedCost: costEstimate.totalCost,
+            currentUsage: affordabilityCheck.usage,
+            limits: affordabilityCheck.limits,
+            canAfford: affordabilityCheck.canAfford,
+            reason: affordabilityCheck.reason,
+            remainingBudget: affordabilityCheck.limits.maxCost - affordabilityCheck.usage.totalCost,
+            budgetPercentage: `${((affordabilityCheck.usage.totalCost / affordabilityCheck.limits.maxCost) * 100).toFixed(1)}%`
+          }
+        });
+        console.log(`✅ [API /semantic-search] [${searchId}] Step 1 recorded: Cost Affordability Check`);
+      } catch (stepError) {
+        console.error(`❌ [API /semantic-search] [${searchId}] Failed to record Step 1:`, stepError);
+      }
 
       if (!affordabilityCheck.canAfford) {
         console.log(`❌ [API /semantic-search] [${searchId}] User cannot afford operation`);
@@ -114,7 +144,8 @@ export async function POST(request) {
       searchId,
       minVectorScore, // Pass threshold to service
       subscriptionLevel,
-      sessionId // ADD THIS
+      sessionId, // Session ID for tracking
+      trackSteps: trackCosts // Enable granular step tracking when cost tracking is enabled
     });
 
     // Step 5: Record usage in SessionUsage (multi-step operation)

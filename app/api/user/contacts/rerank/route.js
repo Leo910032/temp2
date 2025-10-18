@@ -10,6 +10,7 @@ import { createApiSession, SessionManager } from '@/lib/server/session';
 import { RerankService } from '@/lib/services/serviceContact/server/rerankService';
 import { CostTrackingService } from '@/lib/services/serviceContact/server/costTrackingService';
 import { SEMANTIC_SEARCH_CONFIG, CONTACT_FEATURES } from '@/lib/services/serviceContact/client/constants/contactConstants';
+import { StepTracker } from '@/lib/services/serviceContact/server/costTracking/stepTracker';
 
 const FORCE_RERANK_MODE = 'ALWAYS_RERANK';
 
@@ -229,10 +230,11 @@ const model = SEMANTIC_SEARCH_CONFIG.RERANK_MODELS.MULTILINGUAL; // 'rerank-mult
       return NextResponse.json(bypassResult);
     }
 
-    // Step 3: Check affordability
+    // Step 3: Check affordability & setup (STEP 7 - Rerank Setup & Validation)
     if (trackCosts) {
       console.log(`💰 [API /rerank] [${rerankId}] Checking affordability...`);
 
+      const setupStart = Date.now();
       const costEstimate = RerankService.estimateCost(contacts.length, model);
       console.log(`💰 [API /rerank] [${rerankId}] Estimated cost: $${costEstimate.estimatedCost.toFixed(6)}`);
 
@@ -241,11 +243,47 @@ const model = SEMANTIC_SEARCH_CONFIG.RERANK_MODELS.MULTILINGUAL; // 'rerank-mult
         costEstimate.estimatedCost,
         0
       );
+      const setupDuration = Date.now() - setupStart;
 
       console.log(`💰 [API /rerank] [${rerankId}] Affordability:`, {
         canAfford: affordabilityCheck.canAfford,
         reason: affordabilityCheck.reason
       });
+
+      // STEP 7: Record Rerank Setup & Validation
+      if (sessionId) {
+        try {
+          await StepTracker.recordStep({
+            userId,
+            sessionId,
+            stepNumber: 7,
+            stepLabel: 'Step 7: Rerank Setup & Validation',
+            feature: 'semantic_search_rerank_setup',
+            provider: 'internal',
+            cost: 0,
+            duration: setupDuration,
+            metadata: {
+              queryLength: query.length,
+              contactsCount: contacts.length,
+              detectedLanguage: detectedLanguage || 'eng',
+              model,
+              modelCost,
+              topN,
+              minConfidence,
+              isSimpleQuery,
+              testingMode: testingModeActive ? FORCE_RERANK_MODE : 'AUTO',
+              estimatedCost: costEstimate.estimatedCost,
+              affordabilityCheck: {
+                canAfford: affordabilityCheck.canAfford,
+                reason: affordabilityCheck.reason
+              }
+            }
+          });
+          console.log(`✅ [API /rerank] [${rerankId}] Step 7 recorded`);
+        } catch (stepError) {
+          console.error(`❌ [API /rerank] [${rerankId}] Failed to record Step 7:`, stepError);
+        }
+      }
 
       if (!affordabilityCheck.canAfford) {
         console.log(`❌ [API /rerank] [${rerankId}] User cannot afford operation`);
@@ -268,7 +306,10 @@ const model = SEMANTIC_SEARCH_CONFIG.RERANK_MODELS.MULTILINGUAL; // 'rerank-mult
       subscriptionLevel,
       rerankId,
       detectedLanguage, // Pass detected language to service
-      isFactualQuery: false
+      isFactualQuery: false,
+      sessionId, // Pass sessionId for tracking
+      userId, // Pass userId for tracking
+      trackSteps: trackCosts // Enable granular step tracking when cost tracking is enabled
     });
 
     // Step 5: Record usage

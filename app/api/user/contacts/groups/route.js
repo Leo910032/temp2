@@ -132,7 +132,7 @@ export async function POST(request) {
 }
 
 /**
- * Handles DELETE requests to delete a group
+ * Handles DELETE requests to delete a group or all groups
  */
 export async function DELETE(request) {
   console.log('🔍 DELETE /api/user/contacts/groups - Request received');
@@ -149,11 +149,21 @@ export async function DELETE(request) {
     const { searchParams } = new URL(request.url);
     const groupId = searchParams.get('groupId');
 
+    // If no groupId provided, delete all groups
     if (!groupId) {
-      console.log('❌ Missing groupId parameter');
-      return NextResponse.json({ error: 'Missing groupId parameter' }, { status: 400 });
+      console.log('🗑️ Deleting all groups for user:', session.userId);
+      const result = await GroupCRUDService.deleteAllGroups({ session });
+
+      console.log(`✅ Deleted ${result.count} groups`);
+
+      return NextResponse.json({
+        success: true,
+        message: 'All groups deleted successfully',
+        deletedCount: result.count
+      });
     }
 
+    // Delete single group
     console.log('🗑️ Deleting group:', groupId);
     await GroupCRUDService.deleteGroup({
       groupId,

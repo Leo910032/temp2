@@ -1,8 +1,12 @@
 // app/api/user/contacts/geocode/route.js
 // Reverse geocoding endpoint - converts coordinates to address
+// PUBLIC endpoint for displaying locations on public profiles
+// Costs are tracked against the profile owner (userId parameter)
 
 import { NextResponse } from 'next/server';
 import { createOptimizedPlacesApiClient } from '@/lib/services/placesApiClient';
+import { CostTrackingService } from '@/lib/services/serviceContact/server/costTrackingService';
+import { API_COSTS } from '@/lib/services/constants/apiCosts';
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
@@ -10,12 +14,19 @@ export const dynamic = 'force-dynamic';
 /**
  * PUBLIC endpoint for reverse geocoding
  * Converts latitude/longitude to human-readable address
+ * Used for displaying locations on public profiles
+ *
+ * Query params:
+ * - lat: latitude
+ * - lng: longitude
+ * - userId: (optional) profile owner ID for cost tracking
  */
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const latitude = parseFloat(searchParams.get('lat'));
     const longitude = parseFloat(searchParams.get('lng'));
+    const userId = searchParams.get('userId'); // Profile owner to charge
 
     // Validate coordinates
     if (isNaN(latitude) || isNaN(longitude)) {
@@ -30,6 +41,30 @@ export async function GET(request) {
       }, { status: 400 });
     }
 
+    // If userId provided, check affordability for the profile owner
+    if (userId) {
+      const estimatedCost = API_COSTS.GOOGLE_MAPS.GEOCODING.PER_REQUEST;
+      const affordabilityCheck = await CostTrackingService.canAffordOperation(
+        userId,
+        estimatedCost,
+        1 // Requires 1 billable run
+      );
+
+      if (!affordabilityCheck.canAfford) {
+        console.warn(`[API Geocoding] User ${userId} cannot afford geocoding: ${affordabilityCheck.reason}`);
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Profile owner has reached their monthly API limit',
+            reason: affordabilityCheck.reason
+          },
+          { status: 402 } // Payment Required
+        );
+      }
+
+      console.log(`[API Geocoding] Budget check passed for user ${userId}`);
+    }
+
     // Check for API key
     const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     if (!apiKey) {
@@ -39,11 +74,36 @@ export async function GET(request) {
       }, { status: 500 });
     }
 
-    // Create client and perform reverse geocoding
+    // Perform reverse geocoding
     const placesClient = createOptimizedPlacesApiClient(apiKey);
     const addressData = await placesClient.reverseGeocode(latitude, longitude);
 
     console.log(`✅ Geocoding API: Found address for ${latitude}, ${longitude}`);
+
+    // Record usage if userId provided
+    if (userId) {
+      const actualCost = API_COSTS.GOOGLE_MAPS.GEOCODING.PER_REQUEST;
+
+      await CostTrackingService.recordUsage({
+        userId,
+        usageType: 'ApiUsage',
+        feature: 'google_maps_geocoding',
+        cost: actualCost,
+        isBillableRun: true, // Counts toward monthly API limits
+        provider: 'google_maps',
+        metadata: {
+          latitude,
+          longitude,
+          addressFound: !!addressData,
+          isPublicProfile: true,
+          timestamp: new Date().toISOString()
+        }
+      });
+
+      console.log(`💰 [Geocoding] Tracked usage: $${actualCost} for user ${userId}`);
+    } else {
+      console.log(`⚠️ [Geocoding] No userId provided - cost not tracked`);
+    }
 
     return NextResponse.json({
       success: true,

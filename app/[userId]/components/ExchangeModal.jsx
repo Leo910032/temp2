@@ -81,9 +81,13 @@ export default function ExchangeModal({
             // Perform reverse geocoding to get address details
             try {
                 console.log("🌍 Performing reverse geocoding...");
-                const geocodeResponse = await fetch(
-                    `/api/user/contacts/geocode?lat=${userLocation.latitude}&lng=${userLocation.longitude}`
-                );
+                const geocodeUrl = `/api/user/contacts/geocode?lat=${userLocation.latitude}&lng=${userLocation.longitude}`;
+                // Add profileOwnerId if available to track costs against the profile owner
+                const geocodeUrlWithUser = profileOwnerId
+                    ? `${geocodeUrl}&userId=${profileOwnerId}`
+                    : geocodeUrl;
+
+                const geocodeResponse = await fetch(geocodeUrlWithUser);
 
                 if (geocodeResponse.ok) {
                     const geocodeData = await geocodeResponse.json();

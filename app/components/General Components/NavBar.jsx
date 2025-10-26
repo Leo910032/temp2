@@ -320,9 +320,16 @@ export default function NavBar() {
             }
         };
         if (showProfileCard || showShareCard) {
-            document.addEventListener("mousedown", handleClickOutside);
+            // Use setTimeout to delay adding the listener, allowing the current click to complete
+            const timeoutId = setTimeout(() => {
+                document.addEventListener("mousedown", handleClickOutside);
+            }, 0);
+
+            return () => {
+                clearTimeout(timeoutId);
+                document.removeEventListener("mousedown", handleClickOutside);
+            };
         }
-        return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [showProfileCard, showShareCard]);
 
     // Set active page based on route

@@ -488,12 +488,12 @@
       "reset_title": "Đặt lại mật khẩu",
       "reset_subtitle": "Bảo mật tài khoản của bạn",
       "greeting": "Chào bạn! 👋",
-      "reset_message": "Bạn đã yêu cầu đặt lại mật khẩu cho tài khoản TapIt của mình. Nhấp vào nút bên dưới để tạo mật khẩu mới. Liên kết này sẽ hết hạn sau 1 giờ vì lý do bảo mật.",
+      "reset_message": "Bạn đã yêu cầu đặt lại mật khẩu cho tài khoản Weavink của mình. Nhấp vào nút bên dưới để tạo mật khẩu mới. Liên kết này sẽ hết hạn sau 1 giờ vì lý do bảo mật.",
       "security_notice": "Thông báo bảo mật",
       "reset_security_message": "Nếu bạn không yêu cầu đặt lại mật khẩu này, vui lòng bỏ qua email này. Tài khoản của bạn vẫn an toàn và không có thay đổi nào được thực hiện.",
       "reset_button": "Đặt lại mật khẩu của tôi →",
       "additional_info": "Để bảo mật, liên kết này sẽ hết hạn sau 1 giờ. Nếu bạn cần hỗ trợ, vui lòng liên hệ với nhóm hỗ trợ của chúng tôi.",
-      "reset_footer_message": "Email này được gửi từ TapIt",
+      "reset_footer_message": "Email này được gửi từ Weavink",
       "reset_footer_note": "Nếu bạn gặp sự cố với nút ở trên, hãy sao chép và dán URL này vào trình duyệt của bạn:",
       "contact_support": "Nếu bạn có bất kỳ câu hỏi nào hoặc cần giúp đỡ, đừng ngần ngại liên hệ với nhóm hỗ trợ của chúng tôi."
     }
@@ -1059,7 +1059,7 @@
       "time_to_share": "Để chia sẻ"
     },
     "features": {
-      "title": "Tại sao chọn Tapit?",
+      "title": "Tại sao chọn Weavink?",
       "subtitle": "Giải pháp hoàn chỉnh để hiện đại hóa mạng lưới chuyên nghiệp của bạn",
       "nfc": {
         "title": "Chạm & Chia sẻ",
@@ -1075,7 +1075,7 @@
       }
     },
     "testimonial": {
-      "quote": "Kể từ khi tôi sử dụng Tapit, tôi đã tăng gấp ba lần số lượng kết nối và không bao giờ mất một liên hệ nữa.",
+      "quote": "Kể từ khi tôi sử dụng Weavink, tôi đã tăng gấp ba lần số lượng kết nối và không bao giờ mất một liên hệ nữa.",
       "author": "Marie D., Doanh nhân Công nghệ, Grenoble",
       "cta": "Tạo hồ sơ miễn phí của tôi"
     },

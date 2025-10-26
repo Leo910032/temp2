@@ -457,12 +457,12 @@
       "reset_title": "密码重置",
       "reset_subtitle": "保护您的账户",
       "greeting": "您好！👋",
-      "reset_message": "您已请求为您的 TapIt 账户重置密码。点击下面的按钮创建一个新密码。为安全起见，此链接将在1小时后失效。",
+      "reset_message": "您已请求为您的 Weavink 账户重置密码。点击下面的按钮创建一个新密码。为安全起见，此链接将在1小时后失效。",
       "security_notice": "安全通知",
       "reset_security_message": "如果您没有请求重置密码，请忽略此邮件。您的账户仍然安全，没有进行任何更改。",
       "reset_button": "重置我的密码 →",
       "additional_info": "为安全起见，此链接将在1小时后失效。如需帮助，请联系我们的支持团队。",
-      "reset_footer_message": "此邮件由 TapIt 发送",
+      "reset_footer_message": "此邮件由 Weavink 发送",
       "reset_footer_note": "如果您无法点击上面的按钮，请将此 URL 复制并粘贴到您的浏览器中：",
       "contact_support": "如果您有任何问题或需要帮助，请随时联系我们的支持团队。"
     }
@@ -896,7 +896,7 @@
       "time_to_share": "分享时间"
     },
     "features": {
-      "title": "为什么选择Tapit？",
+      "title": "为什么选择Weavink？",
       "subtitle": "现代化专业社交的完整解决方案",
       "nfc": {
         "title": "触碰并分享",
@@ -912,7 +912,7 @@
       }
     },
     "testimonial": {
-      "quote": "自从使用Tapit以来，我的联系人增加了三倍，再也不会丢失联系人。",
+      "quote": "自从使用Weavink以来，我的联系人增加了三倍，再也不会丢失联系人。",
       "author": "Marie D.，科技企业家，格勒诺布尔",
       "cta": "免费创建我的档案"
     },

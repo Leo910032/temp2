@@ -488,12 +488,12 @@
       "reset_title": "Restablecimiento de contraseña",
       "reset_subtitle": "Asegura tu cuenta",
       "greeting": "¡Hola! 👋",
-      "reset_message": "Has solicitado restablecer la contraseña de tu cuenta de TapIt. Haz clic en el botón de abajo para crear una nueva contraseña. Este enlace caducará en 1 hora por motivos de seguridad.",
+      "reset_message": "Has solicitado restablecer la contraseña de tu cuenta de Weavink. Haz clic en el botón de abajo para crear una nueva contraseña. Este enlace caducará en 1 hora por motivos de seguridad.",
       "security_notice": "Aviso de seguridad",
       "reset_security_message": "Si no solicitaste este restablecimiento de contraseña, por favor, ignora este correo. Tu cuenta permanece segura y no se ha realizado ningún cambio.",
       "reset_button": "Restablecer mi contraseña →",
       "additional_info": "Por tu seguridad, este enlace caducará en 1 hora. Si necesitas ayuda, por favor, contacta a nuestro equipo de soporte.",
-      "reset_footer_message": "Este correo fue enviado desde TapIt",
+      "reset_footer_message": "Este correo fue enviado desde Weavink",
       "reset_footer_note": "Si tienes problemas con el botón de arriba, copia y pega esta URL en tu navegador:",
       "contact_support": "Si tienes alguna pregunta o necesitas ayuda, no dudes en contactar a nuestro equipo de soporte."
     }
@@ -1077,7 +1077,7 @@
       "time_to_share": "Para compartir"
     },
     "features": {
-      "title": "¿Por qué Tapit?",
+      "title": "¿Por qué Weavink?",
       "subtitle": "La solución completa para modernizar tu networking profesional",
       "nfc": {
         "title": "Toca y Comparte",
@@ -1093,7 +1093,7 @@
       }
     },
     "testimonial": {
-      "quote": "Desde que uso Tapit, he triplicado mis conexiones y nunca pierdo un contacto.",
+      "quote": "Desde que uso Weavink, he triplicado mis conexiones y nunca pierdo un contacto.",
       "author": "Marie D., Emprendedora Tech, Grenoble",
       "cta": "Crear mi perfil gratis"
     },

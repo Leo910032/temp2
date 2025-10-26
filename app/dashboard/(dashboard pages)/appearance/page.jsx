@@ -228,7 +228,7 @@ function AppearanceContent() {
     }
 
     return (
-        <div className="flex-1 py-2 flex flex-col overflow-y-auto">
+        <div className="flex-1 py-1 flex flex-col overflow-y-auto">
             {/* Saving indicator */}
             {isSaving && (
                 <div className="fixed top-20 right-6 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2">
@@ -245,8 +245,8 @@ function AppearanceContent() {
                     </div>
                 </div>
             )}
-            
-            <div className="py-4">
+
+            <div className="pt-1 pb-4">
                 <h2 className="text-lg font-semibold my-4">{translations.profile}</h2>
                 <ProfileCard />
             </div>

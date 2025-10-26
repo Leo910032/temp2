@@ -297,9 +297,13 @@ export default function NavBar() {
                 isInsideProfileCard,
                 isShareButton: !!isShareButton,
                 isProfileButton: !!isProfileButton,
-                shareCardRefCurrent: shareCardRef.current,
-                target: event.target,
-                targetClasses: event.target.className
+                'shareCardRef.current': shareCardRef.current,
+                'shareCardRef.current exists': !!shareCardRef.current,
+                'target': event.target,
+                'target.tagName': event.target.tagName,
+                'target.className': event.target.className,
+                'target.id': event.target.id,
+                'contains result': shareCardRef.current ? shareCardRef.current.contains(event.target) : 'ref is null'
             });
 
             if (showProfileCard &&

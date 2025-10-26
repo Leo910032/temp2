@@ -311,7 +311,7 @@ export default function Form() {
                                 <div className={`flex items-center bg-white/95 backdrop-blur-xl px-6 sm:px-8 py-7 sm:py-8 md:py-10 text-base sm:text-xl md:text-2xl lg:text-3xl transition-colors duration-300 ${
                                     hasError === 2 ? "bg-themeGreen/10" : ""
                                 }`}>
-                                    <label className="opacity-40 font-bold whitespace-nowrap">tapit.fr/</label>
+                                    <label className="opacity-40 font-bold whitespace-nowrap">weavink.com/</label>
                                 </div>
 
                                 {/* Username input - BIGGER */}

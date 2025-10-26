@@ -223,7 +223,7 @@ export default function LoginForm() {
                                         usernameStatus === 2 ? "bg-themeGreen/10 border-2 border-themeGreen/50" :
                                         "bg-white/10 border-2 border-white/20 hover:border-white/40"
                                     }`}>
-                                        <label className="text-white/60 font-semibold whitespace-nowrap">tapit.fr/</label>
+                                        <label className="text-white/60 font-semibold whitespace-nowrap">weavink.com/</label>
                                         <input
                                             type="text"
                                             placeholder={translations.usernamePlaceholder}

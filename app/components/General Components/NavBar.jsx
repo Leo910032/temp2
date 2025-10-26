@@ -41,7 +41,8 @@ export default function NavBar() {
 
     const profileCardRef = useRef(null);
     const shareCardRef = useRef(null);
-    
+    const justToggledRef = useRef(false);
+
     // Combined loading state for the entire navbar
     const isLoading = isSessionLoading || isAppearanceLoading;
 
@@ -248,6 +249,7 @@ export default function NavBar() {
             console.warn("Profile button clicked but data is not ready or username is empty.");
             return;
         }
+        justToggledRef.current = true;
         setShowProfileCard(prev => !prev);
         setShowShareCard(false);
     };
@@ -259,22 +261,23 @@ export default function NavBar() {
             myLink,
             canProceed: !isLoading && username && myLink
         });
-        
+
         if (isLoading) {
             console.warn("Share button clicked but data is still loading. Cannot toggle ShareCard.");
             return;
         }
-        
+
         if (!username) {
             console.warn("Share button clicked but username is empty. Cannot toggle ShareCard.");
             return;
         }
-        
+
         if (!myLink) {
             console.warn("Share button clicked but myLink is empty. Cannot toggle ShareCard.");
             return;
         }
-        
+
+        justToggledRef.current = true;
         const newState = !showShareCard;
         console.log("All data ready. Toggling ShareCard visibility to:", newState);
         setShowShareCard(newState);
@@ -284,11 +287,21 @@ export default function NavBar() {
     // Handle clicks outside cards
     useEffect(() => {
         const handleClickOutside = (event) => {
+            // Skip if we just toggled (button click is still propagating)
+            if (justToggledRef.current) {
+                console.log('Skipping click outside check - just toggled');
+                justToggledRef.current = false;
+                return;
+            }
+
             // Check if click is inside the ShareCard or ProfileCard content
             const isInsideShareCard = shareCardRef.current && shareCardRef.current.contains(event.target);
             const isInsideProfileCard = profileCardRef.current && profileCardRef.current.contains(event.target);
-            const isShareButton = event.target.closest('#share-button');
-            const isProfileButton = event.target.closest('#profile-button');
+
+            // Use composedPath() to check the entire event path, not just closest()
+            const eventPath = event.composedPath ? event.composedPath() : [];
+            const isShareButton = eventPath.some(el => el.id === 'share-button') || event.target.closest?.('#share-button');
+            const isProfileButton = eventPath.some(el => el.id === 'profile-button') || event.target.closest?.('#profile-button');
 
             console.log('Click outside handler:', {
                 showShareCard,

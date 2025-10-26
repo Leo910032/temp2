@@ -125,7 +125,7 @@ export default function ExchangeModal({
 
             return null;
         }
-    }, [t]);
+    }, [t, profileOwnerId]);
 
     const initializeModal = useCallback(async () => {
     try {

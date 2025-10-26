@@ -177,7 +177,7 @@ const [stats, setStats] = useState({
             setAiSearchResults(null);
             setSearchStage('idle');
         }
-    }, [currentUser, hasFeature]);
+    }, [currentUser, hasFeature, locale]);
     
     // Clear search
     const clearSearch = useCallback(() => {

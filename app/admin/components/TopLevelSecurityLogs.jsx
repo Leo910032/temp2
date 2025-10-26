@@ -16,6 +16,7 @@ export default function TopLevelSecurityLogs() {
     // Fetch logs on component mount and when filters change
     useEffect(() => {
         fetchSecurityLogs();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filters]);
 
     const fetchSecurityLogs = async () => {

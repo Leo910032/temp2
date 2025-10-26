@@ -703,9 +703,9 @@ function ModelSummaryCard({ modelId, stats, rank }) {
                 {stats.errors.slice(0, 10).map((error, idx) => (
                   <div key={idx} className="text-xs bg-white rounded p-2 border border-red-200">
                     <p className="font-mono text-red-800">
-                      "{error.input}" → "{error.actual}"
+                      &ldquo;{error.input}&rdquo; → &ldquo;{error.actual}&rdquo;
                     </p>
-                    <p className="text-gray-600">Expected: "{error.expected}"</p>
+                    <p className="text-gray-600">Expected: &ldquo;{error.expected}&rdquo;</p>
                     {error.error && <p className="text-red-600 mt-1">Error: {error.error}</p>}
                   </div>
                 ))}

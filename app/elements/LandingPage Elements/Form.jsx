@@ -501,7 +501,7 @@ export default function Form() {
             >
                 <div className="max-w-3xl mx-auto">
                     <p className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-4 leading-relaxed">
-                        "{translations.testimonialQuote}"
+                        &ldquo;{translations.testimonialQuote}&rdquo;
                     </p>
                     <p className="text-white/70 mb-8">
                         — {translations.testimonialAuthor}

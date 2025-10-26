@@ -2002,6 +2002,10 @@
       }
     }
   },
+  "profileCard": {
+    "myAccount": "Mi cuenta",
+    "signOut": "Cerrar sesión"
+  },
   "shareCard": {
     "title": "Comparte tu Linktree",
     "subtitle": "Consigue más visitantes compartiendo tu Linktree en todas partes.",

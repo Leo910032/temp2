@@ -284,16 +284,20 @@ export default function NavBar() {
     // Handle clicks outside cards
     useEffect(() => {
         const handleClickOutside = (event) => {
+            // Check if click is inside the ShareCard or ProfileCard content
+            const isInsideShareCard = shareCardRef.current && shareCardRef.current.contains(event.target);
+            const isInsideProfileCard = profileCardRef.current && profileCardRef.current.contains(event.target);
+            const isShareButton = event.target.closest('#share-button');
+            const isProfileButton = event.target.closest('#profile-button');
+
             if (showProfileCard &&
-                profileCardRef.current &&
-                !profileCardRef.current.contains(event.target) &&
-                !event.target.closest('#profile-button')) {
+                !isInsideProfileCard &&
+                !isProfileButton) {
                 setShowProfileCard(false);
             }
             if (showShareCard &&
-                shareCardRef.current &&
-                !shareCardRef.current.contains(event.target) &&
-                !event.target.closest('#share-button')) {
+                !isInsideShareCard &&
+                !isShareButton) {
                 setShowShareCard(false);
             }
         };

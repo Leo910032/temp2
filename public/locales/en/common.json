@@ -903,6 +903,10 @@
       "single_card_scan": "Single card scan"
     }
   },
+  "profileCard": {
+    "myAccount": "My Account",
+    "signOut": "Sign Out"
+  },
   "shareCard": {
     "title": "Share your Linktree",
     "subtitle": "Get more visitors by sharing your Linktree everywhere.",

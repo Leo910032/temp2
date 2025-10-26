@@ -129,23 +129,15 @@ export default function ShareLiElement({children, nextPage }) {
         }
     }, [linkToOpen]);
 
-    const handleMouseDown = (e) => {
-        e.stopPropagation();
-        if (e.stopImmediatePropagation) {
-            e.stopImmediatePropagation();
-        }
-    };
-
     // ✅ IMPROVED: Don't render if essential data is missing
     if (!shareContext || !myLink) {
         return null;
     }
 
     return (
-        <div 
-            className="w-full flex justify-between items-center p-3 rounded-xl select-none hover:bg-black hover:bg-opacity-5 cursor-pointer active:scale-95" 
+        <div
+            className="w-full flex justify-between items-center p-3 rounded-xl select-none hover:bg-black hover:bg-opacity-5 cursor-pointer active:scale-95"
             onClick={handleNextPage}
-            onMouseDown={handleMouseDown}
         >
             {children}
             

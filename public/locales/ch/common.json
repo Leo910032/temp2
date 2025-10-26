@@ -1531,6 +1531,10 @@
       }
     }
   },
+  "profileCard": {
+    "myAccount": "我的账户",
+    "signOut": "退出登录"
+  },
   "shareCard": {
     "title": "分享您的 Linktree",
     "subtitle": "通过在各处分享您的 Linktree 来获得更多访问者。",

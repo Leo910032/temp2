@@ -1984,6 +1984,10 @@
       }
     }
   },
+  "profileCard": {
+    "myAccount": "Tài khoản của tôi",
+    "signOut": "Đăng xuất"
+  },
   "shareCard": {
     "title": "Chia sẻ Linktree của bạn",
     "subtitle": "Nhận thêm khách truy cập bằng cách chia sẻ Linktree của bạn ở mọi nơi.",

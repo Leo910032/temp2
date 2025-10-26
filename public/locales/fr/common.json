@@ -2249,6 +2249,10 @@
       }
     }
   },
+  "profileCard": {
+    "myAccount": "Mon compte",
+    "signOut": "Se déconnecter"
+  },
   "shareCard": {
     "title": "Partagez votre Linktree",
     "subtitle": "Obtenez plus de visiteurs en partageant votre Linktree partout.",

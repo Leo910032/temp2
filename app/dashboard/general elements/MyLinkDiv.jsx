@@ -25,9 +25,9 @@ export default function MyLinkDiv() {
         }
     }, [currentUser, isLoading]);
 
-    // Show nothing while loading
-    if (isLoading) {
-        return null;
+    // Reserve space while loading to prevent layout shift
+    if (isLoading || !myUrl) {
+        return <div className="w-full h-[60px] mb-4" />;
     }
 
     // No changes to the JSX are needed, it will render when myUrl is set

@@ -16,6 +16,7 @@ export async function POST(request) {
     // 1. CSRF Protection
     const origin = request.headers.get('origin');
     const allowedOrigins = [
+      process.env.NEXT_PUBLIC_APP_URL,
       process.env.NEXT_PUBLIC_BASE_URL,
       'http://localhost:3000',
       'http://localhost:3001'

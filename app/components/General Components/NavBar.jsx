@@ -290,14 +290,28 @@ export default function NavBar() {
             const isShareButton = event.target.closest('#share-button');
             const isProfileButton = event.target.closest('#profile-button');
 
+            console.log('Click outside handler:', {
+                showShareCard,
+                showProfileCard,
+                isInsideShareCard,
+                isInsideProfileCard,
+                isShareButton: !!isShareButton,
+                isProfileButton: !!isProfileButton,
+                shareCardRefCurrent: shareCardRef.current,
+                target: event.target,
+                targetClasses: event.target.className
+            });
+
             if (showProfileCard &&
                 !isInsideProfileCard &&
                 !isProfileButton) {
+                console.log('Closing ProfileCard');
                 setShowProfileCard(false);
             }
             if (showShareCard &&
                 !isInsideShareCard &&
                 !isShareButton) {
+                console.log('Closing ShareCard');
                 setShowShareCard(false);
             }
         };

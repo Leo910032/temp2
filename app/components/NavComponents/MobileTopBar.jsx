@@ -75,12 +75,8 @@ export default function MobileTopBar({
                             profilePicture
                         )}
                     </button>
-                    <div ref={profileCardRef}>
-                        <ProfileCard />
-                    </div>
-                    <div ref={shareCardRef}>
-                        <ShareCard />
-                    </div>
+                    <ProfileCard ref={profileCardRef} />
+                    <ShareCard ref={shareCardRef} />
                 </div>
             </div>
         </div>

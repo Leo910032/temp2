@@ -1,11 +1,11 @@
-import React, { useContext } from "react";
+import React, { useContext, forwardRef } from "react";
 import Image from "next/image";
 import LiElement from "./elements/LiElement";
 import Profile from "./elements/Profile";
 import { NavContext } from "../General Components/NavBar";
 import { useTranslation } from "@/lib/translation/useTranslation";
 
-export default function ProfileCard() {
+const ProfileCard = forwardRef(function ProfileCard(_props, ref) {
     const { t } = useTranslation();
     const {
         showProfileCard,
@@ -15,7 +15,7 @@ export default function ProfileCard() {
     } = useContext(NavContext);
 
     return (
-        <div className="absolute -right-4 w-fit -translate-y-[5px] px-4 pt-2 pb-5 overflow-hidden navCard">
+        <div ref={ref} className="absolute -right-4 w-fit -translate-y-[5px] px-4 pt-2 pb-5 overflow-hidden navCard">
             <div
                 className={`sm:w-[365px] w-[310px] bg-white rounded-3xl border-b border-l border-r text-sm ${showProfileCard ? "enterCard": "leaveCard"}`}
                 style={{ boxShadow: `0 5px 25px 1px rgba(0, 0, 0, .05)` }}
@@ -43,7 +43,9 @@ export default function ProfileCard() {
                         </LiElement>
                     </ul>
                 </section>
-            </div> 
+            </div>
         </div>
     );
-}
+});
+
+export default ProfileCard;

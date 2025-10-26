@@ -15,11 +15,12 @@ const ProfileCard = forwardRef(function ProfileCard(_props, ref) {
     } = useContext(NavContext);
 
     return (
-        <div ref={ref} className="absolute -right-4 w-fit -translate-y-[5px] px-4 pt-2 pb-5 overflow-hidden navCard">
-            <div
-                className={`sm:w-[365px] w-[310px] bg-white rounded-3xl border-b border-l border-r text-sm ${showProfileCard ? "enterCard": "leaveCard"}`}
-                style={{ boxShadow: `0 5px 25px 1px rgba(0, 0, 0, .05)` }}
-            >
+        <div ref={ref} className={`absolute -right-4 w-fit -translate-y-[5px] px-4 pt-2 pb-5 overflow-hidden navCard ${!showProfileCard ? 'hidden' : ''}`}>
+            {showProfileCard && (
+                <div
+                    className={`sm:w-[365px] w-[310px] bg-white rounded-3xl border-b border-l border-r text-sm ${showProfileCard ? "enterCard": "leaveCard"}`}
+                    style={{ boxShadow: `0 5px 25px 1px rgba(0, 0, 0, .05)` }}
+                >
                 <Profile profilePicture={profilePicture} username={username} link={myLink} />
                 <section className="px-2 pb-3">
                     <ul className="pt-3 grid gap-1">
@@ -44,6 +45,7 @@ const ProfileCard = forwardRef(function ProfileCard(_props, ref) {
                     </ul>
                 </section>
             </div>
+            )}
         </div>
     );
 });

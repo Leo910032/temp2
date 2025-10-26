@@ -42,32 +42,29 @@ const ShareCard = forwardRef(function ShareCard(props, ref) {
         setCurrentPage(currentPage.slice(0, -1));
     }
 
-    // ✅ COMPREHENSIVE CHECK: Don't render if data is not ready
-    if (!showShareCard) {
-        return null;
-    }
-    
-    // Additional safety check - if data is not ready, don't render content
-    if (isLoading || !username || !myLink) {
+    // Don't render content if data is not ready, but keep the wrapper for ref
+    const shouldShowContent = showShareCard && !isLoading && username && myLink;
+
+    if (!shouldShowContent && showShareCard) {
         console.warn("⚠️ ShareCard: Attempted to render but data not ready:", {
             isLoading,
             username: !!username,
             myLink: !!myLink
         });
-        return null;
     }
 
     return (
         <ShareContext.Provider value={{ currentPage, setCurrentPage, myLink }}>
-            {/* ✅ This is now the outermost element with the ref attached */}
-            <div 
-                ref={ref} 
-                className="absolute -right-4 top-full mt-2 w-fit h-fit overflow-hidden navCard z-50"
+            {/* ✅ This is now the outermost element with the ref attached - always rendered for ref */}
+            <div
+                ref={ref}
+                className={`absolute -right-4 top-full mt-2 w-fit h-fit overflow-hidden navCard z-50 ${!showShareCard ? 'hidden' : ''}`}
             >
-                <div
-                    className={`sm:w-[365px] w-[310px] bg-white rounded-3xl border flex flex-col gap-2 border-l p-2 border-r text-sm max-h-[70vh] overflow-y-auto ${showShareCard ? "enterCard" : "leaveCard"}`}
-                    style={{ boxShadow: `0 5px 25px 1px rgba(0, 0, 0, .05)` }}
-                >
+                {shouldShowContent && (
+                    <div
+                        className={`sm:w-[365px] w-[310px] bg-white rounded-3xl border flex flex-col gap-2 border-l p-2 border-r text-sm max-h-[70vh] overflow-y-auto ${showShareCard ? "enterCard" : "leaveCard"}`}
+                        style={{ boxShadow: `0 5px 25px 1px rgba(0, 0, 0, .05)` }}
+                    >
                  
                     {currentPage[currentPage.length - 1].page === "home" && <>
                         <div className="grid grid-cols-[32px_auto_32px] items-center p-3">
@@ -193,6 +190,7 @@ const ShareCard = forwardRef(function ShareCard(props, ref) {
                         </ShareLiElement>
                     </>}
                 </div>
+                )}
             </div>
         </ShareContext.Provider>
     );
